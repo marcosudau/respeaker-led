@@ -1,0 +1,133 @@
+# Vollstaendige Beispiel-Konfiguration fuer alle aktuell per Config
+# unterstuetzten Effekt-Typen der Effects Engine.
+#
+# Hinweis:
+# Die Python-Callback-Parameter direction_provider, progress_provider und
+# level_provider lassen sich nicht in YAML oder JSON ausdruecken.
+# Dafuer musst du Effekte in Python instanziieren.
+
+off_once:
+  type: 'off'
+  hold_seconds: 0.2
+
+static_blue:
+  type: static
+  color: blue
+  hold_seconds: 0.0
+  persistent: true
+
+breath_soft_green:
+  type: breath
+  color: soft_green
+  speed: 1
+  brightness: 72
+  hold_seconds: 0.0
+  persistent: true
+
+rainbow_demo:
+  type: rainbow
+  speed: 2
+  brightness: 120
+  hold_seconds: 1.0
+  persistent: false
+
+blink_warning:
+  type: blink
+  color: '#FFD000'
+  on_seconds: 0.18
+  off_seconds: 0.1
+  repeat: 3
+
+alternate_connecting:
+  type: alternate
+  colors:
+    - soft_blue
+    - soft_cyan
+    - [180, 255, 255]
+  interval_seconds: 0.3
+  repeat: 6
+
+doa_hardware:
+  type: doa
+  base_color: soft_blue
+  doa_color: yellow
+  hold_seconds: 0.0
+  persistent: true
+
+fade_blue_to_red:
+  type: fade
+  from_color: '#0044FF'
+  to_color: [255, 40, 40]
+  duration: 1.4
+  steps: 24
+
+sequence_boot_like:
+  type: sequence
+  repeat: 1
+  effects:
+    - type: static
+      color: white
+      hold_seconds: 0.08
+      persistent: false
+    - type: 'off'
+      hold_seconds: 0.04
+    - type: breath
+      color: soft_blue
+      speed: 1
+      brightness: 80
+      hold_seconds: 0.6
+      persistent: false
+
+custom_doa_soft:
+  type: custom_doa
+  direction_deg: 135.0
+  center_color: cyan
+  wing_color: soft_blue
+  base_color: [3, 3, 12]
+  refresh_interval: 0.05
+
+timer_recording_window:
+  type: timer
+  total_seconds: 45.0
+  color: green
+  warn_color: yellow
+  critical_color: red
+  background: [5, 5, 5]
+  brightness_steps: 8
+  tick_flash: true
+  on_complete: event_error
+
+progress_static:
+  type: progress
+  color: cyan
+  tip_color: white
+  background: [3, 3, 3]
+  brightness_steps: 8
+  refresh_interval: 0.04
+  clockwise: true
+
+spinner_dual:
+  type: spinner
+  color: '0x00FFCC'
+  tail_color: soft_blue
+  background: black
+  dot_count: 2
+  tail_length: 3
+  period: 1.2
+  clockwise: true
+
+pulse_wave_ambient:
+  type: pulse_wave
+  color: soft_cyan
+  background: [0, 0, 0]
+  period: 2.4
+  width: 3.2
+  min_brightness: 0.08
+
+segment_meter_static:
+  type: segment_meter
+  low_color: green
+  mid_color: yellow
+  high_color: red
+  background: [3, 3, 3]
+  refresh_interval: 0.05

@@ -1,0 +1,37 @@
+{
+  "base_color": "0x020304",
+  "stages": [
+    {
+      "name": "Build",
+      "state": "passed",
+      "progress": 100,
+      "active_jobs": 0,
+      "max_jobs": 3
+    },
+    {
+      "name": "Test",
+      "state": "running",
+      "progress": 68,
+      "active_jobs": 3,
+      "max_jobs": 4,
+      "is_current": true
+    },
+    {
+      "name": "Review",
+      "state": "review",
+      "progress": 20,
+      "active_jobs": 1,
+      "max_jobs": 2,
+      "needs_attention": true
+    },
+    {
+      "name": "Deploy",
+      "state": "blocked",
+      "progress": 10,
+      "active_jobs": 1,
+      "max_jobs": 2,
+      "blocked": true,
+      "needs_attention": true
+    }
+  ]
+}

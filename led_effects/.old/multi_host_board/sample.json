@@ -1,0 +1,9 @@
+{
+  "base_color": "0x020304",
+  "hosts": [
+    {"name": "Main PC", "role": "pc", "state": "busy", "load": 72, "is_primary": true, "unread_alerts": 0},
+    {"name": "BuildSrv", "role": "server", "state": "warning", "load": 86, "needs_attention": true, "unread_alerts": 2},
+    {"name": "NAS", "role": "nas", "state": "ok", "load": 34, "unread_alerts": 0},
+    {"name": "DockerHost", "role": "container", "state": "degraded", "load": 64, "needs_attention": true, "unread_alerts": 1}
+  ]
+}

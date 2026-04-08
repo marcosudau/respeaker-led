@@ -1,0 +1,13 @@
+id: approval_inbox
+name: Approval Inbox
+description: Zeigt wartende Freigaben, Dringlichkeit und Alter.
+command: approval-inbox
+layer: work
+supports_cli: true
+supports_api: true
+api_route: /widgets/approval-inbox
+sample_spec: sample.json
+tags:
+  - approvals
+  - inbox
+  - work-layer

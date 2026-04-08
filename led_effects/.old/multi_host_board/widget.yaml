@@ -1,0 +1,13 @@
+id: multi_host_board
+name: Multi Host Board
+description: Zeigt Host-Rollen, Status, Last und Attention-Marker.
+command: multi-host-board
+layer: work
+supports_cli: true
+supports_api: true
+api_route: /widgets/multi-host-board
+sample_spec: sample.json
+tags:
+  - hosts
+  - monitoring
+  - work-layer

@@ -1,0 +1,9 @@
+{
+  "base_color": "0x020304",
+  "items": [
+    {"name": "Deploy prod", "state": "pending", "priority": 280, "age_minutes": 35, "waiting_on_user": true, "urgent": true},
+    {"name": "DB migration", "state": "pending", "priority": 220, "age_minutes": 78, "waiting_on_user": true},
+    {"name": "Scale workers", "state": "approved", "priority": 120, "age_minutes": 15},
+    {"name": "Rollback cache", "state": "rejected", "priority": 160, "age_minutes": 42}
+  ]
+}
