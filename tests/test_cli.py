@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.cli import _normalize_argv, build_parser, use_real_device
+from src.interfaces.cli import _normalize_argv, build_parser, use_real_device
 
 
 def test_parser_includes_service_and_state_commands():

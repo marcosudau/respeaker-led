@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from src.models import LED_COUNT
-from src.preset_loader import PresetRegistry
+from src.core.models import LED_COUNT
+from src.engine.preset_loader import PresetRegistry
 
 
 def write_preset_pack(folder, *, preset_id: str, command: str):
@@ -28,9 +28,9 @@ def write_preset_pack(folder, *, preset_id: str, command: str):
     (folder / "preset.py").write_text(
         "\n".join(
             [
-                "from src.effects import solid",
-                "from src.models import PresetBuildResult",
-                "from src.spec_utils import parse_hex_color",
+                "from src.engine.effects import solid",
+                "from src.core.models import PresetBuildResult",
+                "from src.infrastructure.spec_utils import parse_hex_color",
                 "",
                 "def build_preset(spec):",
                 "    color = parse_hex_color(spec.get('color', '0x112233'))",

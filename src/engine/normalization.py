@@ -1,0 +1,493 @@
+from __future__ import annotations
+
+from typing import Any
+
+from .effect_registry import EffectRegistry
+from ..core.effect_schema import CommandKind, EffectInvocation, LayerId, NormalizedCommand, PlaybackMode
+from ..infrastructure.spec_utils import parse_hex_color
+
+
+DEFAULT_EVENT_PRIORITIES = {
+    "error_flash": 900,
+    "timeout_imminent": 800,
+    "wakeword_ack": 725,
+    "trigger_received": 700,
+    "warning": 600,
+    "text_committed": 500,
+    "notification": 400,
+}
+DEFAULT_EVENT_DURATIONS_MS = {
+    "error_flash": 1800,
+    "timeout_imminent": 1500,
+    "wakeword_ack": 900,
+    "trigger_received": 900,
+    "warning": 1400,
+    "text_committed": 1200,
+    "notification": 1000,
+}
+
+
+def _normalize_name(value: str, fallback: str) -> str:
+    text = str(value or "").strip().lower().replace("-", "_")
+    return text or fallback
+
+
+def _copy_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
+    return dict(payload or {})
+
+
+def _meta(params: dict[str, Any], **metadata: Any) -> dict[str, Any]:
+    enriched = dict(params)
+    for key, value in metadata.items():
+        if value is not None:
+            enriched[f"__{key}"] = value
+    return enriched
+
+
+def _default_state_color(state_name: str) -> int:
+    return {
+        "offline": 0x6A0F0F,
+        "idle": 0x10263D,
+        "listening": 0x1AA7FF,
+        "recording": 0x19D37A,
+        "transcribing": 0xFFB347,
+        "processing": 0xFFB347,
+        "error": 0xFF3B30,
+    }.get(state_name, 0x7AA4FF)
+
+
+def _default_background_color(state_name: str) -> int:
+    return {
+        "offline": 0x080101,
+        "idle": 0x010408,
+        "listening": 0x020810,
+        "recording": 0x031108,
+        "transcribing": 0x120A02,
+        "processing": 0x120A02,
+        "error": 0x120103,
+    }.get(state_name, 0x060812)
+
+
+def _default_event_color(event_name: str) -> int:
+    return {
+        "trigger_received": 0x33D1FF,
+        "wakeword_ack": 0x33D1FF,
+        "text_committed": 0x42D392,
+        "warning": 0xFFB347,
+        "error_flash": 0xFF3B30,
+        "timeout_imminent": 0xFF9F1A,
+    }.get(event_name, 0x7AA4FF)
+
+
+def _default_event_background(event_name: str) -> int:
+    return {
+        "trigger_received": 0x05131A,
+        "wakeword_ack": 0x05131A,
+        "text_committed": 0x06120B,
+        "warning": 0x1A1005,
+        "error_flash": 0x120103,
+        "timeout_imminent": 0x190D02,
+    }.get(event_name, 0x05070A)
+
+
+def _payload_period_ms(payload: dict[str, Any], default_ms: int) -> int:
+    if "period_ms" in payload:
+        return max(100, int(payload["period_ms"]))
+    if "period" in payload:
+        return max(100, int(float(payload["period"]) * 1000.0))
+    return default_ms
+
+
+class ControllerCommandNormalizer:
+    def normalize_set_state(
+        self,
+        state_name: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        source: str = "runtime.set_state",
+        timestamp: float | None = None,
+    ) -> list[NormalizedCommand]:
+        name = _normalize_name(state_name, "idle")
+        payload = _copy_payload(payload)
+        accent = parse_hex_color(payload.get("color"), _default_state_color(name))
+        background = parse_hex_color(payload.get("base_color"), _default_background_color(name))
+        commands = [
+            NormalizedCommand(
+                kind=CommandKind.SET_EFFECT,
+                target_layer=LayerId.BACKGROUND_STATE_LAYER,
+                effect_id="solid_color",
+                params=_meta(
+                    {"color": background},
+                    scene_name="state_layer",
+                    item_id=name,
+                    mode=name,
+                    payload=payload,
+                    valid=True,
+                ),
+                source=source,
+                timestamp=timestamp,
+            )
+        ]
+
+        if name == "idle":
+            commands.append(
+                NormalizedCommand(
+                    kind=CommandKind.CLEAR_LAYER,
+                    target_layer=LayerId.STATE_LAYER,
+                    source=source,
+                    timestamp=timestamp,
+                )
+            )
+            return commands
+
+        effect_id = "soft_pulse"
+        effect_params: dict[str, Any] = {
+            "color": accent,
+            "base_color": background,
+            "period_ms": _payload_period_ms(payload, 1600),
+        }
+        if name == "offline":
+            effect_id = "blink_color"
+            effect_params = {
+                "color": accent,
+                "base_color": background,
+                "period_ms": 1200,
+                "duty_cycle": 0.25,
+            }
+        elif name == "listening":
+            effect_params["period_ms"] = 1800
+        elif name == "recording":
+            effect_params["period_ms"] = 1100
+        elif name in {"transcribing", "processing"}:
+            effect_params["period_ms"] = 1400
+        elif name == "error":
+            effect_id = "blink_color"
+            effect_params = {
+                "color": accent,
+                "base_color": background,
+                "period_ms": 700,
+                "duty_cycle": 0.55,
+            }
+
+        commands.append(
+            NormalizedCommand(
+                kind=CommandKind.SET_EFFECT,
+                target_layer=LayerId.STATE_LAYER,
+                effect_id=effect_id,
+                params=_meta(
+                    effect_params,
+                    scene_name=f"active_visual:base-state:{name}",
+                    item_id=f"base-state:{name}",
+                    mode=name,
+                    payload=payload,
+                    valid=True,
+                ),
+                source=source,
+                timestamp=timestamp,
+            )
+        )
+        return commands
+
+    def normalize_clear_state(
+        self,
+        state_name: str | None = None,
+        *,
+        source: str = "runtime.clear_state",
+        timestamp: float | None = None,
+    ) -> list[NormalizedCommand]:
+        return self.normalize_set_state(state_name or "idle", source=source, timestamp=timestamp)
+
+    def normalize_emit_event(
+        self,
+        event_name: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        source: str = "runtime.emit_event",
+        timestamp: float | None = None,
+    ) -> list[NormalizedCommand]:
+        name = _normalize_name(event_name, "notification")
+        payload = _copy_payload(payload)
+        effect_id = "warning_flash" if name == "warning" else "blink_color"
+        event_id = str(payload.get("event_id", f"{name}-{int((timestamp or 0.0) * 1000)}"))
+        duration_ms = payload.get("duration_ms", DEFAULT_EVENT_DURATIONS_MS.get(name, 1000))
+        priority = int(payload.get("priority", DEFAULT_EVENT_PRIORITIES.get(name, 300)))
+        accent = parse_hex_color(payload.get("color"), _default_event_color(name))
+        background = parse_hex_color(payload.get("base_color"), _default_event_background(name))
+        params = {
+            "color": accent,
+            "base_color": background,
+            "duration_ms": None if duration_ms is None else int(duration_ms),
+        }
+        if name in {"trigger_received", "wakeword_ack"}:
+            params.update({"period_ms": 500, "duty_cycle": 0.35})
+        elif name == "text_committed":
+            params.update({"period_ms": 750, "duty_cycle": 0.55})
+        elif name == "error_flash":
+            params.update({"period_ms": 350, "duty_cycle": 0.6})
+        elif name == "timeout_imminent":
+            params.update({"period_ms": 400, "duty_cycle": 0.5})
+        elif name == "warning":
+            params.update({"period_ms": 800, "duty_cycle": 0.5})
+        else:
+            params.update({"period_ms": 900, "duty_cycle": 0.45})
+        return [
+            NormalizedCommand(
+                kind=CommandKind.SET_EFFECT,
+                target_layer=LayerId.EVENT_LAYER,
+                effect_id=effect_id,
+                params=_meta(
+                    params,
+                    scene_name=f"event:{event_id}",
+                    item_id=event_id,
+                    event_name=name,
+                    payload=payload,
+                    valid=True,
+                    invocation_id=event_id,
+                ),
+                priority=priority,
+                source=source,
+                timestamp=timestamp,
+                enqueue=True,
+                replace_existing=False,
+            )
+        ]
+
+    def normalize_set_direction(
+        self,
+        direction_deg: float,
+        *,
+        source: str = "runtime.set_direction",
+        timestamp: float | None = None,
+    ) -> list[NormalizedCommand]:
+        normalized = float(direction_deg) % 360.0
+        return [
+            NormalizedCommand(
+                kind=CommandKind.SET_EFFECT,
+                target_layer=LayerId.ONGOING_OVERLAY_LAYER,
+                effect_id="direction_indicator",
+                params=_meta(
+                    {"direction_deg": normalized},
+                    scene_name="direction_overlay",
+                    item_id="direction-overlay",
+                    mode="direction",
+                    payload={"direction_deg": normalized},
+                    valid=True,
+                ),
+                source=source,
+                timestamp=timestamp,
+            )
+        ]
+
+    def normalize_clear_direction(
+        self,
+        *,
+        source: str = "runtime.clear_direction",
+        timestamp: float | None = None,
+    ) -> list[NormalizedCommand]:
+        return [
+            NormalizedCommand(
+                kind=CommandKind.CLEAR_LAYER,
+                target_layer=LayerId.ONGOING_OVERLAY_LAYER,
+                source=source,
+                timestamp=timestamp,
+            )
+        ]
+
+    def normalize_start_timeout_countdown(
+        self,
+        total_ms: int,
+        remaining_ms: int | None = None,
+        *,
+        follow_up_state: str | None = None,
+        payload: dict[str, Any] | None = None,
+        source: str = "runtime.start_timeout_countdown",
+        timestamp: float | None = None,
+    ) -> list[NormalizedCommand]:
+        total_ms = max(1, int(total_ms))
+        remaining_ms = total_ms if remaining_ms is None else max(0, min(int(remaining_ms), total_ms))
+        payload = _copy_payload(payload)
+        now = 0.0 if timestamp is None else float(timestamp)
+        return [
+            NormalizedCommand(
+                kind=CommandKind.SET_EFFECT,
+                target_layer=LayerId.TEMP_OVERLAY_LAYER,
+                effect_id="countdown_ring",
+                params=_meta(
+                    {
+                        "total_ms": total_ms,
+                        "deadline_ts": now + (remaining_ms / 1000.0),
+                        "duration_ms": remaining_ms,
+                        "color": parse_hex_color(payload.get("color"), 0xFF9F1A),
+                        "marker_color": parse_hex_color(payload.get("marker_color"), 0xFFF3D1),
+                    },
+                    scene_name="countdown_overlay",
+                    item_id="countdown-overlay",
+                    mode="countdown",
+                    payload=payload,
+                    valid=True,
+                    follow_up_state=None if follow_up_state is None else _normalize_name(follow_up_state, ""),
+                ),
+                source=source,
+                timestamp=timestamp,
+            )
+        ]
+
+    def normalize_cancel_timeout_countdown(
+        self,
+        *,
+        source: str = "runtime.cancel_timeout_countdown",
+        timestamp: float | None = None,
+    ) -> list[NormalizedCommand]:
+        return [
+            NormalizedCommand(
+                kind=CommandKind.CLEAR_LAYER,
+                target_layer=LayerId.TEMP_OVERLAY_LAYER,
+                source=source,
+                timestamp=timestamp,
+            )
+        ]
+
+    def normalize_set_progress(
+        self,
+        value: float,
+        *,
+        color: int = 0x3399FF,
+        base_color: int = 0x03070B,
+        source: str = "runtime.set_progress",
+        timestamp: float | None = None,
+    ) -> list[NormalizedCommand]:
+        commands = self.normalize_set_state(
+            "transcribing",
+            payload={"source": "progress"},
+            source=source,
+            timestamp=timestamp,
+        )
+        commands.append(
+            NormalizedCommand(
+                kind=CommandKind.SET_EFFECT,
+                target_layer=LayerId.MAIN_LAYER,
+                effect_id="progress_bar",
+                params=_meta(
+                    {"value": float(value), "color": int(color), "base_color": int(base_color)},
+                    scene_name="active_visual:progress",
+                    item_id="progress",
+                    mode="progress",
+                    payload={"value": float(value)},
+                    valid=True,
+                ),
+                source=source,
+                timestamp=timestamp,
+            )
+        )
+        return commands
+
+    def normalize_legacy_visual(
+        self,
+        layer_id: LayerId,
+        visual,
+        *,
+        scene_name: str,
+        item_id: str,
+        mode: str,
+        payload: dict[str, Any] | None = None,
+        valid: bool = True,
+        source: str = "runtime.legacy_visual",
+        timestamp: float | None = None,
+        priority: int | None = None,
+        duration_ms: int | None = None,
+        enqueue: bool = False,
+        replace_existing: bool = True,
+    ) -> list[NormalizedCommand]:
+        params = {"visual": visual}
+        if duration_ms is not None:
+            params["duration_ms"] = int(duration_ms)
+        return [
+            NormalizedCommand(
+                kind=CommandKind.SET_EFFECT,
+                target_layer=layer_id,
+                effect_id="legacy_visual",
+                params=_meta(
+                    params,
+                    scene_name=scene_name,
+                    item_id=item_id,
+                    mode=mode,
+                    payload=_copy_payload(payload),
+                    valid=valid,
+                ),
+                priority=priority,
+                source=source,
+                timestamp=timestamp,
+                enqueue=enqueue,
+                replace_existing=replace_existing,
+            )
+        ]
+
+
+def _preferred_playback_mode(layer_id: LayerId, allowed_modes: tuple[PlaybackMode, ...], requested_duration_ms: int | None) -> PlaybackMode:
+    candidates = allowed_modes or (PlaybackMode.SINGLE_RUN,)
+    if requested_duration_ms is not None and PlaybackMode.SINGLE_RUN in candidates:
+        return PlaybackMode.SINGLE_RUN
+    preferred = {
+        LayerId.BACKGROUND_STATE_LAYER: PlaybackMode.PERSISTENT,
+        LayerId.STATE_LAYER: PlaybackMode.PERSISTENT,
+        LayerId.MAIN_LAYER: PlaybackMode.PERSISTENT,
+        LayerId.TEMP_OVERLAY_LAYER: PlaybackMode.SINGLE_RUN,
+        LayerId.ONGOING_OVERLAY_LAYER: PlaybackMode.PERSISTENT,
+        LayerId.EVENT_LAYER: PlaybackMode.SINGLE_RUN,
+    }[layer_id]
+    if preferred in candidates:
+        return preferred
+    if layer_id in {LayerId.BACKGROUND_STATE_LAYER, LayerId.STATE_LAYER, LayerId.ONGOING_OVERLAY_LAYER} and PlaybackMode.LOOP in candidates:
+        return PlaybackMode.LOOP
+    return candidates[0]
+
+
+def build_effect_invocation(
+    command: NormalizedCommand,
+    registry: EffectRegistry,
+    *,
+    invocation_id: str,
+    created_at: float,
+) -> EffectInvocation:
+    if command.kind is not CommandKind.SET_EFFECT:
+        raise ValueError(f"Cannot build invocation from command kind: {command.kind}")
+    if command.target_layer is None:
+        raise ValueError("SET_EFFECT command requires a target layer")
+    if not command.effect_id:
+        raise ValueError("SET_EFFECT command requires an effect_id")
+
+    definition = registry.get(command.effect_id).definition
+    rule = definition.layer_rules.get(command.target_layer)
+    if rule is None or not rule.allowed:
+        raise ValueError(f"Effect {command.effect_id!r} is not allowed on layer {command.target_layer.value}")
+
+    params = dict(command.params)
+    requested_duration_ms = params.get("duration_ms")
+    if requested_duration_ms is not None:
+        requested_duration_ms = max(0, int(requested_duration_ms))
+
+    if rule.requires_finite_duration and requested_duration_ms is None:
+        raise ValueError(f"Effect {command.effect_id!r} on {command.target_layer.value} requires a finite duration")
+    if rule.requires_indefinite_duration and requested_duration_ms is not None:
+        raise ValueError(f"Effect {command.effect_id!r} on {command.target_layer.value} requires an indefinite duration")
+
+    allowed_modes = rule.allowed_playback_modes or definition.capabilities.playback_modes
+    playback_mode = _preferred_playback_mode(command.target_layer, allowed_modes, requested_duration_ms)
+    return EffectInvocation(
+        invocation_id=invocation_id,
+        effect_id=command.effect_id,
+        target_layer=command.target_layer,
+        params=params,
+        priority=command.priority,
+        playback_mode=playback_mode,
+        requested_duration_ms=requested_duration_ms,
+        source=command.source,
+        created_at=created_at,
+        replace_existing=command.replace_existing,
+    )
+
+
+__all__ = [
+    "ControllerCommandNormalizer",
+    "build_effect_invocation",
+]

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from src.effect_registry import build_default_effect_registry
-from src.effect_schema import CommandKind, LayerId, PlaybackMode
-from src.normalization import ControllerCommandNormalizer, build_effect_invocation
+from src.engine.effect_registry import build_default_effect_registry
+from src.core.effect_schema import CommandKind, LayerId, PlaybackMode
+from src.engine.normalization import ControllerCommandNormalizer, build_effect_invocation
 
 
 def test_set_state_normalization_maps_recording_to_background_and_state_invocations():

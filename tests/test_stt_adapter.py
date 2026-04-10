@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.stt_adapter import SttLedAdapter
+from src.integrations.stt_adapter import SttLedAdapter
 
 
 class RecordingClient:

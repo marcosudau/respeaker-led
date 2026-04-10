@@ -196,7 +196,7 @@ Bewusst nicht vorhanden:
 Hinweis:
 
 - Discovery bleibt optional.
-- Die Default-Effektbibliothek wird dateibasiert aus `led_effects/effects/` geladen.
+- Die Default-Effektbibliothek wird dateibasiert aus `src/led_effects/effects/` geladen.
 - Der Service persistiert `BACKGROUND_STATE_LAYER` in `runtime_state/background_state.json` und restauriert ihn beim Start.
 - Ohne Preset-Packs liefert `GET /api/v1/presets` eine leere Liste.
 - Bei fehlender Hardware faellt der Service sicher auf Console-Preview zurueck.

@@ -10,7 +10,7 @@ Dafuer gelten folgende Leitlinien:
 - alle fachlichen Eingaben laufen zuerst durch `ControllerCommandNormalizer`
 - `ControllerRuntime` enthaelt Engine-Mutationen und Statuslogik
 - `ControllerService` kuemmert sich um Worker, API, Prozess-Lifecycle und Fallbacks
-- dateibasierte Service-Effekte leben in `led_effects/effects/`
+- dateibasierte Service-Effekte leben in `src/led_effects/effects/`
 - `SceneComposer`, `SceneRenderer` und `FrameAdapter` bilden die feste Frame-Pipeline
 - Hardware-Ausgabe bleibt auf Vollring-Frames fuer den ReSpeaker ausgelegt
 
@@ -20,13 +20,13 @@ Der aktive Produktionspfad liegt vollstaendig in `src/`.
 
 Er wird ergaenzt durch:
 
-- `led_effects/effects/` fuer die eigentlichen Effektmodule
-- `led_effects/preset_packs/` fuer optionale Presets
-- `python_control/` fuer den Hardware-Zugriff
+- `src/led_effects/effects/` fuer die eigentlichen Effektmodule
+- `src/led_effects/preset_packs/` fuer optionale Presets
+- `src/python_control/` fuer den Hardware-Zugriff
 
 ## Preset-Discovery
 
-Preset-Packs liegen unter `led_effects/preset_packs/<name>/`.
+Preset-Packs liegen unter `src/led_effects/preset_packs/<name>/`.
 
 Ein Pack besitzt mindestens:
 
@@ -60,7 +60,7 @@ Die API bleibt bewusst klein und deckt nur die generischen Kernaktionen ab:
 - Richtung, Brightness und Enabled setzen
 - Presets optional laden und aktivieren
 
-Die Default-Registry scannt `led_effects/effects/` beim Start automatisch.
+Die Default-Registry scannt `src/led_effects/effects/` beim Start automatisch.
 
 ## Lokale Integrationen
 

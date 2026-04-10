@@ -1,0 +1,1 @@
+"""External service entry points and client interfaces."""

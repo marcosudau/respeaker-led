@@ -12,7 +12,7 @@ for candidate in (PROJECT_ROOT, SRC_ROOT):
     if candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
-from src.cli import main
+from src.interfaces.cli import main
 
 
 if __name__ == "__main__":

@@ -43,3 +43,21 @@ KeyError: 'pulse'
 2026-04-10 03:35:58,156 INFO led_controller.service controller service started fps=8.0
 2026-04-10 03:38:31,045 INFO led_controller.service shutdown requested
 2026-04-10 03:38:31,506 INFO led_controller.service controller service stopped
+2026-04-10 07:11:24,405 INFO led_controller.cli starting controller service output_mode=console-preview host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 07:11:24,420 INFO led_controller.service restored persisted background state from C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\runtime_state\background_state.json
+2026-04-10 07:11:24,422 INFO led_controller.service controller service initialized output_mode=console-preview requested_output_mode=console-preview fallback_active=False
+2026-04-10 07:11:24,933 INFO led_controller.service controller service started fps=8.0
+2026-04-10 07:39:45,585 INFO led_controller.service shutdown requested
+2026-04-10 07:39:46,084 INFO led_controller.service controller service stopped
+2026-04-10 08:32:33,304 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8766 requested_port=8765
+2026-04-10 08:32:33,469 INFO led_controller.service restored persisted background state from C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\runtime_state\background_state.json
+2026-04-10 08:32:33,471 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-10 08:33:08,133 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 08:33:08,318 INFO led_controller.service restored persisted background state from C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\runtime_state\background_state.json
+2026-04-10 08:33:08,320 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-10 08:33:08,792 INFO led_controller.service controller service started fps=8.0
+2026-04-10 09:10:22,450 INFO led_controller.cli took over existing instance pid=22972 host=127.0.0.1 port=8765
+2026-04-10 09:10:22,450 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 09:10:22,599 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-10 09:10:22,600 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-10 09:10:23,102 INFO led_controller.service controller service started fps=8.0

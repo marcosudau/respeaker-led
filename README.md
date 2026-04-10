@@ -5,7 +5,7 @@ Dieses Repo konzentriert sich jetzt auf genau einen Betriebsweg:
 - einen dauerhaft laufenden lokalen LED-Service starten
 - diesen Service per CLI oder HTTP steuern
 
-Der direkte Effects-Engine-Pfad wurde entfernt. Alle aktiven Einstiege laufen jetzt ueber `main.py`, `src/cli.py`, `src/api.py` und `src/service.py`.
+Der direkte Effects-Engine-Pfad wurde entfernt. Alle aktiven Einstiege laufen jetzt ueber `main.py`, `src/interfaces/cli.py`, `src/interfaces/api.py` und `src/services/service.py`.
 
 ## Schnellstart
 
@@ -57,13 +57,13 @@ python .\main.py shutdown
 
 ## Projektstruktur in kurz
 
-- `src/` enthaelt CLI, API, Service, Runtime, Renderer und Effect-Registry
-- `led_effects/effects/` enthaelt die dateibasierten Effektmodule des Service
-- `led_effects/preset_packs/` enthaelt optionale Preset-Erweiterungen fuer den Service
+- `src/` enthaelt die fachlich gegliederte Paketstruktur fuer CLI, API, Service, Runtime, Renderer und Effect-Registry
+- `src/led_effects/effects/` enthaelt die dateibasierten Effektmodule des Service
+- `src/led_effects/preset_packs/` enthaelt optionale Preset-Erweiterungen fuer den Service
 - `runtime_state/background_state.json` speichert den persistierten Background-State des Service
 - `runtime_state/active_service.json` enthaelt Laufzeit-Metadaten der aktiven Instanz, insbesondere Host und Port
 - `logs/led_controller.log` enthaelt das einfache Release-1-Basislogging des Service
-- `python_control/` enthaelt den Low-Level-Hardwarezugriff
+- `src/python_control/` enthaelt den Low-Level-Hardwarezugriff
 - `docs/` enthaelt die verbleibende Nutzer-Doku
 - `docs/dev/` enthaelt die interne Architektur-Doku
 - `tests/` prueft den Service-Pfad, API, CLI und Runtime

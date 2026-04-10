@@ -4,8 +4,8 @@ import textwrap
 
 import pytest
 
-from src.effect_registry import EffectRegistry, build_default_effect_registry
-from src.effect_schema import (
+from src.engine.effect_registry import EffectRegistry, build_default_effect_registry
+from src.core.effect_schema import (
     DEFAULT_LAYER_PRIORITIES,
     BaseEffect,
     EffectCapabilities,
@@ -133,7 +133,7 @@ def test_registry_can_add_library_path_and_reload_effects(tmp_path):
     (library_dir / "my_effects.py").write_text(
         textwrap.dedent(
             """
-            from src.effect_schema import BaseEffect, EffectDefinition, RenderContext
+            from src.core.effect_schema import BaseEffect, EffectDefinition, RenderContext
 
 
             class LibraryGlowEffect(BaseEffect):
@@ -186,7 +186,7 @@ def test_disabled_library_source_is_not_loaded_on_reload(tmp_path):
     (library_dir / "hidden_effect.py").write_text(
         textwrap.dedent(
             """
-            from src.effect_schema import BaseEffect, EffectDefinition, RenderContext
+            from src.core.effect_schema import BaseEffect, EffectDefinition, RenderContext
 
 
             class HiddenEffect(BaseEffect):

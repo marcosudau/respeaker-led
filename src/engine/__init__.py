@@ -1,0 +1,1 @@
+"""Runtime engine, rendering pipeline, and effect discovery."""

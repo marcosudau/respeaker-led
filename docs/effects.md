@@ -10,33 +10,33 @@ Ein Effekt ist eine Python-Klasse, die:
 - eine `EffectDefinition` als Klassenattribut besitzt
 - in `render(ctx)` fuer einen Zeitpunkt einen LED-Zustand erzeugt
 
-Der Service scannt standardmaessig den Ordner `led_effects/effects/` und registriert dort alle gefundenen konkreten `BaseEffect`-Klassen automatisch.
+Der Service scannt standardmaessig den Ordner `src/led_effects/effects/` und registriert dort alle gefundenen konkreten `BaseEffect`-Klassen automatisch.
 
 ## Wo Effekte heute liegen
 
 Die eigentlichen Effektmodule liegen in:
 
-- `led_effects/effects/`
+- `src/led_effects/effects/`
 
 Aktuelle Hilfsdateien dort sind zum Beispiel:
 
-- `led_effects/effects/common.py`
-- `led_effects/effects/basic.py`
-- `led_effects/effects/overlays.py`
-- `led_effects/effects/compatibility.py`
+- `src/led_effects/effects/common.py`
+- `src/led_effects/effects/basic.py`
+- `src/led_effects/effects/overlays.py`
+- `src/led_effects/effects/compatibility.py`
 
 Wichtig:
 
 - `src/` enthaelt die Engine, Runtime und Registry
-- `led_effects/effects/` enthaelt die konkreten Effektimplementierungen
-- `led_effects/preset_packs/` enthaelt optionale Preset-Bausteine oberhalb einzelner Effekte
+- `src/led_effects/effects/` enthaelt die konkreten Effektimplementierungen
+- `src/led_effects/preset_packs/` enthaelt optionale Preset-Bausteine oberhalb einzelner Effekte
 
 ## Wie der Service Effekte laedt
 
 Beim Aufbau der Default-Registry passiert folgendes:
 
 1. `build_default_effect_registry()` erzeugt eine leere Registry.
-2. Die Registry registriert den Bibliotheksordner `led_effects/effects/` als Default-Quelle.
+2. Die Registry registriert den Bibliotheksordner `src/led_effects/effects/` als Default-Quelle.
 3. Alle Python-Dateien dort werden gescannt.
 4. Jede konkrete `BaseEffect`-Unterklasse wird validiert und unter ihrer `id` registriert.
 
@@ -132,12 +132,12 @@ Hier beschreibst du generelle Eigenschaften des Effekts, zum Beispiel:
 
 ## Beispiel: minimaler Effekt
 
-Die kleinste sinnvolle Form ist eine einzelne Python-Datei unter `led_effects/effects/`.
+Die kleinste sinnvolle Form ist eine einzelne Python-Datei unter `src/led_effects/effects/`.
 
 ```python
 from __future__ import annotations
 
-from src.effect_schema import BaseEffect, EffectCapabilities, EffectDefinition, LayerId, LayerRule, PlaybackMode, RenderContext
+from src.core.effect_schema import BaseEffect, EffectCapabilities, EffectDefinition, LayerId, LayerRule, PlaybackMode, RenderContext
 
 
 class WarmWhiteEffect(BaseEffect):
@@ -168,7 +168,7 @@ class WarmWhiteEffect(BaseEffect):
 ```python
 from __future__ import annotations
 
-from src.effect_schema import (
+from src.core.effect_schema import (
     BaseEffect,
     EffectCapabilities,
     EffectDefinition,
@@ -179,7 +179,7 @@ from src.effect_schema import (
     RenderContext,
 )
 
-from led_effects.effects.common import _merge_params, _parse_color
+from src.led_effects.effects.common import _merge_params, _parse_color
 
 
 class AccentFillEffect(BaseEffect):
@@ -214,9 +214,9 @@ class AccentFillEffect(BaseEffect):
 
 ### 1. Datei im richtigen Ordner anlegen
 
-Lege eine neue Python-Datei unter `led_effects/effects/` an, zum Beispiel:
+Lege eine neue Python-Datei unter `src/led_effects/effects/` an, zum Beispiel:
 
-- `led_effects/effects/accent_fill.py`
+- `src/led_effects/effects/accent_fill.py`
 
 ### 2. `BaseEffect` erweitern
 
@@ -272,7 +272,7 @@ pytest -q --basetemp=.pytest_tmp
 
 - keine doppelten IDs verwenden
 - Effekte klein und thematisch pro Datei oder Dateigruppe halten
-- gemeinsam genutzte Helfer in `led_effects/effects/common.py` auslagern
+- gemeinsam genutzte Helfer in `src/led_effects/effects/common.py` auslagern
 - Engine-Code in `src/` nicht mit konkreter Effektlogik vermischen
 - fuer projektinterne Module nach Moeglichkeit absolute Imports verwenden
 
@@ -282,7 +282,7 @@ Der neue Aufbau erlaubt zwei typische Austauschwege:
 
 ### Vorhandenen Effekt weiterentwickeln
 
-- bestehende Datei unter `led_effects/effects/` anpassen
+- bestehende Datei unter `src/led_effects/effects/` anpassen
 - gleiche `id` behalten
 - Service neu starten
 
@@ -307,7 +307,7 @@ Ein Preset ist eine hoehere Schicht, die:
 - Payload und Modus vorbelegt
 - als wiederverwendbarer Einstiegspunkt fuer CLI oder API dient
 
-Wenn du nur eine neue Visualisierung brauchst, beginne fast immer mit einem Effekt unter `led_effects/effects/`.
+Wenn du nur eine neue Visualisierung brauchst, beginne fast immer mit einem Effekt unter `src/led_effects/effects/`.
 Wenn du daraus spaeter einen wiederverwendbaren Workflow machen willst, baue darauf ein Preset-Pack.
 
 ## Weiterfuehrende Seiten
