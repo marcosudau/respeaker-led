@@ -102,3 +102,26 @@ def test_client_maps_apply_effect_and_clear_layer_commands(monkeypatch):
             {"target_layer": "main_layer"},
         ),
     ]
+
+
+def test_client_maps_effect_source_and_packaged_command_requests(monkeypatch):
+    recorded: list[tuple[str, str, dict | None]] = []
+
+    def fake_request(self, method: str, path: str, payload=None):
+        recorded.append((method, path, payload))
+        return ClientCallResult(ok=True, status_code=200, data={"ok": True})
+
+    monkeypatch.setattr(LocalControllerClient, "_request_json", fake_request)
+
+    client = LocalControllerClient()
+    assert client.list_effect_sources().ok is True
+    assert client.register_effect_source("C:/tmp/demo.lefxset", enabled=False).ok is True
+    assert client.list_commands("app.voice_assistant").ok is True
+    assert client.invoke_command("app.voice_assistant", "listening", "off").ok is True
+
+    assert recorded == [
+        ("GET", "/api/v1/effect-sources", None),
+        ("POST", "/api/v1/effect-sources/register", {"path": "C:/tmp/demo.lefxset", "enabled": False}),
+        ("GET", "/api/v1/commands/app.voice_assistant", None),
+        ("POST", "/api/v1/commands/app.voice_assistant/listening/off", None),
+    ]

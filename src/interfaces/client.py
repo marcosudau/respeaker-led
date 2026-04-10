@@ -44,6 +44,31 @@ class LocalControllerClient:
     def list_effects(self) -> ClientCallResult:
         return self._request_json("GET", "/api/v1/effects")
 
+    def list_effect_sources(self) -> ClientCallResult:
+        return self._request_json("GET", "/api/v1/effect-sources")
+
+    def register_effect_source(self, path: str, *, enabled: bool = True) -> ClientCallResult:
+        return self._request_json("POST", "/api/v1/effect-sources/register", {"path": path, "enabled": enabled})
+
+    def reload_effect_sources(self) -> ClientCallResult:
+        return self._request_json("POST", "/api/v1/effect-sources/reload")
+
+    def remove_effect_source(self, source_id: str) -> ClientCallResult:
+        return self._request_json("DELETE", f"/api/v1/effect-sources/{source_id}")
+
+    def list_commands(self, source_id: str | None = None) -> ClientCallResult:
+        path = "/api/v1/commands" if source_id is None else f"/api/v1/commands/{source_id}"
+        return self._request_json("GET", path)
+
+    def get_command(self, source_id: str, command_name: str) -> ClientCallResult:
+        return self._request_json("GET", f"/api/v1/commands/{source_id}/{command_name}")
+
+    def invoke_command(self, source_id: str, command_name: str, state: str | None = None) -> ClientCallResult:
+        path = f"/api/v1/commands/{source_id}/{command_name}"
+        if state is not None:
+            path = f"{path}/{state}"
+        return self._request_json("POST", path)
+
     def set_state(self, state_name: str, payload: dict[str, Any] | None = None) -> ClientCallResult:
         return self._request_json("POST", "/api/v1/commands/set_state", {"state_name": state_name, "payload": payload or {}})
 

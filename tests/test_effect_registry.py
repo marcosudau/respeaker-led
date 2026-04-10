@@ -4,6 +4,8 @@ import textwrap
 
 import pytest
 
+from src.engine.effect_package_builder import build_effect_set
+import src.engine.effect_registry as effect_registry_module
 from src.engine.effect_registry import EffectRegistry, build_default_effect_registry
 from src.core.effect_schema import (
     DEFAULT_LAYER_PRIORITIES,
@@ -17,6 +19,7 @@ from src.core.effect_schema import (
     PlaybackMode,
     RenderContext,
 )
+from tests.package_test_utils import write_effect_set_source
 
 
 class SoftPulseEffect(BaseEffect):
@@ -208,3 +211,101 @@ def test_disabled_library_source_is_not_loaded_on_reload(tmp_path):
     registry.reload()
 
     assert "hidden_effect" not in registry.list_effect_ids()
+
+
+def test_registry_can_register_effect_set_and_commands(tmp_path):
+    set_dir = tmp_path / "voice_assistant_src"
+    write_effect_set_source(
+        set_dir,
+        source_id="app.voice_assistant",
+        set_id="voice_assistant",
+        title="Voice Assistant",
+        effects=[
+            {
+                "dir_name": "listening",
+                "package_id": "voice.listening",
+                "class_name": "ListeningBlueEffect",
+                "effect_id": "listening_blue",
+                "layer_name": "MAIN_LAYER",
+            },
+            {
+                "dir_name": "idle",
+                "package_id": "voice.idle",
+                "class_name": "IdleBlueEffect",
+                "effect_id": "idle_blue",
+                "layer_name": "STATE_LAYER",
+            },
+        ],
+        commands={
+            "listening": {
+                "kind": "state_toggle",
+                "on": {
+                    "effect": "app.voice_assistant::listening_blue",
+                    "target_layer": "MAIN_LAYER",
+                    "params": {},
+                },
+                "off": {
+                    "action": "clear_layer",
+                    "target_layer": "MAIN_LAYER",
+                },
+            }
+        },
+    )
+    package_path = tmp_path / "voice_assistant.lefxset"
+    build_effect_set(set_dir, package_path)
+
+    registry = EffectRegistry([SoftPulseEffect])
+    source = registry.register_effect_source(package_path)
+
+    assert source.kind == "effect_set"
+    assert "app.voice_assistant::listening_blue" in registry.list_effect_ids()
+    commands = registry.list_effect_commands("app.voice_assistant")
+    assert commands[0]["command_name"] == "listening"
+    assert commands[0]["on"]["effect"] == "app.voice_assistant::listening_blue"
+
+
+def test_registry_autodiscovers_effect_packages_from_package_root(tmp_path, monkeypatch):
+    packages_root = tmp_path / "packages"
+    set_dir = tmp_path / "voice_assistant_src"
+    write_effect_set_source(
+        set_dir,
+        source_id="app.voice_assistant",
+        set_id="voice_assistant",
+        title="Voice Assistant",
+        effects=[
+            {
+                "dir_name": "listening",
+                "package_id": "voice.listening",
+                "class_name": "ListeningBlueEffect",
+                "effect_id": "listening_blue",
+                "layer_name": "MAIN_LAYER",
+            }
+        ],
+        commands={
+            "listening": {
+                "kind": "state_toggle",
+                "on": {
+                    "effect": "app.voice_assistant::listening_blue",
+                    "target_layer": "MAIN_LAYER",
+                    "params": {},
+                },
+                "off": {
+                    "action": "clear_layer",
+                    "target_layer": "MAIN_LAYER",
+                },
+            }
+        },
+    )
+    packages_root.mkdir(parents=True, exist_ok=True)
+    package_path = packages_root / "voice_assistant.lefxset"
+    build_effect_set(set_dir, package_path)
+
+    monkeypatch.setattr(effect_registry_module, "EFFECT_PACKAGES_ROOT", packages_root)
+    registry = EffectRegistry()
+    registry.reload()
+
+    assert "app.voice_assistant::listening_blue" in registry.list_effect_ids()
+    sources = registry.list_effect_sources()
+    assert len(sources) == 1
+    assert sources[0].autodiscovered is True
+    assert sources[0].source_id == "app.voice_assistant"

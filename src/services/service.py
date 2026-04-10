@@ -264,9 +264,13 @@ class ControllerService:
             items.append(
                 {
                     "id": definition.id,
+                    "qualified_id": registered.qualified_effect_id,
                     "title": definition.title,
                     "description": definition.description,
                     "source_id": registered.source_id,
+                    "source_kind": registered.source_kind,
+                    "package_id": registered.package_id,
+                    "package_version": registered.package_version,
                     "defaults": dict(definition.defaults),
                     "tags": list(definition.tags),
                     "supported_layers": [
@@ -288,6 +292,33 @@ class ControllerService:
                 }
             )
         return items
+
+    def list_effect_sources(self) -> list[dict[str, Any]]:
+        with self._lock:
+            return [self._serialize_effect_source(source) for source in self.runtime.effect_registry.list_effect_sources()]
+
+    def register_effect_source(self, path: str, *, enabled: bool = True) -> dict[str, Any]:
+        with self._lock:
+            source = self.runtime.effect_registry.register_effect_source(path, enabled=enabled)
+            return {"source": self._serialize_effect_source(source), "items": self.list_effect_sources()}
+
+    def reload_effect_sources(self) -> dict[str, Any]:
+        with self._lock:
+            self.runtime.effect_registry.reload()
+            return {"items": [self._serialize_effect_source(source) for source in self.runtime.effect_registry.list_effect_sources()]}
+
+    def remove_effect_source(self, source_id: str) -> dict[str, Any]:
+        with self._lock:
+            self.runtime.effect_registry.remove_source(source_id)
+            return {"items": [self._serialize_effect_source(source) for source in self.runtime.effect_registry.list_effect_sources()]}
+
+    def list_effect_commands(self, source_id: str | None = None) -> list[dict[str, Any]]:
+        with self._lock:
+            return self.runtime.effect_registry.list_effect_commands(source_id)
+
+    def effect_command_info(self, source_id: str, command_name: str) -> dict[str, Any]:
+        with self._lock:
+            return self.runtime.effect_registry.get_command(source_id, command_name).serialize()
 
     def preset_info(self, preset_id: str) -> dict[str, Any]:
         preset = self.preset_registry.get_by_id(preset_id)
@@ -345,6 +376,60 @@ class ControllerService:
     def clear_layer(self, target_layer: str) -> dict[str, Any]:
         layer_id = parse_layer_id(target_layer)
         return self._mutate(lambda: self.runtime.clear_layer(layer_id))
+
+    def invoke_effect_command(self, source_id: str, command_name: str, state: str | None = None) -> dict[str, Any]:
+        command = self.runtime.effect_registry.get_command(source_id, command_name)
+        desired_state = self._resolve_command_state(command, state)
+        return self._mutate(lambda: self._apply_effect_command(command, desired_state))
+
+    def _apply_effect_command(self, command, desired_state: str) -> None:
+        action = command.on_action if desired_state == "on" else command.off_action
+        if action is None:
+            raise ValueError(f"Command {command.command_name!r} does not support state {desired_state!r}")
+        if action.action == "clear_layer":
+            self.runtime.clear_layer(action.target_layer)
+            return
+
+        params = dict(action.params)
+        params["__command_source_id"] = command.source_id
+        params["__command_name"] = command.command_name
+        self.runtime.apply_effect(
+            action.effect_id,
+            action.target_layer,
+            params,
+            replace_existing=action.replace_existing,
+            scene_name=f"command:{command.source_id}:{command.command_name}",
+            item_id=f"command:{command.source_id}:{command.command_name}",
+            mode=command.command_name,
+            payload={"source_id": command.source_id, "command_name": command.command_name},
+            valid=True,
+        )
+
+    def _resolve_command_state(self, command, requested_state: str | None) -> str:
+        if requested_state is not None:
+            normalized = str(requested_state).strip().lower()
+            if normalized not in {"on", "off"}:
+                raise ValueError(f"Unsupported command state: {requested_state!r}")
+            if normalized == "off" and command.off_action is None:
+                raise ValueError(f"Command {command.command_name!r} does not support 'off'")
+            return normalized
+
+        if command.kind == "state_toggle":
+            if self.runtime.is_command_active(command.source_id, command.command_name, command.on_action.target_layer):
+                return "off"
+        return "on"
+
+    def _serialize_effect_source(self, source) -> dict[str, Any]:
+        return {
+            "source_id": source.source_id,
+            "path": source.path,
+            "kind": source.kind,
+            "enabled": source.enabled,
+            "autodiscovered": source.autodiscovered,
+            "package_id": source.package_id,
+            "package_version": source.package_version,
+            "command_count": source.command_count,
+        }
 
     def _emit_service_signal(self, color: int) -> None:
         on_frame = Frame(leds=[int(color)] * LED_COUNT, timestamp=time.time())

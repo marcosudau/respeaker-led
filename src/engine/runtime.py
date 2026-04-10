@@ -421,6 +421,15 @@ class ControllerRuntime:
     def clear_layer(self, target_layer: LayerId) -> None:
         self._clear_layer(target_layer)
 
+    def is_command_active(self, source_id: str, command_name: str, target_layer: LayerId) -> bool:
+        invocation = self.store.layer(target_layer).state.active_invocation
+        if invocation is None:
+            return False
+        return (
+            str(invocation.params.get("__command_source_id", "")) == str(source_id)
+            and str(invocation.params.get("__command_name", "")) == str(command_name)
+        )
+
     def apply_default_background_state(self) -> None:
         self.apply_effect(
             "solid_color",

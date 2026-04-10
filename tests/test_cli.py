@@ -31,6 +31,7 @@ def test_parser_includes_effect_and_layer_commands():
     parser = build_parser()
 
     list_parsed = parser.parse_args(["list-effects", "--host", "127.0.0.1"])
+    list_sources_parsed = parser.parse_args(["list-effect-sources", "--host", "127.0.0.1"])
     apply_parsed = parser.parse_args(
         [
             "apply-effect",
@@ -50,6 +51,7 @@ def test_parser_includes_effect_and_layer_commands():
     clear_parsed = parser.parse_args(["clear-layer", "main_layer"])
 
     assert list_parsed.command_kind == "list_effects"
+    assert list_sources_parsed.command_kind == "list_effect_sources"
     assert apply_parsed.command_kind == "apply_effect"
     assert apply_parsed.effect_id == "solid_color"
     assert apply_parsed.target_layer == "main"
@@ -58,6 +60,24 @@ def test_parser_includes_effect_and_layer_commands():
     assert apply_parsed.enqueue is True
     assert apply_parsed.replace_existing is False
     assert clear_parsed.command_kind == "clear_layer"
+
+
+def test_parser_includes_effect_source_and_packaged_command_controls():
+    parser = build_parser()
+
+    register_parsed = parser.parse_args(["register-effect-source", "C:/tmp/voice.lefxset", "--enabled", "false"])
+    invoke_parsed = parser.parse_args(["invoke-command", "app.voice_assistant", "listening", "off"])
+    list_commands_parsed = parser.parse_args(["list-commands", "--source", "app.voice_assistant"])
+
+    assert register_parsed.command_kind == "register_effect_source"
+    assert register_parsed.path == "C:/tmp/voice.lefxset"
+    assert register_parsed.enabled is False
+    assert invoke_parsed.command_kind == "invoke_command"
+    assert invoke_parsed.source_id == "app.voice_assistant"
+    assert invoke_parsed.command_name == "listening"
+    assert invoke_parsed.state == "off"
+    assert list_commands_parsed.command_kind == "list_commands"
+    assert list_commands_parsed.source == "app.voice_assistant"
 
 
 def test_no_device_flag_switches_to_console_preview():

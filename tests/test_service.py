@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 
 from src.core.models import LED_COUNT
+from src.engine.effect_package_builder import build_effect_set
 from src.services.service import ControllerService
+from tests.package_test_utils import write_effect_set_source
 
 
 class RecordingAdapter:
@@ -99,3 +101,52 @@ def test_service_emits_start_and_stop_signal_sequences():
     assert adapter.frames[:6] == [green, black, green, black, green, black]
     assert adapter.frames[-6:] == [red, black, red, black, red, black]
     assert adapter.closed is True
+
+
+def test_service_can_register_and_toggle_packaged_command(tmp_path):
+    set_dir = tmp_path / "voice_assistant_src"
+    write_effect_set_source(
+        set_dir,
+        source_id="app.voice_assistant",
+        set_id="voice_assistant",
+        title="Voice Assistant",
+        effects=[
+            {
+                "dir_name": "listening",
+                "package_id": "voice.listening",
+                "class_name": "ListeningBlueEffect",
+                "effect_id": "listening_blue",
+                "layer_name": "MAIN_LAYER",
+            }
+        ],
+        commands={
+            "listening": {
+                "kind": "state_toggle",
+                "on": {
+                    "effect": "app.voice_assistant::listening_blue",
+                    "target_layer": "MAIN_LAYER",
+                    "params": {},
+                },
+                "off": {
+                    "action": "clear_layer",
+                    "target_layer": "MAIN_LAYER",
+                },
+            }
+        },
+    )
+    package_path = tmp_path / "voice_assistant.lefxset"
+    build_effect_set(set_dir, package_path)
+
+    service = ControllerService(use_device=False)
+    try:
+        registration = service.register_effect_source(str(package_path))
+        assert registration["source"]["source_id"] == "app.voice_assistant"
+        assert service.list_effect_commands("app.voice_assistant")[0]["command_name"] == "listening"
+
+        enabled = service.invoke_effect_command("app.voice_assistant", "listening")
+        assert enabled["active_visual"]["visual"]["effect_id"] == "app.voice_assistant::listening_blue"
+
+        disabled = service.invoke_effect_command("app.voice_assistant", "listening")
+        assert disabled["active_visual"] is None
+    finally:
+        service.stop()

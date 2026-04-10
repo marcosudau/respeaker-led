@@ -5,8 +5,10 @@ import json
 from fastapi.testclient import TestClient
 
 from src.integrations.adapters import MemoryFrameAdapter
+from src.engine.effect_package_builder import build_effect_set
 from src.interfaces.api import create_app
 from src.engine.preset_loader import PresetRegistry
+from tests.package_test_utils import write_effect_set_source
 
 
 def make_client(registry: PresetRegistry | None = None) -> TestClient:
@@ -194,3 +196,61 @@ def test_preset_activation_endpoint_works_with_discovered_pack(tmp_path):
 
         assert client.post("/api/v1/main-layer/progress", json={"value": 62}).status_code == 404
         assert client.put("/api/v1/state-layer/visual", json={}).status_code == 404
+
+
+def test_api_can_register_list_and_invoke_packaged_commands(tmp_path):
+    set_dir = tmp_path / "voice_assistant_src"
+    write_effect_set_source(
+        set_dir,
+        source_id="app.voice_assistant",
+        set_id="voice_assistant",
+        title="Voice Assistant",
+        effects=[
+            {
+                "dir_name": "listening",
+                "package_id": "voice.listening",
+                "class_name": "ListeningBlueEffect",
+                "effect_id": "listening_blue",
+                "layer_name": "MAIN_LAYER",
+            }
+        ],
+        commands={
+            "listening": {
+                "kind": "state_toggle",
+                "on": {
+                    "effect": "app.voice_assistant::listening_blue",
+                    "target_layer": "MAIN_LAYER",
+                    "params": {},
+                },
+                "off": {
+                    "action": "clear_layer",
+                    "target_layer": "MAIN_LAYER",
+                },
+            }
+        },
+    )
+    package_path = tmp_path / "voice_assistant.lefxset"
+    build_effect_set(set_dir, package_path)
+
+    with make_client() as client:
+        register_response = client.post(
+            "/api/v1/effect-sources/register",
+            json={"path": str(package_path), "enabled": True},
+        )
+        assert register_response.status_code == 200
+
+        sources_response = client.get("/api/v1/effect-sources")
+        assert sources_response.status_code == 200
+        assert any(item["source_id"] == "app.voice_assistant" for item in sources_response.json()["items"])
+
+        commands_response = client.get("/api/v1/commands/app.voice_assistant")
+        assert commands_response.status_code == 200
+        assert commands_response.json()["items"][0]["command_name"] == "listening"
+
+        on_response = client.post("/api/v1/commands/app.voice_assistant/listening/on")
+        assert on_response.status_code == 200
+        assert on_response.json()["active_visual"]["visual"]["effect_id"] == "app.voice_assistant::listening_blue"
+
+        off_response = client.post("/api/v1/commands/app.voice_assistant/listening/off")
+        assert off_response.status_code == 200
+        assert off_response.json()["active_visual"] is None

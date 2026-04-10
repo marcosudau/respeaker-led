@@ -71,6 +71,11 @@ class PresetActivationRequest(BaseModel):
     spec: dict[str, Any] = Field(default_factory=dict)
 
 
+class RegisterEffectSourceRequest(BaseModel):
+    path: str
+    enabled: bool = True
+
+
 def create_app(
     *,
     fps: float = 8.0,
@@ -131,6 +136,8 @@ def create_app(
             "commands": [
                 "list_presets",
                 "list_effects",
+                "list_effect_sources",
+                "list_commands",
                 "set_state",
                 "clear_state",
                 "emit_event",
@@ -178,6 +185,31 @@ def create_app(
     @app.get("/api/v1/effects")
     def list_effects(request: Request):
         return {"items": get_service(request).list_effects()}
+
+    @app.get("/api/v1/effect-sources")
+    def list_effect_sources(request: Request):
+        return {"items": get_service(request).list_effect_sources()}
+
+    @app.post("/api/v1/effect-sources/register")
+    def register_effect_source(request: Request, payload: RegisterEffectSourceRequest):
+        try:
+            return get_service(request).register_effect_source(payload.path, enabled=payload.enabled)
+        except (FileNotFoundError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/effect-sources/reload")
+    def reload_effect_sources(request: Request):
+        try:
+            return get_service(request).reload_effect_sources()
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.delete("/api/v1/effect-sources/{source_id}")
+    def remove_effect_source(source_id: str, request: Request):
+        try:
+            return get_service(request).remove_effect_source(source_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/api/v1/presets/{preset_id}")
     def preset_detail(preset_id: str, request: Request):
@@ -295,5 +327,47 @@ def create_app(
     @app.post("/api/v1/commands/set_enabled")
     def set_enabled(request: Request, payload: EnabledCommand):
         return get_service(request).set_enabled(payload.enabled)
+
+    @app.get("/api/v1/commands")
+    def list_all_effect_commands(request: Request):
+        return {"items": get_service(request).list_effect_commands()}
+
+    @app.get("/api/v1/commands/{source_id}")
+    def list_source_effect_commands(source_id: str, request: Request):
+        return {"items": get_service(request).list_effect_commands(source_id)}
+
+    @app.get("/api/v1/commands/{source_id}/{command_name}")
+    def effect_command_info(source_id: str, command_name: str, request: Request):
+        try:
+            return get_service(request).effect_command_info(source_id, command_name)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/v1/commands/{source_id}/{command_name}")
+    def toggle_effect_command(source_id: str, command_name: str, request: Request):
+        try:
+            return get_service(request).invoke_effect_command(source_id, command_name)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/commands/{source_id}/{command_name}/on")
+    def enable_effect_command(source_id: str, command_name: str, request: Request):
+        try:
+            return get_service(request).invoke_effect_command(source_id, command_name, state="on")
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/commands/{source_id}/{command_name}/off")
+    def disable_effect_command(source_id: str, command_name: str, request: Request):
+        try:
+            return get_service(request).invoke_effect_command(source_id, command_name, state="off")
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return app

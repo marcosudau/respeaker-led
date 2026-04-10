@@ -83,6 +83,37 @@ def build_parser() -> argparse.ArgumentParser:
     add_connection_options(effect_list_parser)
     effect_list_parser.set_defaults(command_kind="list_effects")
 
+    effect_source_list_parser = subparsers.add_parser("list-effect-sources", help="List registered or autodiscovered effect sources")
+    add_connection_options(effect_source_list_parser)
+    effect_source_list_parser.set_defaults(command_kind="list_effect_sources")
+
+    register_effect_source_parser = subparsers.add_parser("register-effect-source", help="Register a .lefx or .lefxset source on a running service")
+    add_connection_options(register_effect_source_parser)
+    register_effect_source_parser.add_argument("path")
+    register_effect_source_parser.add_argument("--enabled", type=parse_bool_flag, default=True)
+    register_effect_source_parser.set_defaults(command_kind="register_effect_source")
+
+    reload_effect_sources_parser = subparsers.add_parser("reload-effect-sources", help="Reload all effect sources and autodiscovery packages")
+    add_connection_options(reload_effect_sources_parser)
+    reload_effect_sources_parser.set_defaults(command_kind="reload_effect_sources")
+
+    remove_effect_source_parser = subparsers.add_parser("remove-effect-source", help="Remove a registered effect source from the running service")
+    add_connection_options(remove_effect_source_parser)
+    remove_effect_source_parser.add_argument("source_id")
+    remove_effect_source_parser.set_defaults(command_kind="remove_effect_source")
+
+    list_commands_parser = subparsers.add_parser("list-commands", help="List registered packaged commands")
+    add_connection_options(list_commands_parser)
+    list_commands_parser.add_argument("--source")
+    list_commands_parser.set_defaults(command_kind="list_commands")
+
+    invoke_command_parser = subparsers.add_parser("invoke-command", help="Invoke a packaged command on a running service")
+    add_connection_options(invoke_command_parser)
+    invoke_command_parser.add_argument("source_id")
+    invoke_command_parser.add_argument("command_name")
+    invoke_command_parser.add_argument("state", nargs="?")
+    invoke_command_parser.set_defaults(command_kind="invoke_command")
+
     serve_parser = subparsers.add_parser("serve", help="Start the local controller process")
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8765)
@@ -275,6 +306,12 @@ def main() -> int:
     if args.command_kind in {
         "list_presets",
         "list_effects",
+        "list_effect_sources",
+        "register_effect_source",
+        "reload_effect_sources",
+        "remove_effect_source",
+        "list_commands",
+        "invoke_command",
         "ping",
         "status",
         "set_state",
@@ -300,6 +337,18 @@ def main() -> int:
             return emit_result(client.list_presets())
         if args.command_kind == "list_effects":
             return emit_result(client.list_effects())
+        if args.command_kind == "list_effect_sources":
+            return emit_result(client.list_effect_sources())
+        if args.command_kind == "register_effect_source":
+            return emit_result(client.register_effect_source(args.path, enabled=args.enabled))
+        if args.command_kind == "reload_effect_sources":
+            return emit_result(client.reload_effect_sources())
+        if args.command_kind == "remove_effect_source":
+            return emit_result(client.remove_effect_source(args.source_id))
+        if args.command_kind == "list_commands":
+            return emit_result(client.list_commands(args.source))
+        if args.command_kind == "invoke_command":
+            return emit_result(client.invoke_command(args.source_id, args.command_name, args.state))
         if args.command_kind == "ping":
             return emit_result(client.ping())
         if args.command_kind == "status":
