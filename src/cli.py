@@ -2,15 +2,38 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
+import sys
+
+if __package__ in {None, ""}:
+    from pathlib import Path
+
+    _PROJECT_ROOT = Path(__file__).resolve().parents[1]
+    _PROJECT_ROOT_STR = str(_PROJECT_ROOT)
+    if _PROJECT_ROOT_STR not in sys.path:
+        sys.path.insert(0, _PROJECT_ROOT_STR)
+    __package__ = "src"
 
 import uvicorn
 
-from .adapters import ConsolePreviewAdapter, ReSpeakerAdapter
 from .api import create_app
 from .client import LocalControllerClient
+from .logging_utils import get_logger, setup_logging
+from .paths import ACTIVE_SERVICE_FILE
 from .preset_loader import PresetRegistry
-from .runtime import ControllerRuntime, build_demo, demo_tick
+from .service_hosting import (
+    clear_active_service_info,
+    create_active_service_info,
+    default_port_pool,
+    parse_port_pool,
+    save_active_service_info,
+    select_service_port,
+    service_binding_message,
+    take_over_existing_instance,
+    update_active_service_status,
+)
+
+
+logger = get_logger("cli")
 
 
 def parse_json_payload(value: str | None) -> dict:
@@ -35,37 +58,39 @@ def use_real_device(args) -> bool:
     return not getattr(args, "no_device", False)
 
 
-def log_cli_effect(*, use_device: bool, label: str, params: dict | None = None) -> None:
-    if not use_device:
-        return
-    normalized_params = params or {}
-    encoded = json.dumps(normalized_params, ensure_ascii=True, sort_keys=True)
-    print(f"[device] effect={label} params={encoded}")
-
-
 def add_connection_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--timeout", type=float, default=2.0)
 
 
-def build_parser(registry: PresetRegistry) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generic frame-based LED effect engine for the reSpeaker XVF3800.")
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Local service controller for the reSpeaker XVF3800 LED ring.")
     parser.add_argument(
         "--no-device",
         action="store_true",
-        help="Do not use the real reSpeaker. Preview individual LED frames in the console instead.",
+        help="Start the service without the real reSpeaker and use console preview instead.",
     )
     parser.add_argument("--fps", type=float, default=8.0, help="Render frames per second")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    list_parser = subparsers.add_parser("list-presets", help="List all discovered preset packs")
+    list_parser = subparsers.add_parser("list-presets", help="List presets exposed by a running local service")
+    add_connection_options(list_parser)
     list_parser.set_defaults(command_kind="list_presets")
+
+    effect_list_parser = subparsers.add_parser("list-effects", help="List built-in effects exposed by a running local service")
+    add_connection_options(effect_list_parser)
+    effect_list_parser.set_defaults(command_kind="list_effects")
 
     serve_parser = subparsers.add_parser("serve", help="Start the local controller process")
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8765)
+    serve_parser.add_argument(
+        "--port-pool",
+        default="",
+        help="Optional comma-separated port list or ranges for fallback, e.g. 8765,8766,8770-8774",
+    )
     serve_parser.set_defaults(command_kind="serve")
 
     ping_parser = subparsers.add_parser("ping", help="Ping a running local controller service")
@@ -96,6 +121,22 @@ def build_parser(registry: PresetRegistry) -> argparse.ArgumentParser:
     emit_event_parser.add_argument("--source")
     emit_event_parser.add_argument("--reason")
     emit_event_parser.set_defaults(command_kind="emit_event")
+
+    apply_effect_parser = subparsers.add_parser("apply-effect", help="Apply a built-in effect on a running service")
+    add_connection_options(apply_effect_parser)
+    apply_effect_parser.add_argument("effect_id")
+    apply_effect_parser.add_argument("target_layer")
+    apply_effect_parser.add_argument("--params", default="{}")
+    apply_effect_parser.add_argument("--duration-ms", type=int)
+    apply_effect_parser.add_argument("--priority", type=int)
+    apply_effect_parser.add_argument("--enqueue", action="store_true")
+    apply_effect_parser.add_argument("--replace-existing", type=parse_bool_flag, default=True)
+    apply_effect_parser.set_defaults(command_kind="apply_effect")
+
+    clear_layer_parser = subparsers.add_parser("clear-layer", help="Clear a specific runtime layer on a running service")
+    add_connection_options(clear_layer_parser)
+    clear_layer_parser.add_argument("target_layer")
+    clear_layer_parser.set_defaults(command_kind="clear_layer")
 
     reset_parser = subparsers.add_parser("reset", help="Reset a running controller service to idle")
     add_connection_options(reset_parser)
@@ -147,16 +188,7 @@ def build_parser(registry: PresetRegistry) -> argparse.ArgumentParser:
     activate_preset_parser.add_argument("--spec", default="{}")
     activate_preset_parser.set_defaults(command_kind="activate_preset")
 
-    demo_parser = subparsers.add_parser("demo", help="Run a generic layered demo with progress and events")
-    demo_parser.add_argument("--seconds", type=float, default=12.0)
-    demo_parser.set_defaults(command_kind="demo")
-
     return parser
-
-
-def make_controller(use_device: bool, registry: PresetRegistry) -> ControllerRuntime:
-    adapter = ReSpeakerAdapter() if use_device else ConsolePreviewAdapter()
-    return ControllerRuntime(adapter=adapter, preset_registry=registry)
 
 
 def make_client(args, *, best_effort: bool = False) -> LocalControllerClient:
@@ -176,33 +208,80 @@ def emit_result(result) -> int:
     return 0 if getattr(result, "ok", False) else 1
 
 
+def _normalize_argv(argv: list[str]) -> list[str]:
+    normalized = list(argv)
+    if not normalized:
+        return normalized
+    if normalized[0] == "--":
+        return normalized[1:]
+    for index, value in enumerate(normalized):
+        if value == "--serve":
+            normalized[index] = "serve"
+            break
+    return normalized
+
+
 def main() -> int:
-    registry = PresetRegistry.discover()
-    parser = build_parser(registry)
-    args = parser.parse_args()
+    parser = build_parser()
+    args = parser.parse_args(_normalize_argv(sys.argv[1:]))
     use_device = use_real_device(args)
 
-    if args.command_kind == "list_presets":
-        for preset in registry.list_presets():
-            sample = str(preset.sample_path) if preset.sample_path else "-"
-            print(f"{preset.manifest.command:18}  {preset.manifest.name:24}  sample={sample}")
-        return 0
-
     if args.command_kind == "serve":
-        print(f"[api] starting output_mode={'device' if use_device else 'console-preview'} host={args.host} port={args.port} fps={args.fps}")
-        app = create_app(fps=args.fps, use_device=use_device, preset_registry=registry)
-        config = uvicorn.Config(app, host=args.host, port=args.port, log_level="info")
-        server = uvicorn.Server(config)
-        app.state.shutdown_server = lambda: setattr(server, "should_exit", True)
-        server.run()
-        return 0
+        log_file = setup_logging(console=True)
+        instance_id: str | None = None
+        try:
+            registry = PresetRegistry.discover()
+            port_pool = parse_port_pool(args.port_pool) or default_port_pool()
+            previous = take_over_existing_instance(ACTIVE_SERVICE_FILE)
+            if previous is not None:
+                logger.info("took over existing instance pid=%s host=%s port=%s", previous.pid, previous.host, previous.port)
+
+            selected_port = select_service_port(args.host, args.port, port_pool)
+            instance_info = create_active_service_info(
+                host=args.host,
+                port=selected_port,
+                requested_port=args.port,
+                port_pool=port_pool,
+                log_file=str(log_file),
+            )
+            instance_id = instance_info.instance_id
+            save_active_service_info(ACTIVE_SERVICE_FILE, instance_info)
+            print(json.dumps(service_binding_message(instance_info), ensure_ascii=True), flush=True)
+            logger.info(
+                "starting controller service output_mode=%s host=%s port=%s requested_port=%s",
+                "device" if use_device else "console-preview",
+                args.host,
+                selected_port,
+                args.port,
+            )
+            app = create_app(
+                fps=args.fps,
+                use_device=use_device,
+                preset_registry=registry,
+                lifecycle_callback=lambda phase: update_active_service_status(ACTIVE_SERVICE_FILE, instance_info.instance_id, "ready" if phase == "started" else "stopping"),
+            )
+            config = uvicorn.Config(app, host=args.host, port=selected_port, log_level="info")
+            server = uvicorn.Server(config)
+            app.state.shutdown_server = lambda: setattr(server, "should_exit", True)
+            server.run()
+            return 0
+        except Exception as exc:
+            logger.exception("controller service failed to start")
+            print(json.dumps({"event": "service_start_failed", "detail": str(exc)}, ensure_ascii=True), file=sys.stderr)
+            return 1
+        finally:
+            clear_active_service_info(ACTIVE_SERVICE_FILE, instance_id=instance_id)
 
     if args.command_kind in {
+        "list_presets",
+        "list_effects",
         "ping",
         "status",
         "set_state",
         "clear_state",
         "emit_event",
+        "apply_effect",
+        "clear_layer",
         "reset",
         "shutdown",
         "start_countdown",
@@ -214,8 +293,13 @@ def main() -> int:
         "set_enabled",
         "activate_preset",
     }:
+        setup_logging(console=False)
         client = make_client(args, best_effort=False)
 
+        if args.command_kind == "list_presets":
+            return emit_result(client.list_presets())
+        if args.command_kind == "list_effects":
+            return emit_result(client.list_effects())
         if args.command_kind == "ping":
             return emit_result(client.ping())
         if args.command_kind == "status":
@@ -235,6 +319,20 @@ def main() -> int:
             if args.reason:
                 payload["reason"] = args.reason
             return emit_result(client.emit_event(args.event_name, payload))
+        if args.command_kind == "apply_effect":
+            return emit_result(
+                client.apply_effect(
+                    args.effect_id,
+                    args.target_layer,
+                    parse_json_payload(args.params),
+                    duration_ms=args.duration_ms,
+                    priority=args.priority,
+                    enqueue=args.enqueue,
+                    replace_existing=args.replace_existing,
+                )
+            )
+        if args.command_kind == "clear_layer":
+            return emit_result(client.clear_layer(args.target_layer))
         if args.command_kind == "reset":
             return emit_result(client.reset())
         if args.command_kind == "shutdown":
@@ -263,24 +361,5 @@ def main() -> int:
         if args.command_kind == "activate_preset":
             return emit_result(client.activate_preset(args.preset_id, parse_json_payload(args.spec)))
 
-    controller = make_controller(use_device, registry)
-    try:
-        if args.command_kind == "demo":
-            log_cli_effect(
-                use_device=use_device,
-                label="demo",
-                params={"seconds": args.seconds, "fps": args.fps},
-            )
-            build_demo(controller)
-            start = time.monotonic()
-            controller.run(
-                seconds=args.seconds,
-                fps=args.fps,
-                tick=lambda ctrl, now: demo_tick(ctrl, now, start, args.seconds),
-            )
-            return 0
-
-        parser.error(f"Unsupported command kind: {args.command_kind}")
-        return 2
-    finally:
-        controller.close()
+    parser.error(f"Unsupported command kind: {args.command_kind}")
+    return 2

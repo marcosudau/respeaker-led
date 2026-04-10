@@ -3,40 +3,22 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from .adapters import ConsolePreviewAdapter, FrameAdapter
-from .color_math import scale_color
 from .composer import SceneComposer
-from .effects2 import blink, dynamic_frame, progress, pulse, ring_frame, solid
+from .effect_registry import EffectRegistry, build_default_effect_registry
+from .effect_schema import CommandKind, LayerId, NormalizedCommand, PersistedLayerState
+from .effects2 import visual_from_spec
 from .layers import LayerStore
-from .models import BaseState, CountdownState, Event, Frame, MainLayerState, Scene, StateLayerState
+from .models import BaseState, CountdownState, Event, Frame, MainLayerState, Scene, StateLayerState, Visual
+from .normalization import ControllerCommandNormalizer, build_effect_invocation
 from .preset_loader import PresetRegistry
 from .renderer import SceneRenderer
-from .spec_utils import parse_hex_color
-
-
-DEFAULT_EVENT_PRIORITIES = {
-    "error_flash": 900,
-    "timeout_imminent": 800,
-    "wakeword_ack": 725,
-    "trigger_received": 700,
-    "warning": 600,
-    "text_committed": 500,
-    "notification": 400,
-}
-DEFAULT_EVENT_DURATIONS_MS = {
-    "error_flash": 1800,
-    "timeout_imminent": 1500,
-    "wakeword_ack": 900,
-    "trigger_received": 900,
-    "warning": 1400,
-    "text_committed": 1200,
-    "notification": 1000,
-}
 
 
 TickCallback = Callable[["ControllerRuntime", float], None]
+_NON_PERSISTENT_BACKGROUND_MODES = {"offline", "service_starting", "service_stopping"}
 
 
 def _normalize_name(value: str, fallback: str) -> str:
@@ -52,29 +34,85 @@ def _timestamp_or_now(timestamp: float | None) -> float:
     return time.monotonic() if timestamp is None else float(timestamp)
 
 
+def _public_params(params: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in params.items() if not str(key).startswith("__")}
+
+
 class ControllerRuntime:
-    def __init__(self, adapter: FrameAdapter | None = None, preset_registry: PresetRegistry | None = None) -> None:
+    def __init__(
+        self,
+        adapter: FrameAdapter | None = None,
+        preset_registry: PresetRegistry | None = None,
+        effect_registry: EffectRegistry | None = None,
+    ) -> None:
+        self.effect_registry = effect_registry or build_default_effect_registry()
+        self.normalizer = ControllerCommandNormalizer()
         self.store = LayerStore()
-        self.composer = SceneComposer()
+        self.composer = SceneComposer(self.effect_registry)
         self.renderer = SceneRenderer()
         self.adapter = adapter or ConsolePreviewAdapter()
         self.presets = preset_registry or PresetRegistry.empty()
         self.last_scene: Scene | None = None
         self.last_frame: Frame | None = None
         self.active_preset_id: str | None = None
+        self._expire_callbacks: dict[str, Callable[[float], None]] = {}
+        self._invocation_sequence = 0
+        self._countdown_invocation_id: str | None = None
         self.reset(initial_state="idle")
 
     def set_state_layer(self, state_layer: StateLayerState) -> None:
-        self.store.state_layer = state_layer
+        if not state_layer.enabled or state_layer.visual is None:
+            self._clear_layer(LayerId.BACKGROUND_STATE_LAYER)
+            return
+        now = time.monotonic()
+        self._apply_normalized_commands(
+            self.normalizer.normalize_legacy_visual(
+                LayerId.BACKGROUND_STATE_LAYER,
+                state_layer.visual,
+                scene_name="state_layer",
+                item_id=state_layer.mode,
+                mode=state_layer.mode,
+                payload={},
+                valid=True,
+                timestamp=now,
+            ),
+            timestamp=now,
+        )
 
     def set_state_visual(self, visual, *, mode: str = "custom", enabled: bool = True) -> None:
-        self.store.state_layer = StateLayerState(mode=mode, visual=visual, enabled=enabled)
+        if not enabled or visual is None:
+            self._clear_layer(LayerId.BACKGROUND_STATE_LAYER)
+            return
+        now = time.monotonic()
+        self._apply_normalized_commands(
+            self.normalizer.normalize_legacy_visual(
+                LayerId.BACKGROUND_STATE_LAYER,
+                visual,
+                scene_name="state_layer",
+                item_id=mode,
+                mode=mode,
+                payload={},
+                valid=True,
+                timestamp=now,
+            ),
+            timestamp=now,
+        )
 
     def clear_state_layer(self) -> None:
-        self.store.state_layer = StateLayerState(mode="off", visual=None, enabled=False)
+        self._clear_layer(LayerId.BACKGROUND_STATE_LAYER)
 
     def set_main_layer(self, main_layer: MainLayerState | None) -> None:
-        self.store.main_layer = main_layer
+        if main_layer is None or main_layer.visual is None:
+            self.clear_active_visual()
+            return
+        self.set_active_visual(
+            layer_id=main_layer.id,
+            mode=main_layer.mode,
+            visual=main_layer.visual,
+            payload=main_layer.payload,
+            valid=main_layer.valid,
+            updated_at=main_layer.updated_at,
+        )
 
     def set_active_visual(
         self,
@@ -86,13 +124,19 @@ class ControllerRuntime:
         valid: bool = True,
         updated_at: float | None = None,
     ) -> None:
-        self.store.main_layer = MainLayerState(
-            id=layer_id,
-            mode=mode,
-            payload=payload or {},
-            visual=visual,
-            valid=valid,
-            updated_at=time.monotonic() if updated_at is None else updated_at,
+        now = _timestamp_or_now(updated_at)
+        self._apply_normalized_commands(
+            self.normalizer.normalize_legacy_visual(
+                LayerId.MAIN_LAYER,
+                visual,
+                scene_name=f"active_visual:{layer_id}",
+                item_id=layer_id,
+                mode=mode,
+                payload=_copy_payload(payload),
+                valid=valid,
+                timestamp=now,
+            ),
+            timestamp=now,
         )
 
     def set_main_visual(
@@ -115,7 +159,7 @@ class ControllerRuntime:
         )
 
     def clear_active_visual(self) -> None:
-        self.store.main_layer = None
+        self._clear_layer(LayerId.MAIN_LAYER)
         self.active_preset_id = None
 
     def clear_main_layer(self) -> None:
@@ -124,12 +168,13 @@ class ControllerRuntime:
     def set_state(self, state_name: str, payload: dict | None = None, *, timestamp: float | None = None) -> None:
         now = _timestamp_or_now(timestamp)
         name = _normalize_name(state_name, "idle")
-        payload = _copy_payload(payload)
+        copied_payload = _copy_payload(payload)
         self.active_preset_id = None
-        self.store.base_state = BaseState(name=name, payload=payload, updated_at=now)
-        state_layer, active_visual = self._build_base_state_layers(name, payload, now)
-        self.store.state_layer = state_layer
-        self.store.main_layer = active_visual
+        self.store.base_state = BaseState(name=name, payload=copied_payload, updated_at=now)
+        self._apply_normalized_commands(
+            self.normalizer.normalize_set_state(name, copied_payload, timestamp=now),
+            timestamp=now,
+        )
 
     def clear_state(self, state_name: str | None = None, *, timestamp: float | None = None) -> None:
         normalized = None if state_name is None else _normalize_name(state_name, "")
@@ -137,28 +182,11 @@ class ControllerRuntime:
             return
         self.set_state("idle", timestamp=timestamp)
 
-    def emit_event(self, event_name: str, payload: dict | None = None, *, timestamp: float | None = None) -> Event:
+    def emit_event(self, event_name: str, payload: dict | None = None, *, timestamp: float | None = None):
         now = _timestamp_or_now(timestamp)
-        name = _normalize_name(event_name, "notification")
-        payload = _copy_payload(payload)
-        duration_ms = payload.get("duration_ms", DEFAULT_EVENT_DURATIONS_MS.get(name, 1000))
-        duration = None if duration_ms is None else max(0, int(duration_ms)) / 1000.0
-        priority = int(payload.get("priority", DEFAULT_EVENT_PRIORITIES.get(name, 300)))
-        event_id = str(payload.get("event_id", f"{name}-{int(now * 1000)}"))
-        created_at = float(payload.get("created_at", payload.get("timestamp", now)))
-        visual = self._build_event_visual(name, payload)
-        event = Event(
-            id=event_id,
-            name=name,
-            visual=visual,
-            payload=payload,
-            priority=priority,
-            created_at=created_at,
-            duration=duration,
-            exclusive=visual.exclusive,
-        )
-        self.push_event(event)
-        return event
+        commands = self.normalizer.normalize_emit_event(event_name, _copy_payload(payload), timestamp=now)
+        applied = self._apply_normalized_commands(commands, timestamp=now)
+        return None if not applied else applied[0]
 
     def start_timeout_countdown(
         self,
@@ -172,19 +200,32 @@ class ControllerRuntime:
         now = _timestamp_or_now(timestamp)
         total_ms = max(1, int(total_ms))
         remaining_ms = total_ms if remaining_ms is None else max(0, min(int(remaining_ms), total_ms))
-        payload = _copy_payload(payload)
+        copied_payload = _copy_payload(payload)
+        normalized_follow_up = None if follow_up_state is None else _normalize_name(follow_up_state, "")
         self.store.countdown = CountdownState(
             total_ms=total_ms,
             remaining_ms=remaining_ms,
             started_at=now,
             deadline=now + (remaining_ms / 1000.0),
-            follow_up_state=None if follow_up_state is None else _normalize_name(follow_up_state, ""),
-            payload=payload,
+            follow_up_state=normalized_follow_up,
+            payload=copied_payload,
         )
-        self.store.countdown_visual = dynamic_frame(
-            lambda current_now, runtime=self: runtime._render_countdown_overlay(current_now),
-            exclusive=False,
+        applied = self._apply_normalized_commands(
+            self.normalizer.normalize_start_timeout_countdown(
+                total_ms,
+                remaining_ms,
+                follow_up_state=normalized_follow_up,
+                payload=copied_payload,
+                timestamp=now,
+            ),
+            timestamp=now,
         )
+        if applied:
+            self._countdown_invocation_id = applied[0].invocation_id
+            self._expire_callbacks[applied[0].invocation_id] = self._countdown_expire_callback(
+                applied[0].invocation_id,
+                normalized_follow_up,
+            )
 
     def update_timeout_countdown(self, remaining_ms: int, *, timestamp: float | None = None) -> None:
         if self.store.countdown is None:
@@ -194,19 +235,41 @@ class ControllerRuntime:
         self.store.countdown.started_at = now
         self.store.countdown.deadline = now + (self.store.countdown.remaining_ms / 1000.0)
         self.store.countdown.active = True
+        applied = self._apply_normalized_commands(
+            self.normalizer.normalize_start_timeout_countdown(
+                self.store.countdown.total_ms,
+                self.store.countdown.remaining_ms,
+                follow_up_state=self.store.countdown.follow_up_state,
+                payload=self.store.countdown.payload,
+                source="runtime.update_timeout_countdown",
+                timestamp=now,
+            ),
+            timestamp=now,
+        )
+        if applied:
+            self._countdown_invocation_id = applied[0].invocation_id
+            self._expire_callbacks[applied[0].invocation_id] = self._countdown_expire_callback(
+                applied[0].invocation_id,
+                self.store.countdown.follow_up_state,
+            )
 
     def cancel_timeout_countdown(self) -> None:
         self.store.countdown = None
-        self.store.countdown_visual = None
+        self._countdown_invocation_id = None
+        self._clear_layer(LayerId.TEMP_OVERLAY_LAYER)
 
     def set_direction(self, direction_deg: float) -> None:
         normalized = float(direction_deg) % 360.0
         self.store.direction_deg = normalized
-        self.store.direction_visual = self._build_direction_visual(normalized)
+        now = time.monotonic()
+        self._apply_normalized_commands(
+            self.normalizer.normalize_set_direction(normalized, timestamp=now),
+            timestamp=now,
+        )
 
     def clear_direction(self) -> None:
         self.store.direction_deg = None
-        self.store.direction_visual = None
+        self._clear_layer(LayerId.ONGOING_OVERLAY_LAYER)
 
     def set_brightness(self, level: float) -> None:
         self.store.brightness = max(0.0, min(1.0, float(level)))
@@ -215,14 +278,10 @@ class ControllerRuntime:
         self.store.enabled = bool(enabled)
 
     def reset(self, *, initial_state: str = "idle") -> None:
-        self.store.event_layer.clear()
-        self.store.countdown = None
-        self.store.countdown_visual = None
-        self.store.direction_deg = None
-        self.store.direction_visual = None
-        self.store.brightness = 1.0
-        self.store.enabled = True
+        self.store = LayerStore()
         self.active_preset_id = None
+        self._expire_callbacks.clear()
+        self._countdown_invocation_id = None
         self.set_state(initial_state, timestamp=time.monotonic())
 
     def apply_preset(self, preset_id: str, spec: dict) -> None:
@@ -231,29 +290,51 @@ class ControllerRuntime:
         self.active_preset_id = result.preset_id
         if result.state_visual is not None:
             self.set_state_visual(result.state_visual, mode=result.state_mode)
-        self.set_active_visual(
-            layer_id=result.preset_id,
-            mode=result.mode,
-            visual=result.visual,
-            payload=result.payload,
-            valid=result.valid,
-        )
+        if result.visual is not None:
+            self.set_active_visual(
+                layer_id=result.preset_id,
+                mode=result.mode,
+                visual=result.visual,
+                payload=result.payload,
+                valid=result.valid,
+            )
 
     def apply_preset_from_file(self, preset_id: str, spec_file: str | Path) -> None:
         spec = json.loads(Path(spec_file).read_text(encoding="utf-8"))
         self.apply_preset(preset_id, spec)
 
     def set_progress(self, value: float, *, color: int = 0x3399FF, base_color: int = 0x03070B) -> None:
-        self.set_state("transcribing", payload={"source": "progress"})
-        self.set_active_visual(
-            layer_id="progress",
-            mode="progress",
-            visual=progress(value, color=color, base_color=base_color),
-            payload={"value": value},
+        self.active_preset_id = None
+        now = time.monotonic()
+        self._apply_normalized_commands(
+            self.normalizer.normalize_set_progress(value, color=color, base_color=base_color, timestamp=now),
+            timestamp=now,
         )
 
     def push_event(self, event: Event) -> None:
-        self.store.event_layer.enqueue(event)
+        payload = dict(event.payload)
+        payload.setdefault("event_id", event.id)
+        payload.setdefault("priority", event.priority)
+        if event.duration is not None:
+            payload.setdefault("duration_ms", int(event.duration * 1000.0))
+        self._apply_normalized_commands(
+            self.normalizer.normalize_legacy_visual(
+                LayerId.EVENT_LAYER,
+                event.visual,
+                scene_name=f"event:{event.id}",
+                item_id=event.id,
+                mode=event.name,
+                payload=payload,
+                valid=True,
+                source="runtime.push_event",
+                timestamp=event.created_at,
+                priority=event.priority,
+                duration_ms=None if event.duration is None else int(event.duration * 1000.0),
+                enqueue=True,
+                replace_existing=False,
+            ),
+            timestamp=event.created_at,
+        )
 
     def push_event_visual(
         self,
@@ -266,21 +347,151 @@ class ControllerRuntime:
         exclusive: bool | None = None,
         created_at: float | None = None,
     ) -> None:
+        del exclusive
         created_at = time.monotonic() if created_at is None else created_at
-        self.store.event_layer.enqueue(
-            Event(
-                id=event_id,
-                name=kind,
-                visual=visual,
+        self._apply_normalized_commands(
+            self.normalizer.normalize_legacy_visual(
+                LayerId.EVENT_LAYER,
+                visual,
+                scene_name=f"event:{event_id}",
+                item_id=event_id,
+                mode=kind,
+                payload={},
+                valid=True,
+                source="runtime.push_event_visual",
+                timestamp=created_at,
                 priority=priority,
-                created_at=created_at,
-                duration=duration,
-                exclusive=visual.exclusive if exclusive is None else exclusive,
-            )
+                duration_ms=None if duration is None else int(duration * 1000.0),
+                enqueue=True,
+                replace_existing=False,
+            ),
+            timestamp=created_at,
         )
 
     def clear_event_layer(self) -> None:
-        self.store.event_layer.clear()
+        self._clear_layer(LayerId.EVENT_LAYER)
+
+    def apply_effect(
+        self,
+        effect_id: str,
+        target_layer: LayerId,
+        params: dict[str, Any] | None = None,
+        *,
+        duration_ms: int | None = None,
+        priority: int | None = None,
+        scene_name: str | None = None,
+        item_id: str | None = None,
+        mode: str | None = None,
+        payload: dict[str, Any] | None = None,
+        valid: bool = True,
+        enqueue: bool = False,
+        replace_existing: bool = True,
+        timestamp: float | None = None,
+    ):
+        command_params = dict(params or {})
+        if duration_ms is not None:
+            command_params["duration_ms"] = int(duration_ms)
+        if scene_name is not None:
+            command_params["__scene_name"] = scene_name
+        if item_id is not None:
+            command_params["__item_id"] = item_id
+        if mode is not None:
+            command_params["__mode"] = mode
+        if payload is not None:
+            command_params["__payload"] = dict(payload)
+        command_params["__valid"] = bool(valid)
+        now = _timestamp_or_now(timestamp)
+        applied = self._apply_normalized_commands(
+            [
+                NormalizedCommand(
+                    kind=CommandKind.SET_EFFECT,
+                    target_layer=target_layer,
+                    effect_id=effect_id,
+                    params=command_params,
+                    priority=priority,
+                    timestamp=now,
+                    enqueue=enqueue,
+                    replace_existing=replace_existing,
+                )
+            ],
+            timestamp=now,
+        )
+        return None if not applied else applied[0]
+
+    def clear_layer(self, target_layer: LayerId) -> None:
+        self._clear_layer(target_layer)
+
+    def apply_default_background_state(self) -> None:
+        self.apply_effect(
+            "solid_color",
+            LayerId.BACKGROUND_STATE_LAYER,
+            {"color": "#FFFFFF", "brightness": 0.2},
+            scene_name="state_layer",
+            item_id="background-fallback",
+            mode="background_fallback",
+            payload={"source": "background_state_fallback"},
+            timestamp=time.monotonic(),
+        )
+
+    def restore_persisted_background_state(self, persisted_state: PersistedLayerState) -> None:
+        if persisted_state.layer_id is not LayerId.BACKGROUND_STATE_LAYER:
+            raise ValueError("Only BACKGROUND_STATE_LAYER can be restored from persisted state")
+
+        self.apply_effect(
+            persisted_state.effect_id,
+            LayerId.BACKGROUND_STATE_LAYER,
+            self._restore_persisted_value(persisted_state.params),
+            scene_name="state_layer",
+            item_id="background-restored",
+            mode="background_restored",
+            payload={"source": "background_state_store"},
+            valid=True,
+            timestamp=time.monotonic(),
+        )
+
+    def background_state_signature(self) -> str | None:
+        invocation = self.store.layer(LayerId.BACKGROUND_STATE_LAYER).state.active_invocation
+        if invocation is None:
+            return None
+
+        entry = self.store.layer(LayerId.BACKGROUND_STATE_LAYER)
+        signature = {
+            "effect_id": invocation.effect_id,
+            "mode": entry.mode,
+            "params": self._signature_value(_public_params(invocation.params)),
+        }
+        return json.dumps(signature, ensure_ascii=True, sort_keys=True)
+
+    def background_state_persistence_snapshot(self) -> tuple[str, PersistedLayerState | None]:
+        entry = self.store.layer(LayerId.BACKGROUND_STATE_LAYER)
+        invocation = entry.state.active_invocation
+        if invocation is None:
+            return "empty", None
+
+        if (entry.mode or "") in _NON_PERSISTENT_BACKGROUND_MODES:
+            return "skip", None
+
+        rule = self.effect_registry.get(invocation.effect_id).definition.layer_rules.get(LayerId.BACKGROUND_STATE_LAYER)
+        if rule is None or not rule.persistent_storage:
+            return "skip", None
+
+        try:
+            params = self._serialize_persistable_value(_public_params(invocation.params))
+        except TypeError:
+            return "skip", None
+
+        return (
+            "persistable",
+            PersistedLayerState(
+                schema_version=1,
+                layer_id=LayerId.BACKGROUND_STATE_LAYER,
+                effect_id=invocation.effect_id,
+                params=params,
+                enabled=invocation.enabled,
+                transparent=invocation.transparent,
+                saved_at=time.time(),
+            ),
+        )
 
     def render_once(self, now: float | None = None) -> tuple[Scene, Frame]:
         now = time.monotonic() if now is None else now
@@ -310,9 +521,10 @@ class ControllerRuntime:
 
     def get_status(self, now: float | None = None) -> dict:
         now = time.monotonic() if now is None else now
-        countdown = self.store.countdown
-        current_event = self.store.event_layer.current_event
-        pending_events = self.store.event_layer.pending_events
+        main_entry = self.store.layer(LayerId.MAIN_LAYER)
+        main_invocation = main_entry.state.active_invocation
+        current_event = self.store.current_event
+        pending_events = self.store.pending_events
         return {
             "base_state": {
                 "name": self.store.base_state.name,
@@ -320,185 +532,129 @@ class ControllerRuntime:
                 "updated_at": self.store.base_state.updated_at,
             },
             "active_visual": None
-            if self.store.main_layer is None
+            if main_invocation is None
             else {
-                "id": self.store.main_layer.id,
-                "mode": self.store.main_layer.mode,
-                "payload": self._sanitize_value(self.store.main_layer.payload),
-                "updated_at": self.store.main_layer.updated_at,
-                "valid": self.store.main_layer.valid,
-                "visual": self._serialize_visual(self.store.main_layer.visual),
+                "id": main_entry.item_id or main_invocation.invocation_id,
+                "mode": main_entry.mode or main_invocation.effect_id,
+                "payload": self._sanitize_value(main_entry.payload),
+                "updated_at": main_invocation.created_at,
+                "valid": main_entry.valid,
+                "visual": self._serialize_invocation_visual(main_invocation),
             },
             "active_preset_id": self.active_preset_id,
             "direction_deg": self.store.direction_deg,
             "brightness": self.store.brightness,
             "enabled": self.store.enabled,
             "countdown": None
-            if countdown is None
+            if self.store.countdown is None
             else {
-                "total_ms": countdown.total_ms,
-                "remaining_ms": countdown.remaining_at(now),
-                "follow_up_state": countdown.follow_up_state,
-                "active": countdown.active,
-                "payload": self._sanitize_value(countdown.payload),
+                "total_ms": self.store.countdown.total_ms,
+                "remaining_ms": self.store.countdown.remaining_at(now),
+                "follow_up_state": self.store.countdown.follow_up_state,
+                "active": self.store.countdown.active,
+                "payload": self._sanitize_value(self.store.countdown.payload),
             },
             "event_overlay": {
-                "current": None if current_event is None else self._serialize_event(current_event),
-                "pending": [self._serialize_event(event) for event in pending_events],
+                "current": None if current_event is None else self._serialize_event_invocation(current_event),
+                "pending": [self._serialize_event_invocation(event) for event in pending_events],
             },
             "render_layers": {
-                "state_visual": self._serialize_visual(self.store.state_layer.visual),
-                "direction_visual": self._serialize_visual(self.store.direction_visual),
-                "countdown_visual": self._serialize_visual(self.store.countdown_visual),
+                "state_visual": self._serialize_layer_visual(LayerId.BACKGROUND_STATE_LAYER),
+                "direction_visual": self._serialize_layer_visual(LayerId.ONGOING_OVERLAY_LAYER),
+                "countdown_visual": self._serialize_layer_visual(LayerId.TEMP_OVERLAY_LAYER),
             },
             "last_scene": self._serialize_scene(self.last_scene),
             "last_frame": self._serialize_frame(self.last_frame),
         }
 
-    def _build_base_state_layers(self, state_name: str, payload: dict, now: float) -> tuple[StateLayerState, MainLayerState | None]:
-        accent = parse_hex_color(payload.get("color"), self._default_state_color(state_name))
-        background = parse_hex_color(payload.get("base_color"), self._default_background_color(state_name))
-        if state_name == "offline":
-            return StateLayerState(mode="offline", visual=solid(background), enabled=True), MainLayerState(
-                id="base-state:offline",
-                mode="offline",
-                payload=payload,
-                visual=blink(accent, base_color=background, period=1.2, duty_cycle=0.25, exclusive=False),
-                updated_at=now,
-            )
-        if state_name == "idle":
-            return StateLayerState(mode="idle", visual=solid(background), enabled=True), None
-        if state_name == "listening":
-            return StateLayerState(mode="listening", visual=solid(background), enabled=True), MainLayerState(
-                id="base-state:listening",
-                mode="listening",
-                payload=payload,
-                visual=pulse(accent, base_color=background, period=1.8, exclusive=False),
-                updated_at=now,
-            )
-        if state_name == "recording":
-            return StateLayerState(mode="recording", visual=solid(background), enabled=True), MainLayerState(
-                id="base-state:recording",
-                mode="recording",
-                payload=payload,
-                visual=pulse(accent, base_color=background, period=1.1, exclusive=False),
-                updated_at=now,
-            )
-        if state_name in {"transcribing", "processing"}:
-            return StateLayerState(mode=state_name, visual=solid(background), enabled=True), MainLayerState(
-                id=f"base-state:{state_name}",
-                mode=state_name,
-                payload=payload,
-                visual=pulse(accent, base_color=background, period=1.4, exclusive=False),
-                updated_at=now,
-            )
-        if state_name == "error":
-            return StateLayerState(mode="error", visual=solid(background), enabled=True), MainLayerState(
-                id="base-state:error",
-                mode="error",
-                payload=payload,
-                visual=blink(accent, base_color=background, period=0.7, duty_cycle=0.55, exclusive=False),
-                updated_at=now,
-            )
-        return StateLayerState(mode=state_name, visual=solid(background), enabled=True), MainLayerState(
-            id=f"base-state:{state_name}",
-            mode=state_name,
-            payload=payload,
-            visual=pulse(accent, base_color=background, period=float(payload.get("period", 1.6)), exclusive=False),
-            updated_at=now,
-        )
+    def _countdown_expire_callback(self, invocation_id: str, follow_up_state: str | None) -> Callable[[float], None]:
+        def _callback(expired_at: float) -> None:
+            if self._countdown_invocation_id == invocation_id:
+                self._countdown_invocation_id = None
+            self.store.countdown = None
+            if follow_up_state:
+                self.set_state(follow_up_state, timestamp=expired_at)
 
-    def _build_event_visual(self, event_name: str, payload: dict):
-        accent = parse_hex_color(payload.get("color"), self._default_event_color(event_name))
-        background = parse_hex_color(payload.get("base_color"), self._default_event_background(event_name))
-        if event_name in {"trigger_received", "wakeword_ack"}:
-            return blink(accent, base_color=background, period=0.5, duty_cycle=0.35, exclusive=False)
-        if event_name == "text_committed":
-            return blink(accent, base_color=background, period=0.75, duty_cycle=0.55, exclusive=False)
-        if event_name == "error_flash":
-            return blink(accent, base_color=background, period=0.35, duty_cycle=0.6, exclusive=True)
-        if event_name == "timeout_imminent":
-            return blink(accent, base_color=background, period=0.4, duty_cycle=0.5, exclusive=False)
-        if event_name == "warning":
-            return blink(accent, base_color=background, period=0.8, duty_cycle=0.5, exclusive=False)
-        return blink(accent, base_color=background, period=0.9, duty_cycle=0.45, exclusive=False)
+        return _callback
 
-    def _build_direction_visual(self, direction_deg: float):
-        center = int(round((direction_deg % 360.0) / 360.0 * 12.0)) % 12
-        colors = [None] * 12
-        for offset, color in ((0, 0xEAF8FF), (-1, 0x7FC9FF), (1, 0x7FC9FF)):
-            colors[(center + offset) % 12] = color
-        return ring_frame(colors, exclusive=False)
+    def _clear_layer(self, layer_id: LayerId) -> None:
+        removed_ids = self.store.clear_layer(layer_id)
+        for invocation_id in removed_ids:
+            self._expire_callbacks.pop(invocation_id, None)
 
-    def _render_countdown_overlay(self, now: float):
-        countdown = self.store.countdown
-        if countdown is None:
-            return [None] * 12
-        active_leds = max(0, min(12, int(round(countdown.progress_at(now) * 12.0))))
-        colors = [None] * 12
-        for index in range(active_leds):
-            colors[index] = 0xFF9F1A
-        if active_leds < 12:
-            colors[active_leds % 12] = 0xFFF3D1
-        return colors
+    def _apply_normalized_commands(self, commands: list, *, timestamp: float | None = None):
+        now = _timestamp_or_now(timestamp)
+        applied = []
+        for command in commands:
+            if command.kind is CommandKind.CLEAR_LAYER:
+                if command.target_layer is not None:
+                    self._clear_layer(command.target_layer)
+                continue
+
+            created_at = now if command.timestamp is None else float(command.timestamp)
+            invocation = build_effect_invocation(
+                command,
+                self.effect_registry,
+                invocation_id=self._next_invocation_id(command),
+                created_at=created_at,
+            )
+            removed_ids = self.store.set_invocation(
+                invocation.target_layer,
+                invocation,
+                scene_name=self._meta_text(invocation.params, "scene_name"),
+                item_id=self._meta_text(invocation.params, "item_id") or invocation.invocation_id,
+                mode=self._meta_text(invocation.params, "mode"),
+                payload=self._meta_payload(invocation.params),
+                valid=self._meta_bool(invocation.params, "valid", True),
+                enqueue=command.enqueue,
+            )
+            for invocation_id in removed_ids:
+                self._expire_callbacks.pop(invocation_id, None)
+            applied.append(invocation)
+
+        return applied
+
+    def _next_invocation_id(self, command) -> str:
+        explicit = command.params.get("__invocation_id")
+        if explicit:
+            return str(explicit)
+        self._invocation_sequence += 1
+        base = command.effect_id or command.kind.value
+        return f"{base}:{self._invocation_sequence}"
+
+    def _meta_text(self, params: dict[str, Any], name: str) -> str | None:
+        value = params.get(f"__{name}")
+        if value is None:
+            return None
+        return str(value)
+
+    def _meta_payload(self, params: dict[str, Any]) -> dict[str, Any]:
+        payload = params.get("__payload")
+        return dict(payload) if isinstance(payload, dict) else {}
+
+    def _meta_bool(self, params: dict[str, Any], name: str, default: bool) -> bool:
+        value = params.get(f"__{name}")
+        return default if value is None else bool(value)
 
     def _refresh_automations(self, now: float) -> None:
-        countdown = self.store.countdown
-        if countdown is not None and countdown.is_expired(now):
-            follow_up_state = countdown.follow_up_state
-            self.cancel_timeout_countdown()
-            if follow_up_state:
-                self.set_state(follow_up_state, timestamp=now)
+        expired_ids = self.store.advance(now)
+        for invocation_id in expired_ids:
+            callback = self._expire_callbacks.pop(invocation_id, None)
+            if callback is not None:
+                callback(now)
+            elif invocation_id == self._countdown_invocation_id:
+                self._countdown_invocation_id = None
+                self.store.countdown = None
 
     def _apply_output_settings(self, frame: Frame) -> Frame:
         leds = list(frame.leds)
         if not self.store.enabled:
             leds = [0] * len(leds)
         elif self.store.brightness < 1.0:
+            from .color_math import scale_color
+
             leds = [scale_color(color, self.store.brightness) for color in leds]
         return Frame(leds=leds, timestamp=frame.timestamp)
-
-    def _default_state_color(self, state_name: str) -> int:
-        return {
-            "offline": 0x6A0F0F,
-            "idle": 0x10263D,
-            "listening": 0x1AA7FF,
-            "recording": 0x19D37A,
-            "transcribing": 0xFFB347,
-            "processing": 0xFFB347,
-            "error": 0xFF3B30,
-        }.get(state_name, 0x7AA4FF)
-
-    def _default_background_color(self, state_name: str) -> int:
-        return {
-            "offline": 0x080101,
-            "idle": 0x010408,
-            "listening": 0x020810,
-            "recording": 0x031108,
-            "transcribing": 0x120A02,
-            "processing": 0x120A02,
-            "error": 0x120103,
-        }.get(state_name, 0x060812)
-
-    def _default_event_color(self, event_name: str) -> int:
-        return {
-            "trigger_received": 0x33D1FF,
-            "wakeword_ack": 0x33D1FF,
-            "text_committed": 0x42D392,
-            "warning": 0xFFB347,
-            "error_flash": 0xFF3B30,
-            "timeout_imminent": 0xFF9F1A,
-        }.get(event_name, 0x7AA4FF)
-
-    def _default_event_background(self, event_name: str) -> int:
-        return {
-            "trigger_received": 0x05131A,
-            "wakeword_ack": 0x05131A,
-            "text_committed": 0x06120B,
-            "warning": 0x1A1005,
-            "error_flash": 0x120103,
-            "timeout_imminent": 0x190D02,
-        }.get(event_name, 0x05070A)
 
     def _sanitize_value(self, value):
         if callable(value):
@@ -511,24 +667,83 @@ class ControllerRuntime:
             return [self._sanitize_value(item) for item in value]
         return value
 
-    def _serialize_visual(self, visual) -> dict | None:
-        if visual is None:
-            return None
+    def _serialize_persistable_value(self, value):
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+        if isinstance(value, Path):
+            return str(value)
+        if isinstance(value, Visual):
+            return {
+                "__type__": "visual_spec",
+                "type": value.type,
+                "params": self._serialize_persistable_value(value.params),
+                "exclusive": bool(value.exclusive),
+            }
+        if callable(value):
+            raise TypeError("Callables cannot be persisted")
+        if isinstance(value, dict):
+            return {str(key): self._serialize_persistable_value(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._serialize_persistable_value(item) for item in value]
+        raise TypeError(f"Unsupported persisted value: {value!r}")
+
+    def _restore_persisted_value(self, value):
+        if isinstance(value, dict):
+            if value.get("__type__") == "visual_spec":
+                spec = {
+                    "type": value.get("type"),
+                    "params": self._restore_persisted_value(value.get("params", {})),
+                    "exclusive": bool(value.get("exclusive", False)),
+                }
+                return visual_from_spec(spec)
+            return {str(key): self._restore_persisted_value(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._restore_persisted_value(item) for item in value]
+        return value
+
+    def _signature_value(self, value):
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+        if isinstance(value, Path):
+            return str(value)
+        if isinstance(value, Visual):
+            return {
+                "__type__": "visual_spec",
+                "type": value.type,
+                "params": self._signature_value(value.params),
+                "exclusive": bool(value.exclusive),
+            }
+        if callable(value):
+            return "<callable>"
+        if isinstance(value, dict):
+            return {str(key): self._signature_value(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [self._signature_value(item) for item in value]
+        return repr(value)
+
+    def _serialize_invocation_visual(self, invocation) -> dict:
         return {
-            "type": visual.type,
-            "exclusive": visual.exclusive,
-            "params": self._sanitize_value(visual.params),
+            "effect_id": invocation.effect_id,
+            "playback_mode": None if invocation.playback_mode is None else invocation.playback_mode.value,
+            "requested_duration_ms": invocation.requested_duration_ms,
+            "params": self._sanitize_value(_public_params(invocation.params)),
         }
 
-    def _serialize_event(self, event: Event) -> dict:
+    def _serialize_layer_visual(self, layer_id: LayerId) -> dict | None:
+        invocation = self.store.layer(layer_id).state.active_invocation
+        if invocation is None:
+            return None
+        return self._serialize_invocation_visual(invocation)
+
+    def _serialize_event_invocation(self, invocation) -> dict:
         return {
-            "id": event.id,
-            "name": event.name,
-            "priority": event.priority,
-            "created_at": event.created_at,
-            "duration": event.duration,
-            "exclusive": event.exclusive,
-            "payload": self._sanitize_value(event.payload),
+            "id": self._meta_text(invocation.params, "item_id") or invocation.invocation_id,
+            "name": self._meta_text(invocation.params, "event_name") or invocation.effect_id,
+            "priority": invocation.effective_priority(),
+            "created_at": invocation.created_at,
+            "duration": None if invocation.requested_duration_ms is None else invocation.requested_duration_ms / 1000.0,
+            "exclusive": False,
+            "payload": self._sanitize_value(self._meta_payload(invocation.params)),
         }
 
     def _serialize_scene(self, scene: Scene | None) -> dict | None:
@@ -542,7 +757,11 @@ class ControllerRuntime:
                 {
                     "name": layer.name,
                     "priority": layer.priority,
-                    "visual": self._serialize_visual(layer.visual),
+                    "visual": {
+                        "type": layer.visual.type,
+                        "exclusive": layer.visual.exclusive,
+                        "params": self._sanitize_value(layer.visual.params),
+                    },
                 }
                 for layer in scene.layers
             ],
@@ -555,44 +774,3 @@ class ControllerRuntime:
 
 
 LedController = ControllerRuntime
-
-
-def build_demo(controller: ControllerRuntime) -> None:
-    controller.set_state("listening")
-    controller.set_active_visual(
-        layer_id="demo-progress",
-        mode="progress",
-        visual=progress(64, color=0x33AAFF, base_color=0x020304),
-        payload={"value": 64},
-    )
-
-
-def demo_tick(controller: ControllerRuntime, now: float, start: float, total_seconds: float) -> None:
-    known_event_ids = {event.id for event in controller.store.event_layer.pending_events}
-    if controller.store.event_layer.current_event is not None:
-        known_event_ids.add(controller.store.event_layer.current_event.id)
-
-    if now - start > total_seconds / 4.0 and "event-warn" not in known_event_ids:
-        controller.emit_event(
-            "warning",
-            {
-                "event_id": "event-warn",
-                "duration_ms": 2500,
-                "color": 0xFF8800,
-                "base_color": 0x120800,
-                "created_at": now,
-            },
-            timestamp=now,
-        )
-    if now - start > total_seconds / 2.0 and "event-critical" not in known_event_ids:
-        controller.emit_event(
-            "error_flash",
-            {
-                "event_id": "event-critical",
-                "duration_ms": 3000,
-                "color": 0xFF1744,
-                "base_color": 0x120003,
-                "created_at": now,
-            },
-            timestamp=now,
-        )

@@ -1,0 +1,11 @@
+{
+  "effect_id": "solid_color",
+  "enabled": true,
+  "layer_id": "BACKGROUND_STATE_LAYER",
+  "params": {
+    "color": 66568
+  },
+  "saved_at": 1775785133.3818026,
+  "schema_version": 1,
+  "transparent": false
+}

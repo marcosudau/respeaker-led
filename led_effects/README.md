@@ -1,38 +1,25 @@
 # led_effects
 
-Dieser Ordner ist kein loser Sammelplatz fuer Effektdateien, sondern ein Oberbegriff fuer zwei verschiedene LED-Themen:
-
-- `effects_engine/` enthaelt die eigentliche Engine und ihren Code
-- `preset_packs/` enthaelt optionale Erweiterungspacks
-
-## Wenn du nur LEDs anzeigen willst
-
-Dann musst du hier nicht alles lesen.
-
-Der bessere Einstieg ist:
-
-- `docs/getting_started.md`
-- `docs/effects_engine_2_minuten.md`
-- `docs/effects_engine_tutorial.md`
+Dieser Ordner enthaelt die dateibasierte Effektbibliothek und optionale Preset-Packs fuer den laufenden Service.
 
 ## Was hier wo liegt
 
-### `effects_engine/`
+### `effects/`
 
-Framework-Code fuer die direkte LED-Steuerung:
+Die eigentlichen Effektmodule des Service.
 
-- einfache API
-- Effektdefinitionen
-- Controller
-- JSON/YAML-Loader
-- Hardware-Backend
+Jede Python-Datei in diesem Ordner kann eine oder mehrere `BaseEffect`-Klassen bereitstellen.
+
+Die Default-Registry scannt diesen Ordner automatisch beim Start des Service.
 
 ### `preset_packs/`
 
-Optionale Pack-Erweiterungen fuer den `src/`-Controller.
+Optionale Erweiterungen fuer den Controller-Service in `src/`.
 
-Nicht noetig fuer den normalen Einstieg.
+Wenn du den Service nur starten und direkte Built-in-Effekte setzen willst, brauchst du diesen Ordner nicht.
 
-### `.old/`
+Mehr dazu:
 
-Archiv- oder Altmaterial. Kein normaler Einstiegspunkt.
+- `docs/effects.md`
+- `docs/presets.md`
+- `docs/getting_started.md`

@@ -4,11 +4,11 @@ Hier liegen optionale Preset-Packs fuer den lokalen Controller in `src/`.
 
 Diese Packs sind nicht noetig, um:
 
-- die Effects Engine direkt zu benutzen
-- JSON/YAML-Effektdateien zu laden
-- schnell etwas auf dem Ring anzuzeigen
+- den Service zu starten
+- direkte Built-in-Effekte ueber `apply-effect` zu setzen
+- Status, Events, Countdown oder Direction zu steuern
 
-Wenn du nur das willst, geh stattdessen zu:
+Wenn du zuerst den Grundpfad pruefen willst, geh zu:
 
 - `docs/getting_started.md`
-- `docs/effects_engine_tutorial.md`
+- `docs/api_guide.md`

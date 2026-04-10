@@ -1,0 +1,45 @@
+2026-04-10 03:03:39,622 INFO led_controller.cli starting controller service output_mode=console-preview host=127.0.0.1 port=8891 requested_port=8891
+2026-04-10 03:03:39,639 INFO led_controller.service restored persisted background state from C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\runtime_state\background_state.json
+2026-04-10 03:03:39,640 INFO led_controller.service controller service initialized output_mode=console-preview requested_output_mode=console-preview fallback_active=False
+2026-04-10 03:03:40,078 INFO led_controller.service controller service started fps=8.0
+2026-04-10 03:05:55,272 INFO led_controller.service shutdown requested
+2026-04-10 03:05:55,750 INFO led_controller.service controller service stopped
+2026-04-10 03:14:24,420 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 03:14:24,621 INFO led_controller.service restored persisted background state from C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\runtime_state\background_state.json
+2026-04-10 03:14:24,623 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-10 03:14:25,055 INFO led_controller.service controller service started fps=8.0
+2026-04-10 03:19:43,806 INFO led_controller.cli took over existing instance pid=43508 host=127.0.0.1 port=8765
+2026-04-10 03:19:43,807 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 03:19:43,942 ERROR led_controller.service failed to restore persisted background state from C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\runtime_state\background_state.json
+Traceback (most recent call last):
+  File "C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\src\service.py", line 130, in _restore_background_state
+    self.runtime.restore_persisted_background_state(persisted_state)
+  File "C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\src\runtime.py", line 440, in restore_persisted_background_state
+    self.apply_effect(
+  File "C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\src\runtime.py", line 404, in apply_effect
+    applied = self._apply_normalized_commands(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\src\runtime.py", line 595, in _apply_normalized_commands
+    invocation = build_effect_invocation(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\src\normalization.py", line 459, in build_effect_invocation
+    definition = registry.get(command.effect_id).definition
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\src\effect_registry.py", line 60, in get
+    return self._effects_by_id[effect_id]
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+KeyError: 'pulse'
+2026-04-10 03:19:43,947 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-10 03:19:44,359 INFO led_controller.service controller service started fps=8.0
+2026-04-10 03:30:40,794 INFO led_controller.cli took over existing instance pid=46084 host=127.0.0.1 port=8765
+2026-04-10 03:30:40,796 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 03:30:40,946 INFO led_controller.service restored persisted background state from C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\runtime_state\background_state.json
+2026-04-10 03:30:40,947 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-10 03:30:41,356 INFO led_controller.service controller service started fps=8.0
+2026-04-10 03:35:57,713 INFO led_controller.cli took over existing instance pid=41220 host=127.0.0.1 port=8765
+2026-04-10 03:35:57,716 INFO led_controller.cli starting controller service output_mode=console-preview host=127.0.0.1 port=8891 requested_port=8891
+2026-04-10 03:35:57,725 INFO led_controller.service restored persisted background state from C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\runtime_state\background_state.json
+2026-04-10 03:35:57,728 INFO led_controller.service controller service initialized output_mode=console-preview requested_output_mode=console-preview fallback_active=False
+2026-04-10 03:35:58,156 INFO led_controller.service controller service started fps=8.0
+2026-04-10 03:38:31,045 INFO led_controller.service shutdown requested
+2026-04-10 03:38:31,506 INFO led_controller.service controller service stopped

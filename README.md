@@ -1,106 +1,91 @@
-# reSpeaker LED Controller Engine
+# reSpeaker LED Controller Service
 
-Dieses Repo hat zwei Hauptnutzungen:
+Dieses Repo konzentriert sich jetzt auf genau einen Betriebsweg:
 
-- **direkt lokal LEDs anzeigen**
-- **einen laufenden lokalen Controller per CLI/API steuern**
+- einen dauerhaft laufenden lokalen LED-Service starten
+- diesen Service per CLI oder HTTP steuern
 
-Der wichtigste Punkt fuer den Einstieg:
+Der direkte Effects-Engine-Pfad wurde entfernt. Alle aktiven Einstiege laufen jetzt ueber `main.py`, `src/cli.py`, `src/api.py` und `src/service.py`.
 
-- du musst **nicht** erst Architektur, Layer, API, Presets und interne Ordner verstehen, um Licht auf dem Ring zu sehen
+## Schnellstart
 
-## Wo du anfangen solltest
-
-Wenn du einfach nur LEDs sehen willst:
+Die leichteste Schritt-fuer-Schritt-Anleitung steht hier:
 
 - [docs/getting_started.md](docs/getting_started.md)
-- [docs/effects_engine_2_minuten.md](docs/effects_engine_2_minuten.md)
 
-Wenn du eigene Effekte definieren willst:
+Die Kurzfassung:
 
-- [docs/effects_engine_tutorial.md](docs/effects_engine_tutorial.md)
-- [docs/reference.md](docs/reference.md)
-
-Wenn du erstmal verstehen willst, wie das Repo sortiert ist:
-
-- [docs/layers.md](docs/layers.md)
-
-Wenn du den laufenden Service fernsteuern willst:
-
-- [docs/api_guide.md](docs/api_guide.md)
-
-## Projektstruktur in kurz
-
-- `docs/` ist die normale Benutzer-Doku
-- `docs/dev/` ist die Entwickler-Doku
-- `led_effects/effects_engine/` ist die direkte Effects Engine
-- `led_effects/preset_packs/` sind optionale Erweiterungspacks
-- `src/` ist der lokale Controller-Prozess mit API, CLI und Runtime
-- `python_control/` ist der Low-Level-Hardwarezugriff
-
-## Was du am Anfang ignorieren kannst
-
-Wenn du einfach Effekte anzeigen willst, kannst du erstmal ignorieren:
-
-- `docs/dev/`
-- Preset-Packs
-- `src/`-Interna
-- interne Layer-Modelle
-
-## Quickstart
-
-### Tests ausfuehren
-
-```powershell
-pytest -q
-```
-
-### Preview-Demo ohne Hardware
-
-```powershell
-python .\main.py --no-device demo --seconds 5
-```
-
-### Lokalen Controller-Prozess starten
+### 1. Service starten
 
 ```powershell
 python .\main.py --no-device serve --host 127.0.0.1 --port 8765
 ```
 
-### Laufenden Controller ansteuern
+Optional mit Portpool fuer den Unterprozess-Betrieb:
 
 ```powershell
+python .\main.py --no-device serve --host 127.0.0.1 --port 8765 --port-pool 8765-8770
+```
+
+### 2. In einem zweiten Terminal pruefen, ob er laeuft
+
+```powershell
+python .\main.py ping
 python .\main.py status
-python .\main.py set-state listening
-python .\main.py emit-event trigger_received --duration-ms 900 --source manual
-python .\main.py start-countdown 5000 --remaining-ms 2000 --follow-up-state transcribing
-python .\main.py set-direction 120
 ```
 
-### Optionale Effekt-Packs auflisten
+### 3. Verfuegbare Effekte abfragen
 
 ```powershell
-python .\main.py list-presets
+python .\main.py list-effects
 ```
+
+### 4. Einen Effekt setzen
+
+```powershell
+python .\main.py apply-effect solid_color main --params '{"color":"0x224466"}'
+python .\main.py apply-effect soft_pulse state --params '{"color":"0x33AAFF","base_color":"0x02060A","period_ms":1600}'
+python .\main.py emit-event trigger_received --duration-ms 900 --source manual
+```
+
+### 5. Effekt wieder entfernen oder Service beenden
+
+```powershell
+python .\main.py clear-layer main
+python .\main.py shutdown
+```
+
+## Projektstruktur in kurz
+
+- `src/` enthaelt CLI, API, Service, Runtime, Renderer und Effect-Registry
+- `led_effects/effects/` enthaelt die dateibasierten Effektmodule des Service
+- `led_effects/preset_packs/` enthaelt optionale Preset-Erweiterungen fuer den Service
+- `runtime_state/background_state.json` speichert den persistierten Background-State des Service
+- `runtime_state/active_service.json` enthaelt Laufzeit-Metadaten der aktiven Instanz, insbesondere Host und Port
+- `logs/led_controller.log` enthaelt das einfache Release-1-Basislogging des Service
+- `python_control/` enthaelt den Low-Level-Hardwarezugriff
+- `docs/` enthaelt die verbleibende Nutzer-Doku
+- `docs/dev/` enthaelt die interne Architektur-Doku
+- `tests/` prueft den Service-Pfad, API, CLI und Runtime
 
 ## Wichtige Hinweise
 
-- Discovery ist optional. Der Core rendert auch ohne Effekt-Packs.
-- Wenn echte Hardware fehlt, faellt der Service sicher auf Console-Preview zurueck.
-- Externe Aufrufer sollten den Best-Effort-Client verwenden, nicht den Hardware-Adapter.
-- `pytest -q` bleibt der Standard-Testlauf.
+- `--no-device` startet den Service ohne echte Hardware und previewt Frames in der Konsole.
+- Ohne gespeicherten Background-State startet der Service mit einem gedimmten weissen Grundlicht als Online-Anzeige.
+- Beim Start prueft der Service die gewuenschte Portbelegung vorab; optional kann er auf einen Port aus `--port-pool` ausweichen.
+- Es ist nur eine aktive Instanz vorgesehen; eine neu gestartete Instanz versucht eine vorhandene alte Instanz zuerst zu beenden.
+- Der gewaehlt gestartete Host/Port wird fuer Host-Anwendungen in `runtime_state/active_service.json` abgelegt und beim Start zusaetzlich als JSON auf stdout ausgegeben.
+- Start und Stop des Service werden durch drei schnelle Vollring-Blinks signalisiert: Gruen beim Start, Rot beim Stop.
+- Ohne Preset-Packs laeuft der Service trotzdem vollstaendig.
+- Fuer echte Fernsteuerung muessen Service und Steuer-Kommandos in getrennten Terminals laufen.
+- Optional kannst du statt `main.py` auch `python -m src ...` oder direkt `python .\src\cli.py ...` verwenden.
 
 ## Weiterfuehrende Doku
 
 - [docs/getting_started.md](docs/getting_started.md)
-- [docs/effects_engine_2_minuten.md](docs/effects_engine_2_minuten.md)
-- [docs/effects_engine_tutorial.md](docs/effects_engine_tutorial.md)
-- [docs/layers.md](docs/layers.md)
-- [docs/effects_engine.md](docs/effects_engine.md)
-- [docs/presets.md](docs/presets.md)
-- [docs/reference.md](docs/reference.md)
 - [docs/api_guide.md](docs/api_guide.md)
+- [docs/effects.md](docs/effects.md)
+- [docs/current_approach.md](docs/current_approach.md)
+- [docs/presets.md](docs/presets.md)
 - [docs/troubleshooting.md](docs/troubleshooting.md)
 - [docs/dev/index.md](docs/dev/index.md)
-- [docs/dev/effects_engine_dev.md](docs/dev/effects_engine_dev.md)
-- [docs/dev/public_entry_points.md](docs/dev/public_entry_points.md)

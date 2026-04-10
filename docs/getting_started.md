@@ -1,67 +1,124 @@
-# Hier anfangen
+# Schnellstart: Service Starten Und Effekte Setzen
 
-Wenn du einfach nur mal kurz bunte LEDs sehen willst, brauchst du am Anfang **weder API noch Presets noch Dev-Doku**.
+Diese Anleitung fuehrt dich in einzelnen Schritten durch den heute aktiven Betriebsweg.
 
-## Der einfachste Weg
+Voraussetzung:
 
-```python
-from led_effects.effects_engine import easy_hardware
+- du befindest dich im Projekt-Root
+- du verwendest eine Python-Umgebung, in der die Projektabhaengigkeiten bereits funktionieren
 
-ring = easy_hardware()
-ring.color("blue")
+## 1. Erstes Terminal oeffnen und den Service starten
+
+Empfohlen fuer den ersten Test ohne Hardware:
+
+```powershell
+python .\main.py --no-device serve --host 127.0.0.1 --port 8765
 ```
 
-Wenn du danach wieder ausschalten willst:
+Optional fuer einen Unterprozess-Betrieb mit Portpool:
 
-```python
-ring.off()
+```powershell
+python .\main.py --no-device serve --host 127.0.0.1 --port 8765 --port-pool 8765-8770
 ```
 
-## Was du am Anfang ignorieren kannst
+Wichtig:
 
-Diese Dinge sind fuer den ersten Start nicht noetig:
+- dieses Terminal bleibt offen
+- der Prozess rendert jetzt laufend Frames
+- im `--no-device`-Modus werden die Frames in der Konsole als Preview ausgegeben
+- beim Start gibt der Prozess eine JSON-Zeile mit dem effektiv verwendeten Host und Port aus
+- dieselben Laufzeitdaten stehen auch in `runtime_state/active_service.json`
 
-- `docs/dev/`
-- `src/`-Interna
-- Preset-Packs
-- die REST-API
-- JSON/YAML-Konfigurationen
+## 2. Zweites Terminal oeffnen und pruefen, ob der Service erreichbar ist
 
-## Die drei typischen Wege
+```powershell
+python .\main.py ping
+python .\main.py status
+```
 
-### 1. Ich will einfach nur etwas anzeigen
+Wenn alles laeuft, bekommst du JSON-Antworten zurueck.
 
-Dann lies:
+## 3. Verfuegbare Effekte anzeigen
 
-- [LEDs in 2 Minuten anzeigen](effects_engine_2_minuten.md)
+```powershell
+python .\main.py list-effects
+```
 
-### 2. Ich will eigene Anzeigen als Datei definieren
+Du bekommst eine Liste aller eingebauten Effekte mit IDs, Parametern und unterstuetzten Layern.
 
-Dann lies:
+Wenn du verstehen willst, wie diese Effekte intern aufgebaut sind oder selbst neue schreiben willst:
 
-- [Eigene Anzeigen Schritt fuer Schritt](effects_engine_tutorial.md)
+- [Effekte verstehen und neue Effekte bauen](effects.md)
 
-Wichtig dabei:
+## 4. Einen ersten Effekt auf den Haupt-Layer legen
 
-- JSON/YAML werden lokal in Python geladen
-- JSON/YAML werden nicht an die API geschickt
+```powershell
+python .\main.py apply-effect solid_color main --params '{"color":"0x224466"}'
+```
 
-### 3. Ich will einen laufenden Controller fernsteuern
+Das setzt eine feste Farbe auf den Haupt-Layer.
 
-Dann lies:
+Zur Kontrolle kannst du direkt danach den Status lesen:
 
-- [CLI und API](api_guide.md)
+```powershell
+python .\main.py status
+```
 
-Das ist ein anderer Weg als die lokale Effects Engine.
+## 5. Einen animierten Effekt auf den State-Layer setzen
 
-## Das mentale Modell in einem Satz
+```powershell
+python .\main.py apply-effect soft_pulse state --params '{"color":"0x33AAFF","base_color":"0x02060A","period_ms":1600}'
+```
 
-- **Easy API / Python**: direkt Licht anzeigen
-- **JSON/YAML**: eigene lokale Effektdefinitionen laden
-- **CLI/API**: laufenden Service fernsteuern
+Damit laeuft ein pulsierender Hintergrundzustand.
 
-## Gute naechste Schritte
+## 6. Kurzlebiges Event ausloesen
 
-- [LEDs in 2 Minuten anzeigen](effects_engine_2_minuten.md)
-- [Wegweiser durchs Repo](layers.md)
-- [Welche Anzeigen es gibt](effects_engine.md)
+```powershell
+python .\main.py emit-event trigger_received --duration-ms 900 --source manual
+```
+
+Das Event landet im Event-Layer und verschwindet nach seiner Laufzeit wieder.
+
+## 7. Weitere typische Steuerbefehle testen
+
+```powershell
+python .\main.py set-state listening
+python .\main.py set-direction 120
+python .\main.py start-countdown 5000 --remaining-ms 2000 --follow-up-state transcribing
+```
+
+## 8. Einen Layer wieder leeren
+
+```powershell
+python .\main.py clear-layer main
+python .\main.py clear-direction
+python .\main.py cancel-countdown
+```
+
+## 9. Optional Presets abfragen oder aktivieren
+
+Vorhandene Presets anzeigen:
+
+```powershell
+python .\main.py list-presets
+```
+
+Ein Preset aktivieren, falls eines vorhanden ist:
+
+```powershell
+python .\main.py activate-preset mein_preset --spec '{"color":"0x224466"}'
+```
+
+## 10. Service sauber beenden
+
+```powershell
+python .\main.py shutdown
+```
+
+## Wenn etwas nicht klappt
+
+- [CLI und API im Detail](api_guide.md)
+- [Effekte verstehen und neue Effekte bauen](effects.md)
+- [Troubleshooting](troubleshooting.md)
+- [Aktueller Ansatz im Repo](current_approach.md)

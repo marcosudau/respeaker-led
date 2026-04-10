@@ -1,84 +1,155 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
-from .models import ActiveVisualState, BaseState, CountdownState, Event, LayerVisual, StateLayerState
+from .effect_schema import DEFAULT_LAYER_PRIORITIES, EffectInvocation, LayerId, LayerState
+from .models import BaseState, CountdownState
 
 
-STATE_LAYER_PRIORITY = 100
-MAIN_LAYER_PRIORITY = 200
-DIRECTION_LAYER_PRIORITY = 250
-COUNTDOWN_LAYER_PRIORITY = 275
-EVENT_LAYER_PRIORITY = 300
+LEGACY_SCENE_NAMES: dict[LayerId, str] = {
+    LayerId.BACKGROUND_STATE_LAYER: "state_layer",
+    LayerId.STATE_LAYER: "state_overlay",
+    LayerId.MAIN_LAYER: "active_visual",
+    LayerId.TEMP_OVERLAY_LAYER: "temp_overlay",
+    LayerId.ONGOING_OVERLAY_LAYER: "ongoing_overlay",
+    LayerId.EVENT_LAYER: "event",
+}
 
 
 @dataclass(slots=True)
-class EventQueue:
-    pending_events: list[Event] = field(default_factory=list)
-    current_event: Event | None = None
+class LayerEntry:
+    state: LayerState
+    scene_name: str
+    item_id: str | None = None
+    mode: str | None = None
+    payload: dict[str, Any] = field(default_factory=dict)
+    valid: bool = True
 
-    def enqueue(self, event: Event) -> None:
-        self.pending_events.append(event)
+    def reset(self) -> None:
+        self.state.active_invocation = None
+        self.state.queue.clear()
+        self.item_id = None
+        self.mode = None
+        self.payload = {}
+        self.valid = True
 
-    def clear(self) -> None:
-        self.pending_events.clear()
-        self.current_event = None
 
-    def _discard_expired_pending(self, now: float) -> None:
-        self.pending_events = [event for event in self.pending_events if not event.is_expired(now)]
-
-    def _pick_next(self) -> Event | None:
-        if not self.pending_events:
-            return None
-        best_index = min(
-            range(len(self.pending_events)),
-            key=lambda idx: (-self.pending_events[idx].priority, self.pending_events[idx].created_at),
+def _default_entries() -> dict[LayerId, LayerEntry]:
+    return {
+        layer_id: LayerEntry(
+            state=LayerState(layer_id=layer_id, priority=DEFAULT_LAYER_PRIORITIES[layer_id]),
+            scene_name=LEGACY_SCENE_NAMES[layer_id],
         )
-        return self.pending_events.pop(best_index)
+        for layer_id in LayerId
+    }
 
-    def _peek_next(self) -> Event | None:
-        if not self.pending_events:
-            return None
-        return min(
-            self.pending_events,
-            key=lambda event: (-event.priority, event.created_at),
-        )
 
-    def active_layer_visuals(self, now: float) -> list[LayerVisual]:
-        self._discard_expired_pending(now)
+def _is_expired(invocation: EffectInvocation, now: float) -> bool:
+    if invocation.requested_duration_ms is None:
+        return False
+    activated_at = invocation.params.get("__activated_at", invocation.created_at)
+    return now >= float(activated_at) + (invocation.requested_duration_ms / 1000.0)
 
-        if self.current_event and self.current_event.is_expired(now):
-            self.current_event = None
 
-        contender = self._peek_next()
-        if self.current_event is not None and contender is not None and contender.priority > self.current_event.priority:
-            self.pending_events.append(self.current_event)
-            self.current_event = None
-
-        if self.current_event is None:
-            self.current_event = self._pick_next()
-
-        if self.current_event is None:
-            return []
-
-        return [
-            LayerVisual(
-                name=f"event:{self.current_event.id}",
-                priority=EVENT_LAYER_PRIORITY,
-                visual=self.current_event.visual,
-            )
-        ]
+def _event_sort_key(invocation: EffectInvocation) -> tuple[int, float]:
+    return (-invocation.effective_priority(), invocation.created_at)
 
 
 @dataclass(slots=True)
 class LayerStore:
     base_state: BaseState = field(default_factory=BaseState)
-    state_layer: StateLayerState = field(default_factory=StateLayerState)
-    main_layer: ActiveVisualState | None = None
-    direction_deg: float | None = None
-    direction_visual: object | None = None
     countdown: CountdownState | None = None
-    countdown_visual: object | None = None
+    direction_deg: float | None = None
     brightness: float = 1.0
     enabled: bool = True
-    event_layer: EventQueue = field(default_factory=EventQueue)
+    layers: dict[LayerId, LayerEntry] = field(default_factory=_default_entries)
+
+    def layer(self, layer_id: LayerId) -> LayerEntry:
+        return self.layers[layer_id]
+
+    @property
+    def current_event(self) -> EffectInvocation | None:
+        return self.layer(LayerId.EVENT_LAYER).state.active_invocation
+
+    @property
+    def pending_events(self) -> list[EffectInvocation]:
+        return list(self.layer(LayerId.EVENT_LAYER).state.queue)
+
+    def clear_layer(self, layer_id: LayerId) -> list[str]:
+        entry = self.layer(layer_id)
+        removed_ids: list[str] = []
+        if entry.state.active_invocation is not None:
+            removed_ids.append(entry.state.active_invocation.invocation_id)
+        removed_ids.extend(invocation.invocation_id for invocation in entry.state.queue)
+        entry.reset()
+        entry.scene_name = LEGACY_SCENE_NAMES[layer_id]
+        entry.state.enabled = True
+        return removed_ids
+
+    def set_invocation(
+        self,
+        layer_id: LayerId,
+        invocation: EffectInvocation,
+        *,
+        scene_name: str | None = None,
+        item_id: str | None = None,
+        mode: str | None = None,
+        payload: dict[str, Any] | None = None,
+        valid: bool = True,
+        enqueue: bool = False,
+    ) -> list[str]:
+        entry = self.layer(layer_id)
+        if layer_id is LayerId.EVENT_LAYER and enqueue:
+            self._insert_event(entry.state.queue, invocation)
+            if entry.state.active_invocation is None:
+                entry.state.active_invocation = entry.state.queue.pop(0)
+                entry.state.active_invocation.params.setdefault("__activated_at", invocation.created_at)
+            return []
+
+        removed_ids = self.clear_layer(layer_id)
+        entry.state.active_invocation = invocation
+        entry.scene_name = scene_name or LEGACY_SCENE_NAMES[layer_id]
+        entry.item_id = item_id
+        entry.mode = mode
+        entry.payload = dict(payload or {})
+        entry.valid = valid
+        return removed_ids
+
+    def advance(self, now: float) -> list[str]:
+        expired_ids: list[str] = []
+
+        for layer_id, entry in self.layers.items():
+            if layer_id is LayerId.EVENT_LAYER:
+                expired_ids.extend(self._advance_event_layer(entry, now))
+                continue
+
+            active = entry.state.active_invocation
+            if active is None or not _is_expired(active, now):
+                continue
+            expired_ids.append(active.invocation_id)
+            entry.reset()
+            entry.scene_name = LEGACY_SCENE_NAMES[layer_id]
+            entry.state.enabled = True
+
+        return expired_ids
+
+    def _advance_event_layer(self, entry: LayerEntry, now: float) -> list[str]:
+        expired_ids: list[str] = []
+        active = entry.state.active_invocation
+        if active is not None and _is_expired(active, now):
+            expired_ids.append(active.invocation_id)
+            entry.state.active_invocation = None
+        if entry.state.active_invocation is None and entry.state.queue:
+            entry.state.active_invocation = entry.state.queue.pop(0)
+            entry.state.active_invocation.params["__activated_at"] = now
+        return expired_ids
+
+    def _insert_event(self, queue: list[EffectInvocation], invocation: EffectInvocation) -> None:
+        insert_at = len(queue)
+        candidate_key = _event_sort_key(invocation)
+        for index, queued in enumerate(queue):
+            if candidate_key < _event_sort_key(queued):
+                insert_at = index
+                break
+        queue.insert(insert_at, invocation)

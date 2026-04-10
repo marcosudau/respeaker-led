@@ -1,9 +1,0 @@
-{
-  "base_color": "0x020304",
-  "items": [
-    {"name": "PR-481", "state": "reviewing", "priority": 180, "age_minutes": 55, "comments": 2},
-    {"name": "PR-482", "state": "changes", "priority": 260, "age_minutes": 120, "comments": 5, "changes_requested": true},
-    {"name": "PR-483", "state": "approved", "priority": 140, "age_minutes": 18, "comments": 1, "merge_ready": true},
-    {"name": "PR-484", "state": "blocked", "priority": 300, "age_minutes": 210, "comments": 3, "changes_requested": true}
-  ]
-}

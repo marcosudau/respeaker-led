@@ -1,76 +1,91 @@
 # Runtime Layer-Modell
 
-Diese Seite enthaelt das interne Schichtenmodell der Runtime.
+Diese Seite beschreibt das heutige interne Layer-Modell des Service-Kerns in `src/`.
 
-Sie wurde bewusst aus der normalen User-Doku herausgezogen, weil sie fuer den Einstieg nicht noetig ist.
+Sie ist die passende Referenz fuer:
 
-Der Controller arbeitet intern weiter frame-basiert, aber die oeffentliche Semantik ist generischer:
-
-- `base_state`
-- `active_visual`
-- `direction_overlay`
-- `countdown_overlay`
-- `event_overlay`
+- `src/effect_schema.py`
+- `src/layers.py`
+- `src/runtime.py`
+- `src/composer.py`
+- `src/normalization.py`
 
 ## Grundidee
 
+Der laufende Service arbeitet intern nicht mit den alten Begriffen `Background`, `Work`, `Alert`, sondern mit sechs festen Layer-IDs.
+
+Die Pipeline lautet:
+
 ```mermaid
 flowchart LR
-    A["base_state"] --> E["SceneComposer"]
-    B["active_visual"] --> E
-    C["direction_overlay / countdown_overlay"] --> E
-    D["event_overlay"] --> E
-    E --> F["SceneRenderer"]
-    F --> G["12 LEDs / ReSpeaker"]
+    A["CLI / API / Adapter / Presets"] --> B["ControllerCommandNormalizer"]
+    B --> C["NormalizedCommand"]
+    C --> D["EffectInvocation"]
+    D --> E["LayerStore"]
+    E --> F["SceneComposer"]
+    F --> G["SceneRenderer"]
+    G --> H["FrameAdapter"]
 ```
 
-## `base_state`
+## Finale Layer
 
-Der Controller verwaltet genau einen aktiven Basiszustand.
+| Layer | Prioritaet | Zweck | Dauerprofil |
+|---|---:|---|---|
+| `BACKGROUND_STATE_LAYER` | 100 | persistente Grundanzeige | unbestimmt |
+| `STATE_LAYER` | 200 | laufender App-Zustand | unbestimmt |
+| `MAIN_LAYER` | 300 | freie Hauptanzeige | endlich oder unbestimmt |
+| `TEMP_OVERLAY_LAYER` | 400 | endliche Einblendungen | endlich |
+| `ONGOING_OVERLAY_LAYER` | 500 | laufende Overlays | unbestimmt |
+| `EVENT_LAYER` | 600 | Event-Queue | endlich |
 
-Typische Inhalte:
+## Was der Status nach aussen zeigt
 
-- `offline`
-- `idle`
-- `listening`
-- `recording`
-- `transcribing`
-- `error`
+`ControllerRuntime.get_status()` exposeiert nicht alle Layernamen direkt, sondern ein kompakteres Snapshot-Modell:
 
-## `active_visual`
+- `base_state`
+- `active_visual`
+- `event_overlay`
+- `render_layers.state_visual`
+- `render_layers.direction_visual`
+- `render_layers.countdown_visual`
 
-Die normale Hauptanzeige, die vom Basiszustand oder optionalen Effekt-Packs gespeist wird.
+Das bedeutet:
 
-Typische Inhalte:
+- intern existieren sechs Layer
+- nach aussen werden die wichtigsten sichtbaren Gruppen im Snapshot zusammengefasst
 
-- zustandsspezifische Aktivitaetsvisuals
-- optionale Preset-/Effekt-Pack-Visuals
-- generische Primitive wie `progress`, `pulse` oder `dynamic_frame`
+## Queue-Verhalten
 
-## `direction_overlay` und `countdown_overlay`
+Nur `EVENT_LAYER` besitzt Queue-Semantik.
 
-Zusaetzliche Hilfsebenen fuer optionale Richtungsdaten und den Timeout-Countdown.
+Die Regeln sind:
 
-- `direction_overlay` markiert eine Richtung, wenn `direction_deg` gesetzt ist
-- `countdown_overlay` laeuft intern im Controller und braucht keine Frame-Steuerung von aussen
+- Sortierung nach `priority`
+- bei gleicher Prioritaet FIFO
+- das aktuell laufende Event bleibt aktiv
+- die Laufzeit beginnt erst bei Aktivierung des Events
 
-## `event_overlay`
+Die Aktivierungszeit wird in `src/layers.py` ueber `__activated_at` verfolgt.
 
-Kurzlebige Hinweise mit hoechster Prioritaet.
+## Spezialfaelle als normale Effekte
 
-Typische Inhalte:
+Die Runtime rendert `direction`, `countdown` und `progress` nicht mehr als eigene Sonderpfade. Diese Dinge sind heute normale Effektdefinitionen:
 
-- `trigger_received`
-- `text_committed`
-- `warning`
-- `error_flash`
-- `timeout_imminent`
+- `direction_indicator`
+- `countdown_ring`
+- `progress_bar`
 
-## Zusammenspiel
+Direkte manuelle Effektanwendung laeuft ebenfalls ueber denselben Mechanismus, zum Beispiel per `apply-effect solid_color main`.
 
-- `base_state` bleibt die semantische Quelle fuer den Dauerzustand
-- `active_visual` erzeugt die sichtbare Hauptanimation
-- `direction_overlay` und `countdown_overlay` bleiben optional
-- `event_overlay` unterbricht temporaer den Basiszustand
-- der Composer baut daraus eine `Scene`
-- der Renderer erzeugt daraus einen 12-LED-`Frame`
+## Background-State-Persistenz
+
+`BACKGROUND_STATE_LAYER` ist jetzt end-to-end an eine kleine Persistenzstrecke angeschlossen.
+
+Der aktuelle persistierbare Background-State wird in `runtime_state/background_state.json` geschrieben und beim naechsten Service-Start wiederhergestellt.
+
+Wichtig:
+
+- persistiert wird nur `BACKGROUND_STATE_LAYER`
+- nur persistierbare Effektparameter werden in die Datei geschrieben
+- transiente Servicemodi wie `offline` und `service_stopping` werden nicht in den gespeicherten Background-State uebernommen
+- ohne gueltige Persistenzdatei verwendet der Service als Start-Fallback `solid_color` in Weiss mit `brightness=0.2`

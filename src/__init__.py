@@ -1,4 +1,4 @@
-"""Core package for the reSpeaker LED effect engine."""
+"""Core package for the reSpeaker LED controller service."""
 
 __all__ = [
     "adapters",
@@ -6,9 +6,12 @@ __all__ = [
     "client",
     "cli",
     "composer",
+    "effect_registry",
+    "effect_schema",
     "effects",
     "layers",
     "models",
+    "normalization",
     "preset_loader",
     "renderer",
     "runtime",

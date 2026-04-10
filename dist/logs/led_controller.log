@@ -1,0 +1,12 @@
+2026-04-10 03:42:17,780 INFO led_controller.cli starting controller service output_mode=console-preview host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 03:42:17,807 INFO led_controller.service applied default background fallback because no persisted background state was found
+2026-04-10 03:42:17,808 INFO led_controller.service controller service initialized output_mode=console-preview requested_output_mode=console-preview fallback_active=False
+2026-04-10 03:42:18,168 INFO led_controller.service controller service started fps=8.0
+2026-04-10 03:42:59,926 INFO led_controller.service shutdown requested
+2026-04-10 03:43:00,431 INFO led_controller.service controller service stopped
+2026-04-10 03:49:01,925 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 03:49:02,041 INFO led_controller.service restored persisted background state from C:\Users\marco\OneDrive\Desktop\led_controller_umstrukturierung_service\dist\runtime_state\background_state.json
+2026-04-10 03:49:02,042 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-10 03:49:02,428 INFO led_controller.service controller service started fps=8.0
+2026-04-10 03:50:25,718 INFO led_controller.service shutdown requested
+2026-04-10 03:50:26,228 INFO led_controller.service controller service stopped

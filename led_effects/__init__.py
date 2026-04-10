@@ -1,1 +1,1 @@
-"""LED effects package – contains the reusable effects engine and preset packs."""
+"""LED effects package – contains the service effect library and optional preset packs."""

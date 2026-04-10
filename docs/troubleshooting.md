@@ -1,41 +1,49 @@
 # Troubleshooting
 
-## Ich weiss nicht, welchen Weg ich ueberhaupt nehmen soll
+## Ich weiss nicht, womit ich anfangen soll
 
-Das ist der haeufigste Startfehler.
+Fuer den aktuellen Repo-Stand gilt nur noch ein Weg:
 
-- fuer direktes Licht in Python: [effects_engine_2_minuten.md](effects_engine_2_minuten.md)
-- fuer eigene JSON/YAML-Dateien: [effects_engine_tutorial.md](effects_engine_tutorial.md)
-- fuer Fernsteuerung eines laufenden Controllers: [api_guide.md](api_guide.md)
-- fuer Repo-Orientierung: [layers.md](layers.md)
+- [Schnellstart](getting_started.md) fuer den ersten Start
+- [CLI und API](api_guide.md) fuer die komplette Steuerung
 
-## Muss ich JSON/YAML an die API schicken?
+## Der Service ist nicht erreichbar
 
-Nein.
+Pruefe der Reihe nach:
 
-- JSON/YAML-Dateien werden lokal in Python geladen
-- API und CLI steuern einen laufenden Controller-Service
+- laeuft im ersten Terminal noch `python .\main.py --no-device serve --host 127.0.0.1 --port 8765`?
+- antwortet im zweiten Terminal `python .\main.py ping`?
+- stimmen `--host` und `--port` mit dem Startbefehl ueberein?
+- blockiert bereits ein anderer Prozess den Port?
+- wurde beim Start eventuell ein anderer Port aus `--port-pool` gewaehlt?
+- steht der effektiv verwendete Port in `runtime_state/active_service.json`?
 
 ## Tests schlagen fehl
 
-- zuerst `pytest -q` aus dem Projekt-Root laufen lassen
+- zuerst `pytest -q --basetemp=.pytest_tmp` aus dem Projekt-Root laufen lassen
 - bei Importfehlern pruefen, ob du wirklich aus dem Projekt-Root startest
-- bei Discovery-Fehlern Manifest und Modul des Preset-Packs kontrollieren
 
-## Kein Effekt in der Preview sichtbar
+## Ich sehe ohne Hardware keine Ausgabe
 
-- wurde `--no-device` gesetzt?
-- wird vielleicht die falsche Schnittstelle benutzt, obwohl eigentlich nur ein lokaler Effekt angezeigt werden soll?
-- wurde per CLI oder API wirklich ein Basiszustand, Event oder Countdown gesetzt?
-- liefert der Snapshot unter `GET /api/v1/status` gueltige `last_frame`-Daten?
-- ist `enabled` im Status eventuell auf `false` gesetzt?
+- starte wirklich mit `--no-device`
+- lasse das Startterminal offen
+- der Service previewt dann die gerenderten Frames direkt in der Konsole
+- zusaetzlich kannst du mit `python .\main.py status` den letzten Frame im JSON pruefen
+- ohne gespeicherte Datei startet der Background-State bewusst als gedimmtes Weiss in `runtime_state/background_state.json`
 
-## Der lokale Controller ist nicht erreichbar
+## Mein Effekt ist nicht sichtbar
 
-- laeuft `python .\main.py --no-device serve` noch?
-- antwortet `python .\main.py ping`?
-- nutzt der Client den richtigen `--host` und `--port`?
-- fuer externe Tools den Best-Effort-Client aus `src/client.py` statt direkter Hardware-Nutzung verwenden
+- liefert `python .\main.py list-effects` die verwendete `effect_id` wirklich?
+- wurde der Effekt auf den richtigen Layer gesetzt, zum Beispiel `main` oder `state`?
+- steht `enabled` im Status vielleicht auf `false`?
+- wurde der Layer spaeter durch `set-state`, `clear-layer` oder `reset` wieder ueberschrieben?
+- liefert `python .\main.py status` gueltige `last_frame`-Daten?
+
+## `apply-effect` liefert einen Fehler
+
+- pruefe die Effect-ID mit `python .\main.py list-effects`
+- pruefe den Layernamen, zum Beispiel `main`, `state` oder `event`
+- pruefe, ob `--params` gueltiges JSON ist
 
 ## Preset wird nicht gefunden
 
@@ -50,3 +58,22 @@ Nein.
 - starte fuer lokale Verifikation zuerst mit `--no-device`
 - der Hardware-Pfad nutzt weiterhin `python_control/xvf_host.py`
 - wenn die Hardwareinitialisierung fehlschlaegt, bleibt der Service erreichbar und meldet `fallback_active: true`
+
+## Der neue Service startet, aber der alte lief noch
+
+- Release 1 ist auf genau eine aktive Instanz ausgelegt
+- eine neue Instanz versucht eine vorhandene alte aktive Instanz zuerst ueber deren Metadaten aus `runtime_state/active_service.json` zu beenden
+- wenn das nicht gelingt, pruefe `runtime_state/active_service.json` und `logs/led_controller.log`
+
+## Ich weiss nicht, welchen Port der gestartete Unterprozess verwendet
+
+- lies `runtime_state/active_service.json`
+- dort stehen PID, Host, Port und Status der aktiven Instanz
+- beim Start gibt der Prozess dieselben Informationen zusaetzlich als JSON auf stdout aus
+
+## Der Background-State wirkt nach einem Neustart anders als erwartet
+
+- pruefe den Inhalt von `runtime_state/background_state.json`
+- der Service restauriert den letzten persistierbaren Background-State beim Start automatisch
+- wenn die Datei fehlt oder ungueltig ist, startet der Service mit `solid_color` in Weiss und `brightness=0.2`
+- transiente Service-Zustaende wie `service_stopping` werden absichtlich nicht als persistierter Background-State uebernommen

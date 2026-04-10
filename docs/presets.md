@@ -2,7 +2,7 @@
 
 Diese Seite ist bewusst als **optionales** Thema markiert.
 
-Wenn du einfach nur Effekte anzeigen oder eigene JSON/YAML-Dateien definieren willst, brauchst du Preset-Packs nicht.
+Wenn du einfach nur den Service starten und direkte Built-in-Effekte setzen willst, brauchst du Preset-Packs nicht.
 
 ## Was Preset-Packs sind
 
@@ -11,14 +11,13 @@ Preset-Packs sind eine Erweiterungsschicht fuer den laufenden Controller in `src
 Sie sind sinnvoll, wenn du:
 
 - wiederverwendbare Komplettpakete bauen willst
-- eigene CLI/API-Kommandos fuer Presets haben willst
-- ueber die normale Effect-Engine-Konfiguration hinausgehen willst
+- wiederkehrende Effektkonfigurationen mit eigenem Namen bereitstellen willst
+- Service-Effekte ueber ein gemeinsames Build-Schema zusammensetzen willst
 
 ## Was Preset-Packs nicht sind
 
-- nicht der normale Einstieg fuer einfache LED-Effekte
-- nicht notwendig fuer die Effects Engine
-- nicht notwendig fuer JSON/YAML-Effektdateien in `led_effects/effects_engine`
+- nicht der normale Einstieg fuer den ersten Service-Test
+- nicht noetig, um `apply-effect` oder `set-state` zu verwenden
 
 ## Speicherort
 
@@ -40,5 +39,5 @@ Preset-Packs werden unter `led_effects/preset_packs/<preset_name>/` erwartet.
 Dann geh lieber hierhin:
 
 - [Hier anfangen](getting_started.md)
-- [Eigene Anzeigen Schritt fuer Schritt](effects_engine_tutorial.md)
-- [Wegweiser durchs Repo](layers.md)
+- [CLI und API](api_guide.md)
+- [Aktueller Ansatz im Repo](current_approach.md)

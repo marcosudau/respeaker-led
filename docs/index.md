@@ -1,44 +1,25 @@
 # Dokumentation
 
-Diese Doku ist jetzt bewusst in zwei Bereiche getrennt:
-
-- **User-Doku**: fuer Menschen, die einfach LEDs steuern oder eigene Anzeigen bauen wollen
-- **Dev-Doku**: fuer Architektur, interne Modelle und Erweiterungen am Code
+Diese Doku beschreibt nur noch den aktiven Service-Pfad des Repos.
 
 ## Hier anfangen
 
-Wenn du einfach nur etwas sichtbar machen willst:
+- [Schnellstart in einzelnen Schritten](getting_started.md)
+- [CLI und API im Detail](api_guide.md)
+- [Effekte verstehen und neue Effekte bauen](effects.md)
+- [Aktueller Ansatz im Repo](current_approach.md)
 
-- [Hier anfangen](getting_started.md)
-- [LEDs in 2 Minuten anzeigen](effects_engine_2_minuten.md)
-
-Wenn du eigene Anzeigen bauen willst:
-
-- [Eigene Anzeigen Schritt fuer Schritt](effects_engine_tutorial.md)
-- [Welche Anzeigen es gibt](effects_engine.md)
-- [Farben, Typen und Namen zum Nachschlagen](reference.md)
-
-Wenn du erst verstehen willst, wo was im Repo liegt:
-
-- [Wegweiser durchs Repo](layers.md)
-
-Wenn du einen laufenden Controller von aussen steuern willst:
-
-- [CLI und API](api_guide.md)
-
-Wenn etwas nicht funktioniert:
-
-- [Troubleshooting](troubleshooting.md)
-
-## Optional und spaeter
-
-Diese Themen brauchst du am Anfang meistens nicht:
+## Optional
 
 - [Optionale Preset-Packs](presets.md)
+- [Troubleshooting](troubleshooting.md)
+
+## Fuer Entwicklung
+
 - [Entwickler-Doku](dev/index.md)
+- [Planungs- und Architekturhistorie](planning/index.md)
 
-## Wichtigster Unterschied im ganzen Repo
+## Grundsatz
 
-- **JSON/YAML-Dateien** definieren lokale Effekte und werden in Python geladen
-- **CLI/API** steuern einen laufenden Controller-Prozess
-- JSON/YAML werden **nicht** an die API geschickt
+- Es gibt nur noch einen aktiven Betriebsweg: einen laufenden lokalen Service.
+- Alle Steuerung laeuft ueber CLI oder HTTP gegen diesen Service.

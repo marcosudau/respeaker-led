@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-import json
 import threading
-import threading
-import time
 from contextlib import asynccontextmanager
 from typing import Any, Callable
 
 from fastapi import Body, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from .logging_utils import get_logger
 from .preset_loader import PresetRegistry
 from .service import ControllerService
+
+
+logger = get_logger("api")
 
 
 class StateCommand(BaseModel):
@@ -51,6 +53,20 @@ class EnabledCommand(BaseModel):
     enabled: bool
 
 
+class EffectCommand(BaseModel):
+    effect_id: str
+    target_layer: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    duration_ms: int | None = None
+    priority: int | None = None
+    enqueue: bool = False
+    replace_existing: bool = True
+
+
+class ClearLayerCommand(BaseModel):
+    target_layer: str
+
+
 class PresetActivationRequest(BaseModel):
     spec: dict[str, Any] = Field(default_factory=dict)
 
@@ -61,6 +77,7 @@ def create_app(
     use_device: bool = True,
     preset_registry: PresetRegistry | None = None,
     adapter_factory: Callable[[], Any] | None = None,
+    lifecycle_callback: Callable[[str], None] | None = None,
 ) -> FastAPI:
     service = ControllerService(
         fps=fps,
@@ -72,9 +89,13 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         service.start()
+        if lifecycle_callback is not None:
+            lifecycle_callback("started")
         try:
             yield
         finally:
+            if lifecycle_callback is not None:
+                lifecycle_callback("stopping")
             service.stop()
 
     app = FastAPI(
@@ -88,6 +109,11 @@ def create_app(
 
     def get_service(request: Request) -> ControllerService:
         return request.app.state.controller_service
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        logger.exception("unhandled api exception method=%s path=%s", request.method, request.url.path)
+        return JSONResponse(status_code=500, content={"detail": "internal_server_error"})
 
     @app.get("/")
     def root(request: Request):
@@ -103,9 +129,13 @@ def create_app(
             "requested_output_mode": snapshot["requested_output_mode"],
             "render_loop_running": snapshot["render_loop_running"],
             "commands": [
+                "list_presets",
+                "list_effects",
                 "set_state",
                 "clear_state",
                 "emit_event",
+                "apply_effect",
+                "clear_layer",
                 "reset",
                 "shutdown",
                 "ping",
@@ -144,6 +174,10 @@ def create_app(
     @app.get("/api/v1/presets")
     def list_presets(request: Request):
         return {"items": get_service(request).list_presets()}
+
+    @app.get("/api/v1/effects")
+    def list_effects(request: Request):
+        return {"items": get_service(request).list_effects()}
 
     @app.get("/api/v1/presets/{preset_id}")
     def preset_detail(preset_id: str, request: Request):
@@ -186,6 +220,32 @@ def create_app(
         try:
             return get_service(request).emit_event(payload.event_name, payload.payload)
         except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/commands/apply_effect")
+    def apply_effect(request: Request, payload: EffectCommand):
+        service = get_service(request)
+        try:
+            return service.apply_effect(
+                payload.effect_id,
+                payload.target_layer,
+                payload.params,
+                duration_ms=payload.duration_ms,
+                priority=payload.priority,
+                enqueue=payload.enqueue,
+                replace_existing=payload.replace_existing,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v1/commands/clear_layer")
+    def clear_layer(request: Request, payload: ClearLayerCommand):
+        service = get_service(request)
+        try:
+            return service.clear_layer(payload.target_layer)
+        except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.post("/api/v1/commands/reset")

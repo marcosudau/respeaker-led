@@ -57,3 +57,48 @@ def test_client_maps_countdown_command_to_expected_path(monkeypatch):
             },
         )
     ]
+
+
+def test_client_maps_apply_effect_and_clear_layer_commands(monkeypatch):
+    recorded: list[tuple[str, str, dict | None]] = []
+
+    def fake_request(self, method: str, path: str, payload=None):
+        recorded.append((method, path, payload))
+        return ClientCallResult(ok=True, status_code=200, data={"ok": True})
+
+    monkeypatch.setattr(LocalControllerClient, "_request_json", fake_request)
+
+    client = LocalControllerClient()
+    apply_result = client.apply_effect(
+        "solid_color",
+        "main",
+        {"color": "0x224466"},
+        duration_ms=900,
+        priority=700,
+        enqueue=True,
+        replace_existing=False,
+    )
+    clear_result = client.clear_layer("main_layer")
+
+    assert apply_result.ok is True
+    assert clear_result.ok is True
+    assert recorded == [
+        (
+            "POST",
+            "/api/v1/commands/apply_effect",
+            {
+                "effect_id": "solid_color",
+                "target_layer": "main",
+                "params": {"color": "0x224466"},
+                "duration_ms": 900,
+                "priority": 700,
+                "enqueue": True,
+                "replace_existing": False,
+            },
+        ),
+        (
+            "POST",
+            "/api/v1/commands/clear_layer",
+            {"target_layer": "main_layer"},
+        ),
+    ]

@@ -38,6 +38,12 @@ class LocalControllerClient:
     def get_status(self) -> ClientCallResult:
         return self._request_json("GET", "/api/v1/status")
 
+    def list_presets(self) -> ClientCallResult:
+        return self._request_json("GET", "/api/v1/presets")
+
+    def list_effects(self) -> ClientCallResult:
+        return self._request_json("GET", "/api/v1/effects")
+
     def set_state(self, state_name: str, payload: dict[str, Any] | None = None) -> ClientCallResult:
         return self._request_json("POST", "/api/v1/commands/set_state", {"state_name": state_name, "payload": payload or {}})
 
@@ -92,6 +98,34 @@ class LocalControllerClient:
 
     def activate_preset(self, preset_id: str, spec: dict[str, Any] | None = None) -> ClientCallResult:
         return self._request_json("POST", f"/api/v1/presets/{preset_id}/activate", {"spec": spec or {}})
+
+    def apply_effect(
+        self,
+        effect_id: str,
+        target_layer: str,
+        params: dict[str, Any] | None = None,
+        *,
+        duration_ms: int | None = None,
+        priority: int | None = None,
+        enqueue: bool = False,
+        replace_existing: bool = True,
+    ) -> ClientCallResult:
+        return self._request_json(
+            "POST",
+            "/api/v1/commands/apply_effect",
+            {
+                "effect_id": effect_id,
+                "target_layer": target_layer,
+                "params": params or {},
+                "duration_ms": duration_ms,
+                "priority": priority,
+                "enqueue": enqueue,
+                "replace_existing": replace_existing,
+            },
+        )
+
+    def clear_layer(self, target_layer: str) -> ClientCallResult:
+        return self._request_json("POST", "/api/v1/commands/clear_layer", {"target_layer": target_layer})
 
     def _request_json(self, method: str, path: str, payload: dict[str, Any] | None = None) -> ClientCallResult:
         url = f"{self.base_url}{path}"

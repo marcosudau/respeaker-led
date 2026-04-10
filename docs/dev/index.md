@@ -2,18 +2,15 @@
 
 Diese Seiten sind fuer interne Entwicklung gedacht.
 
-Wenn du nur LEDs anzeigen oder eigene Effektdateien bauen willst, brauchst du diesen Bereich normalerweise nicht.
+Wenn du nur den Service starten und steuern willst, brauchst du diesen Bereich normalerweise nicht.
 
 ## Architektur und Orientierung
 
 - [Runtime Layer-Modell](runtime_layers.md)
 - [Development Notes](dev_notes.md)
 - [Public Entry Points](public_entry_points.md)
-- [Change Log](change_log.md)
-
-## Effects Engine Interna
-
-- [Effects Engine – Entwickler-Dokumentation](effects_engine_dev.md)
+- [Effekte verstehen und neue Effekte bauen](../effects.md)
+- [Planungs- und Architekturstand](../planning/index.md)
 
 ## Typische Dev-Fragen
 
@@ -25,6 +22,6 @@ Wenn du nur LEDs anzeigen oder eigene Effektdateien bauen willst, brauchst du di
 
 - [public_entry_points.md](public_entry_points.md)
 
-### Ich will die Effects Engine erweitern
+### Ich will den aktuellen Service-Ansatz statt alter Migrationshistorie verstehen
 
-- [effects_engine_dev.md](effects_engine_dev.md)
+- [../current_approach.md](../current_approach.md)

@@ -20,6 +20,7 @@ def test_api_root_health_ping_and_status_snapshot():
         assert root_response.status_code == 200
         assert root_response.json()["api_base"] == "/api/v1"
         assert "set_state" in root_response.json()["commands"]
+        assert "apply_effect" in root_response.json()["commands"]
         assert root_response.json()["output_mode"] == "console-preview"
 
         health_response = client.get("/health")
@@ -37,6 +38,33 @@ def test_api_root_health_ping_and_status_snapshot():
         assert "event_overlay" in payload
         assert "render_count" in payload
         assert payload["render_loop_running"] is True
+
+
+def test_api_lists_builtin_effects_and_can_apply_and_clear_effects():
+    with make_client() as client:
+        list_response = client.get("/api/v1/effects")
+        assert list_response.status_code == 200
+        effect_ids = {item["id"] for item in list_response.json()["items"]}
+        assert {"solid_color", "soft_pulse", "warning_flash"}.issubset(effect_ids)
+
+        apply_response = client.post(
+            "/api/v1/commands/apply_effect",
+            json={
+                "effect_id": "solid_color",
+                "target_layer": "main",
+                "params": {"color": "0x224466"},
+            },
+        )
+        assert apply_response.status_code == 200
+        assert apply_response.json()["active_visual"]["visual"]["effect_id"] == "solid_color"
+        assert apply_response.json()["active_visual"]["payload"]["color"] == "0x224466"
+
+        clear_response = client.post(
+            "/api/v1/commands/clear_layer",
+            json={"target_layer": "main_layer"},
+        )
+        assert clear_response.status_code == 200
+        assert clear_response.json()["active_visual"] is None
 
 
 def test_api_generic_command_flow():
@@ -96,6 +124,16 @@ def test_api_generic_command_flow():
         assert reset_response.status_code == 200
         assert reset_response.json()["base_state"]["name"] == "idle"
         assert reset_response.json()["enabled"] is True
+
+
+def test_api_apply_effect_returns_404_for_unknown_effect():
+    with make_client() as client:
+        response = client.post(
+            "/api/v1/commands/apply_effect",
+            json={"effect_id": "not_real", "target_layer": "main_layer", "params": {}},
+        )
+
+        assert response.status_code == 404
 
 
 def test_preset_routes_are_defined_even_without_discovered_presets():

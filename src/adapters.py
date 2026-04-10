@@ -13,14 +13,24 @@ class FrameAdapter(Protocol):
 
 
 class ConsolePreviewAdapter:
-    def __init__(self, *, show_timestamp: bool = True, emit_output: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        show_timestamp: bool = True,
+        emit_output: bool = True,
+        emit_only_on_change: bool = False,
+    ) -> None:
         self.last_frame: Frame | None = None
         self.show_timestamp = show_timestamp
         self.emit_output = emit_output
+        self.emit_only_on_change = emit_only_on_change
 
     def apply_frame(self, frame: Frame) -> None:
+        previous = self.last_frame
         self.last_frame = frame
         if not self.emit_output:
+            return
+        if self.emit_only_on_change and previous is not None and previous.leds == frame.leds:
             return
         encoded = " ".join(f"{color:06X}" for color in frame.leds)
         if self.show_timestamp:

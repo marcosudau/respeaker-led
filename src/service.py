@@ -7,8 +7,16 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .adapters import ConsolePreviewAdapter, FrameAdapter, ReSpeakerAdapter
+from .background_state_store import load_background_state, save_background_state
+from .effect_schema import parse_layer_id
+from .logging_utils import get_logger
+from .paths import BACKGROUND_STATE_FILE
 from .preset_loader import PresetRegistry
 from .runtime import ControllerRuntime
+from .models import Frame, LED_COUNT
+
+
+logger = get_logger("service")
 
 
 class ControllerService:
@@ -19,9 +27,15 @@ class ControllerService:
         use_device: bool = True,
         preset_registry: PresetRegistry | None = None,
         adapter_factory: Callable[[], FrameAdapter] | None = None,
+        background_state_file: str | Path | None = None,
+        signal_on_s: float = 0.06,
+        signal_off_s: float = 0.04,
     ) -> None:
         self.fps = max(1.0, float(fps))
         self.preset_registry = preset_registry or PresetRegistry.empty()
+        self.background_state_file = Path(background_state_file or BACKGROUND_STATE_FILE)
+        self.signal_on_s = max(0.0, float(signal_on_s))
+        self.signal_off_s = max(0.0, float(signal_off_s))
         self.requested_output_mode = "device" if use_device else "console-preview"
         self.adapter, self.output_mode, self.device_available, self.fallback_active, self._adapter_error = self._build_adapter(
             use_device=use_device,
@@ -35,6 +49,15 @@ class ControllerService:
         self._last_error: str | None = self._adapter_error
         self._started_at: float | None = None
         self._shutdown_callback: Callable[[], None] | None = None
+        self._background_state_signature: str | None = None
+
+        self._restore_background_state()
+        logger.info(
+            "controller service initialized output_mode=%s requested_output_mode=%s fallback_active=%s",
+            self.output_mode,
+            self.requested_output_mode,
+            self.fallback_active,
+        )
 
         if self.fallback_active and use_device:
             self.runtime.set_state(
@@ -56,7 +79,13 @@ class ControllerService:
                 return fallback, "console-preview", False, True, repr(exc)
 
         if not use_device:
-            return ConsolePreviewAdapter(show_timestamp=False, emit_output=False), "console-preview", False, False, None
+            return (
+                ConsolePreviewAdapter(show_timestamp=False, emit_output=True, emit_only_on_change=True),
+                "console-preview",
+                False,
+                False,
+                None,
+            )
 
         try:
             return ReSpeakerAdapter(), "device", True, False, None
@@ -72,19 +101,54 @@ class ControllerService:
             return
         self._stop_event.clear()
         self._started_at = time.time()
+        self._emit_service_signal(0x00FF00)
         self._thread = threading.Thread(target=self._render_loop, name="controller-service-render", daemon=True)
         self._thread.start()
+        logger.info("controller service started fps=%s", self.fps)
 
     def stop(self) -> None:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=2.0)
         with self._lock:
+            if self._started_at is not None:
+                self._emit_service_signal(0xFF0000)
             self.runtime.close()
+        self._thread = None
+        self._started_at = None
+        logger.info("controller service stopped")
 
     def _render_once_locked(self, now: float | None = None) -> None:
         self.runtime.render_once(time.monotonic() if now is None else now)
+        self._sync_background_state_storage()
         self._render_count += 1
+
+    def _restore_background_state(self) -> None:
+        persisted_state = load_background_state(self.background_state_file)
+        if persisted_state is not None:
+            try:
+                self.runtime.restore_persisted_background_state(persisted_state)
+                logger.info("restored persisted background state from %s", self.background_state_file)
+            except Exception:
+                logger.exception("failed to restore persisted background state from %s", self.background_state_file)
+                self.runtime.apply_default_background_state()
+        else:
+            self.runtime.apply_default_background_state()
+            logger.info("applied default background fallback because no persisted background state was found")
+        self._sync_background_state_storage(force=True)
+
+    def _sync_background_state_storage(self, *, force: bool = False) -> None:
+        current_signature = self.runtime.background_state_signature()
+        if not force and current_signature == self._background_state_signature:
+            return
+
+        disposition, persisted_state = self.runtime.background_state_persistence_snapshot()
+        if disposition == "persistable":
+            save_background_state(self.background_state_file, persisted_state)
+        elif disposition == "empty":
+            save_background_state(self.background_state_file, None)
+
+        self._background_state_signature = current_signature
 
     def _render_loop(self) -> None:
         interval = 1.0 / self.fps
@@ -95,6 +159,7 @@ class ControllerService:
                     self._render_once_locked(started)
             except Exception as exc:
                 self._last_error = repr(exc)
+                logger.exception("render loop iteration failed")
             elapsed = time.monotonic() - started
             self._stop_event.wait(max(0.0, interval - elapsed))
 
@@ -148,6 +213,7 @@ class ControllerService:
     def shutdown(self) -> dict[str, Any]:
         snapshot = self._mutate(lambda: self.runtime.set_state("service_stopping", {"reason": "shutdown"}))
         self._stop_event.set()
+        logger.info("shutdown requested")
         if self._shutdown_callback is not None:
             threading.Thread(target=self._shutdown_callback, daemon=True).start()
         return snapshot
@@ -190,6 +256,39 @@ class ControllerService:
     def list_presets(self) -> list[dict[str, Any]]:
         return [self.preset_info(preset.manifest.preset_id) for preset in self.preset_registry.list_presets()]
 
+    def list_effects(self) -> list[dict[str, Any]]:
+        items: list[dict[str, Any]] = []
+        for effect_id in self.runtime.effect_registry.list_effect_ids():
+            registered = self.runtime.effect_registry.get(effect_id)
+            definition = registered.definition
+            items.append(
+                {
+                    "id": definition.id,
+                    "title": definition.title,
+                    "description": definition.description,
+                    "source_id": registered.source_id,
+                    "defaults": dict(definition.defaults),
+                    "tags": list(definition.tags),
+                    "supported_layers": [
+                        layer_id.value for layer_id, rule in definition.layer_rules.items() if rule.allowed
+                    ],
+                    "parameters": {
+                        name: {
+                            "type": param.type,
+                            "required": param.required,
+                            "default": param.default,
+                            "description": param.description,
+                            "minimum": param.minimum,
+                            "maximum": param.maximum,
+                            "enum_values": list(param.enum_values),
+                            "unit": param.unit,
+                        }
+                        for name, param in definition.parameter_schema.items()
+                    },
+                }
+            )
+        return items
+
     def preset_info(self, preset_id: str) -> dict[str, Any]:
         preset = self.preset_registry.get_by_id(preset_id)
         sample = None if preset.sample_path is None else str(preset.sample_path)
@@ -213,6 +312,50 @@ class ControllerService:
 
     def activate_preset(self, preset_id: str, spec: dict[str, Any]) -> dict[str, Any]:
         return self._mutate(lambda: self.runtime.apply_preset(preset_id, spec))
+
+    def apply_effect(
+        self,
+        effect_id: str,
+        target_layer: str,
+        params: dict[str, Any] | None = None,
+        *,
+        duration_ms: int | None = None,
+        priority: int | None = None,
+        enqueue: bool = False,
+        replace_existing: bool = True,
+    ) -> dict[str, Any]:
+        layer_id = parse_layer_id(target_layer)
+        effect_params = dict(params or {})
+        return self._mutate(
+            lambda: self.runtime.apply_effect(
+                effect_id,
+                layer_id,
+                effect_params,
+                duration_ms=duration_ms,
+                priority=priority,
+                enqueue=enqueue,
+                replace_existing=replace_existing,
+                scene_name=f"manual:{layer_id.value.lower()}:{effect_id}",
+                item_id=f"manual:{effect_id}",
+                mode=effect_id,
+                payload=effect_params,
+            )
+        )
+
+    def clear_layer(self, target_layer: str) -> dict[str, Any]:
+        layer_id = parse_layer_id(target_layer)
+        return self._mutate(lambda: self.runtime.clear_layer(layer_id))
+
+    def _emit_service_signal(self, color: int) -> None:
+        on_frame = Frame(leds=[int(color)] * LED_COUNT, timestamp=time.time())
+        off_frame = Frame(leds=[0] * LED_COUNT, timestamp=time.time())
+        for _ in range(3):
+            self.adapter.apply_frame(on_frame)
+            if self.signal_on_s > 0.0:
+                time.sleep(self.signal_on_s)
+            self.adapter.apply_frame(off_frame)
+            if self.signal_off_s > 0.0:
+                time.sleep(self.signal_off_s)
 
 
 ControllerApiService = ControllerService

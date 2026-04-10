@@ -4,6 +4,7 @@ import json
 
 from src.color_math import scale_color
 from src.effects import solid
+from src.effect_schema import LayerId
 from src.models import LED_COUNT
 from src.preset_loader import PresetRegistry
 from src.runtime import ControllerRuntime
@@ -87,6 +88,71 @@ def test_direction_brightness_and_enabled_affect_output():
     _, off_frame = controller.render_once(now=1.1)
 
     assert off_frame.leds == [0] * LED_COUNT
+
+
+def test_runtime_can_export_and_restore_persisted_background_state():
+    controller = make_controller()
+    controller.apply_effect(
+        "solid_color",
+        LayerId.BACKGROUND_STATE_LAYER,
+        {"color": "#FFFFFF", "brightness": 0.2},
+        timestamp=0.0,
+    )
+
+    disposition, persisted_state = controller.background_state_persistence_snapshot()
+
+    assert disposition == "persistable"
+    assert persisted_state is not None
+    assert persisted_state.effect_id == "solid_color"
+    assert persisted_state.params == {"color": "#FFFFFF", "brightness": 0.2}
+
+    restored = make_controller()
+    restored.restore_persisted_background_state(persisted_state)
+    _, frame = restored.render_once(now=0.0)
+
+    assert frame.leds == [0x333333] * LED_COUNT
+
+
+def test_runtime_can_persist_and_restore_legacy_background_visuals():
+    controller = make_controller()
+    controller.set_state_visual(solid(0x112233), mode="custom")
+
+    disposition, persisted_state = controller.background_state_persistence_snapshot()
+
+    assert disposition == "persistable"
+    assert persisted_state is not None
+    assert persisted_state.effect_id == "legacy_visual"
+
+    restored = make_controller()
+    restored.restore_persisted_background_state(persisted_state)
+    _, frame = restored.render_once(now=0.0)
+
+    assert frame.leds == [0x112233] * LED_COUNT
+
+
+def test_runtime_applies_default_background_fallback_as_dim_white():
+    controller = make_controller()
+    controller.apply_default_background_state()
+
+    _, frame = controller.render_once(now=0.0)
+
+    assert frame.leds == [0x333333] * LED_COUNT
+
+
+def test_controller_can_apply_effect_and_clear_runtime_layer():
+    controller = make_controller()
+    controller.apply_effect("solid_color", LayerId.MAIN_LAYER, {"color": "0x224466"}, timestamp=0.0)
+
+    scene, frame = controller.render_once(now=0.0)
+
+    assert any(layer.name.startswith("active_visual:solid_color") for layer in scene.layers)
+    assert controller.get_status(now=0.0)["active_visual"]["visual"]["effect_id"] == "solid_color"
+    assert frame.leds[0] == 0x224466
+
+    controller.clear_layer(LayerId.MAIN_LAYER)
+    controller.render_once(now=0.1)
+
+    assert controller.get_status(now=0.1)["active_visual"] is None
 
 
 def test_controller_can_apply_preset_from_registry(tmp_path):
