@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from src.models import LED_COUNT
-from src.service import ControllerService
+from src.core.models import LED_COUNT
+from src.services.service import ControllerService
 
 
 class RecordingAdapter:

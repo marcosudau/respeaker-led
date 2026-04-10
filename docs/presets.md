@@ -21,7 +21,7 @@ Sie sind sinnvoll, wenn du:
 
 ## Speicherort
 
-Preset-Packs werden unter `led_effects/preset_packs/<preset_name>/` erwartet.
+Preset-Packs werden unter `src/led_effects/preset_packs/<preset_name>/` erwartet.
 
 ## Minimale Struktur
 

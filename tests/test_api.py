@@ -4,9 +4,9 @@ import json
 
 from fastapi.testclient import TestClient
 
-from src.adapters import MemoryFrameAdapter
-from src.api import create_app
-from src.preset_loader import PresetRegistry
+from src.integrations.adapters import MemoryFrameAdapter
+from src.interfaces.api import create_app
+from src.engine.preset_loader import PresetRegistry
 
 
 def make_client(registry: PresetRegistry | None = None) -> TestClient:
@@ -165,9 +165,9 @@ def test_preset_activation_endpoint_works_with_discovered_pack(tmp_path):
     (pack_dir / "preset.py").write_text(
         "\n".join(
             [
-                "from src.effects import solid",
-                "from src.models import PresetBuildResult",
-                "from src.spec_utils import parse_hex_color",
+                "from src.engine.effects import solid",
+                "from src.core.models import PresetBuildResult",
+                "from src.infrastructure.spec_utils import parse_hex_color",
                 "",
                 "def build_preset(spec):",
                 "    color = parse_hex_color(spec.get('color', '0x112233'))",

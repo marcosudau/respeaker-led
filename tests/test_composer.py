@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from src.composer import SceneComposer
-from src.effect_registry import build_default_effect_registry
-from src.effect_schema import CommandKind, LayerId, NormalizedCommand
-from src.layers import LayerStore
-from src.normalization import build_effect_invocation
+from src.engine.composer import SceneComposer
+from src.engine.effect_registry import build_default_effect_registry
+from src.core.effect_schema import CommandKind, LayerId, NormalizedCommand
+from src.core.layers import LayerStore
+from src.engine.normalization import build_effect_invocation
 
 
 def make_invocation(

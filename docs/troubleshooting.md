@@ -47,7 +47,7 @@ Pruefe der Reihe nach:
 
 ## Preset wird nicht gefunden
 
-- liegt der Ordner unter `led_effects/preset_packs/`?
+- liegt der Ordner unter `src/led_effects/preset_packs/`?
 - existieren `preset.yaml` und `preset.py`?
 - sind `id` und `command` eindeutig?
 - gibt `build_preset(spec)` wirklich ein `PresetBuildResult` zurueck?
@@ -56,7 +56,7 @@ Pruefe der Reihe nach:
 
 - pruefe, ob das ReSpeaker-Geraet verfuegbar ist
 - starte fuer lokale Verifikation zuerst mit `--no-device`
-- der Hardware-Pfad nutzt weiterhin `python_control/xvf_host.py`
+- der Hardware-Pfad nutzt weiterhin `src/python_control/xvf_host.py`
 - wenn die Hardwareinitialisierung fehlschlaegt, bleibt der Service erreichbar und meldet `fallback_active: true`
 
 ## Der neue Service startet, aber der alte lief noch

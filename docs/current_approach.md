@@ -14,14 +14,14 @@ Fuer Release 1 ist dieser Service explizit auf den lokalen Unterprozess-Betrieb 
 Die relevanten Einstiegspunkte sind:
 
 - `main.py`
-- `src/cli.py`
-- `src/api.py`
-- `src/service.py`
-- `src/runtime.py`
+- `src/interfaces/cli.py`
+- `src/interfaces/api.py`
+- `src/services/service.py`
+- `src/engine/runtime.py`
 
-Optional bleiben Preset-Packs unter `led_effects/preset_packs/` erhalten. Sie erweitern denselben Service, bilden aber keinen eigenen Betriebsweg mehr.
+Optional bleiben Preset-Packs unter `src/led_effects/preset_packs/` erhalten. Sie erweitern denselben Service, bilden aber keinen eigenen Betriebsweg mehr.
 
-Die eigentlichen Effektmodule liegen jetzt dateibasiert unter `led_effects/effects/`.
+Die eigentlichen Effektmodule liegen jetzt dateibasiert unter `src/led_effects/effects/`.
 
 ## Datenfluss
 
@@ -56,7 +56,7 @@ Der Service kann heute direkt:
 
 ## Verfuegbare Standardeffekte
 
-Die aktuelle Effektbibliothek lebt in `led_effects/effects/`.
+Die aktuelle Effektbibliothek lebt in `src/led_effects/effects/`.
 
 Wichtige IDs sind:
 

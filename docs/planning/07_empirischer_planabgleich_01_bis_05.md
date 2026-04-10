@@ -4,7 +4,7 @@ Stand: 2026-04-09
 
 Hinweis:
 
-Dieser Bericht beschreibt den Stand vor der spaeteren Auslagerung der konkreten Effektklassen in `led_effects/effects/`.
+Dieser Bericht beschreibt den Stand vor der spaeteren Auslagerung der konkreten Effektklassen in `src/led_effects/effects/`.
 Die hier genannten frueheren Dateipfade fuer Effektimplementierungen in `src/` sind deshalb heute nur noch historisch zu lesen.
 
 ## Zweck dieses Berichts
@@ -62,23 +62,23 @@ Das Dokument 01 verlangt im Wesentlichen:
 
 Der Kern dieses Zielbilds ist umgesetzt.
 
-Die eine offizielle Service-Engine ist heute `ControllerRuntime` in `src/runtime.py`. Der laufende Dienst `ControllerService` kapselt genau diese Runtime und rendert ueber denselben Pfad fortlaufend in den Adapter. API, CLI-Remote-Pfade und STT-Adapter sprechen nicht eigene Renderpfade an, sondern landen ueber Service oder Runtime wieder in derselben Engine.
+Die eine offizielle Service-Engine ist heute `ControllerRuntime` in `src/engine/runtime.py`. Der laufende Dienst `ControllerService` kapselt genau diese Runtime und rendert ueber denselben Pfad fortlaufend in den Adapter. API, CLI-Remote-Pfade und STT-Adapter sprechen nicht eigene Renderpfade an, sondern landen ueber Service oder Runtime wieder in derselben Engine.
 
-Das Layer-System ist tatsaechlich die Source of Truth. `LayerStore` in `src/layers.py` haelt die aktuellen `LayerEntry`- und `LayerState`-Objekte, einschliesslich Event-Queue. `SceneComposer` liest ausschliesslich aus diesem Store und baut daraus die Scene. `SceneRenderer` erzeugt daraus den finalen Frame.
+Das Layer-System ist tatsaechlich die Source of Truth. `LayerStore` in `src/core/layers.py` haelt die aktuellen `LayerEntry`- und `LayerState`-Objekte, einschliesslich Event-Queue. `SceneComposer` liest ausschliesslich aus diesem Store und baut daraus die Scene. `SceneRenderer` erzeugt daraus den finalen Frame.
 
-Die Normalisierung ist vorgeschaltet. `ControllerCommandNormalizer` in `src/normalization.py` mappt fachliche Befehle wie `set_state`, `emit_event`, `set_direction`, `start_timeout_countdown` und `set_progress` in `NormalizedCommand`. Danach wird ueber `build_effect_invocation(...)` gegen die Registry validiert und in `EffectInvocation` ueberfuehrt.
+Die Normalisierung ist vorgeschaltet. `ControllerCommandNormalizer` in `src/engine/normalization.py` mappt fachliche Befehle wie `set_state`, `emit_event`, `set_direction`, `start_timeout_countdown` und `set_progress` in `NormalizedCommand`. Danach wird ueber `build_effect_invocation(...)` gegen die Registry validiert und in `EffectInvocation` ueberfuehrt.
 
 Der geplante Datenfluss ist damit in der Implementierung tatsaechlich vorhanden:
 
 - Eingabe in CLI, API, Service oder Adapter
-- Normalisierung in `src/normalization.py`
+- Normalisierung in `src/engine/normalization.py`
 - Validierung und Erzeugung einer `EffectInvocation`
 - Ablage im `LayerStore`
-- Composition in `src/composer.py`
-- Rendering in `src/renderer.py`
+- Composition in `src/engine/composer.py`
+- Rendering in `src/engine/renderer.py`
 - Ausgabe ueber den konfigurierten Adapter
 
-Auch die ausdruecklich genannten Spezialfaelle wurden aus der Runtime herausgezogen. `direction_indicator`, `countdown_ring` und `progress_bar` leben heute als normale Effektklassen in der dateibasierten Effektbibliothek unter `led_effects/effects/`; die Runtime behandelt sie nicht mehr als eigene Render-Sonderpfade.
+Auch die ausdruecklich genannten Spezialfaelle wurden aus der Runtime herausgezogen. `direction_indicator`, `countdown_ring` und `progress_bar` leben heute als normale Effektklassen in der dateibasierten Effektbibliothek unter `src/led_effects/effects/`; die Runtime behandelt sie nicht mehr als eigene Render-Sonderpfade.
 
 ### Bewertung
 
@@ -105,9 +105,9 @@ Das Dokument 02 fordert:
 
 Diese Struktur ist heute implementiert.
 
-`src/effect_schema.py` enthaelt die Basistypen `EffectDefinition`, `EffectInvocation`, `EffectParamDefinition`, `EffectCapabilities`, `LayerRule`, `RenderContext` und `BaseEffect`. Die konkreten Effektklassen leben heute dateibasiert unter `led_effects/effects/`, tragen ihre `definition` als Klassenattribut und implementieren `render(ctx)` direkt an derselben Klasse.
+`src/core/effect_schema.py` enthaelt die Basistypen `EffectDefinition`, `EffectInvocation`, `EffectParamDefinition`, `EffectCapabilities`, `LayerRule`, `RenderContext` und `BaseEffect`. Die konkreten Effektklassen leben heute dateibasiert unter `src/led_effects/effects/`, tragen ihre `definition` als Klassenattribut und implementieren `render(ctx)` direkt an derselben Klasse.
 
-Die Registry in `src/effect_registry.py` bildet das in Dokument 02 beschriebene Modell praktisch nach:
+Die Registry in `src/engine/effect_registry.py` bildet das in Dokument 02 beschriebene Modell praktisch nach:
 
 - `RegisteredEffectType`
 - `EffectLibrarySource`
@@ -159,27 +159,27 @@ Dokument 03 beschreibt die Phasenfolge:
 
 **Phase 1: Zielmodell festziehen**
 
-Erreicht. Die finalen Layer, Prioritaeten, Kern-Datentypen und Queue-Regeln stehen produktiv in `src/effect_schema.py`, `src/layers.py` und `src/normalization.py`.
+Erreicht. Die finalen Layer, Prioritaeten, Kern-Datentypen und Queue-Regeln stehen produktiv in `src/core/effect_schema.py`, `src/core/layers.py` und `src/engine/normalization.py`.
 
 **Phase 2: Registry und Effektdefinition**
 
-Erreicht. `src/effect_registry.py` und die dateibasierte Effektbibliothek unter `led_effects/effects/` bilden die geplanten Bausteine ab. Das ist durch `tests/test_effect_registry.py` und `tests/test_builtin_effects.py` abgesichert.
+Erreicht. `src/engine/effect_registry.py` und die dateibasierte Effektbibliothek unter `src/led_effects/effects/` bilden die geplanten Bausteine ab. Das ist durch `tests/test_effect_registry.py` und `tests/test_builtin_effects.py` abgesichert.
 
 **Phase 3: Normalisierungsschicht**
 
-Erreicht. `src/normalization.py` ist genau die vorgesehene Schicht. `tests/test_normalization.py` prueft die Mapping-Pfade fuer State, Clear, Event und Direction.
+Erreicht. `src/engine/normalization.py` ist genau die vorgesehene Schicht. `tests/test_normalization.py` prueft die Mapping-Pfade fuer State, Clear, Event und Direction.
 
 **Phase 4: Runtime auf neues Layermodell**
 
-Erreicht. `src/runtime.py`, `src/layers.py` und `src/composer.py` arbeiten auf Basis von `LayerState` und `EffectInvocation` statt auf dem alten direkten Visual-Zustand.
+Erreicht. `src/engine/runtime.py`, `src/core/layers.py` und `src/engine/composer.py` arbeiten auf Basis von `LayerState` und `EffectInvocation` statt auf dem alten direkten Visual-Zustand.
 
 **Phase 5: Effekte migrieren**
 
-Erreicht. Die frueheren Spezialfaelle sind heute normale Effektklassen in `led_effects/effects/`. Das gilt fuer Progress, Direction und Countdown.
+Erreicht. Die frueheren Spezialfaelle sind heute normale Effektklassen in `src/led_effects/effects/`. Das gilt fuer Progress, Direction und Countdown.
 
 **Phase 6: Oeffentliche Einstiege umstellen**
 
-Weitgehend erreicht. `src/cli.py`, `src/api.py`, `src/service.py`, `src/client.py` und `src/stt_adapter.py` greifen nicht auf separate Render-Parallelwelten zu, sondern landen auf derselben Runtime. Die Tests `tests/test_cli.py`, `tests/test_api.py`, `tests/test_client.py`, `tests/test_service.py` und `tests/test_stt_adapter.py` decken diese Ebene ab.
+Weitgehend erreicht. `src/interfaces/cli.py`, `src/interfaces/api.py`, `src/services/service.py`, `src/interfaces/client.py` und `src/integrations/stt_adapter.py` greifen nicht auf separate Render-Parallelwelten zu, sondern landen auf derselben Runtime. Die Tests `tests/test_cli.py`, `tests/test_api.py`, `tests/test_client.py`, `tests/test_service.py` und `tests/test_stt_adapter.py` decken diese Ebene ab.
 
 **Phase 7: Bereinigung und Abschluss**
 
@@ -212,7 +212,7 @@ Dokument 04 fixiert die Architekturentscheidungen zu:
 
 Diese Entscheidungen sind fast vollstaendig im heutigen Verhalten zu finden.
 
-Die Trennung `EffectDefinition` / `EffectInvocation` ist direkt in `src/effect_schema.py` implementiert.
+Die Trennung `EffectDefinition` / `EffectInvocation` ist direkt in `src/core/effect_schema.py` implementiert.
 
 Das Rendering ist engine-gezogen. Effekte besitzen kein eigenes `run()`-Loop-Modell; sie liefern nur `render(ctx)`. Die Taktung erfolgt zentral ueber Runtime und Service.
 
@@ -220,7 +220,7 @@ Die Layernamen stimmen exakt mit der Entscheidungsliste ueberein.
 
 Dauer wird konsequent in `ms` gefuehrt, sowohl in `NormalizedCommand`-Parametern als auch in `requested_duration_ms` der Invocation.
 
-Das Prioritaetsmodell entspricht der Entscheidung: `DEFAULT_LAYER_PRIORITIES` in `src/effect_schema.py`, `effective_priority()` in `EffectInvocation`, Queue-Sortierung in `src/layers.py`.
+Das Prioritaetsmodell entspricht der Entscheidung: `DEFAULT_LAYER_PRIORITIES` in `src/core/effect_schema.py`, `effective_priority()` in `EffectInvocation`, Queue-Sortierung in `src/core/layers.py`.
 
 Die Event-Policy ist behavioristisch sauber umgesetzt:
 
@@ -229,7 +229,7 @@ Die Event-Policy ist behavioristisch sauber umgesetzt:
 - neue Events werden nach Prioritaet und bei Gleichstand nach FIFO einsortiert
 - die Dauer beginnt erst bei Aktivierung ueber `__activated_at`
 
-Die Spezialfaelle `direction`, `countdown` und `progress` sind normale Effekte in `led_effects/effects/` und werden ueber den Normalizer gesetzt.
+Die Spezialfaelle `direction`, `countdown` und `progress` sind normale Effekte in `src/led_effects/effects/` und werden ueber den Normalizer gesetzt.
 
 ### Offene oder nur teilweise erreichte Entscheidungen
 
@@ -264,13 +264,13 @@ Dokument 05 beschreibt die nahezu direkt implementierbare Zielstruktur fuer:
 
 Dieses Dokument wurde fast woertlich in Code ueberfuehrt.
 
-Die Enums in `src/effect_schema.py` stimmen exakt mit dem Dokumentschema ueberein.
+Die Enums in `src/core/effect_schema.py` stimmen exakt mit dem Dokumentschema ueberein.
 
 Die Kern-Dataclasses stimmen strukturell fast 1:1 mit dem technischen Zielschema ueberein, einschliesslich `PersistedLayerState`, `EffectInvocation`, `LayerState` und `NormalizedCommand`.
 
 Auch `BaseEffect` und `RenderContext` sind praktisch identisch zum geplanten Schema.
 
-Die Registry-Bausteine `EffectLibrarySource`, `RegisteredEffectType` und `EffectRegistry` existieren in `src/effect_registry.py` und verhalten sich wie geplant: Registrierung, Lookup, Listing, Library-Pfade und Reload sind vorhanden.
+Die Registry-Bausteine `EffectLibrarySource`, `RegisteredEffectType` und `EffectRegistry` existieren in `src/engine/effect_registry.py` und verhalten sich wie geplant: Registrierung, Lookup, Listing, Library-Pfade und Reload sind vorhanden.
 
 Die Discovery-Regeln sind ebenfalls umgesetzt:
 
@@ -279,9 +279,9 @@ Die Discovery-Regeln sind ebenfalls umgesetzt:
 - Definition validieren
 - eindeutige `effect_id` erzwingen
 
-Die Standard-Prioritaeten in `src/effect_schema.py` entsprechen exakt dem geplanten Mapping 100 bis 600.
+Die Standard-Prioritaeten in `src/core/effect_schema.py` entsprechen exakt dem geplanten Mapping 100 bis 600.
 
-Die Event-Queue-Regel aus dem Zielschema stimmt mit der Implementierung in `src/layers.py` ueberein: laufendes Event bleibt aktiv, Queue wird nach `priority + FIFO` sortiert, Aktivierungszeitpunkt steuert den Beginn der Laufzeit.
+Die Event-Queue-Regel aus dem Zielschema stimmt mit der Implementierung in `src/core/layers.py` ueberein: laufendes Event bleibt aktiv, Queue wird nach `priority + FIFO` sortiert, Aktivierungszeitpunkt steuert den Beginn der Laufzeit.
 
 ### Abweichungen und Restluecken
 
@@ -366,7 +366,7 @@ Das ist derzeit eher ein Modellierungsdetail als ein Laufzeitproblem.
 
 Der aktuelle Stand geht an einigen Stellen ueber die urspruenglichen Planungen hinaus:
 
-- eine spaeter ausgegliederte dateibasierte Effektbibliothek unter `led_effects/effects/`
+- eine spaeter ausgegliederte dateibasierte Effektbibliothek unter `src/led_effects/effects/`
 - direkte Service-Kommandos fuer `list-effects`, `apply-effect` und `clear-layer`
 - eine ueber die Kernmigration hinaus weiter gefestigte Testsuite
 

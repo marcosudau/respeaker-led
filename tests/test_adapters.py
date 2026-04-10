@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from src.adapters import ConsolePreviewAdapter, MemoryFrameAdapter, ReSpeakerAdapter
-from src.models import Frame, LED_COUNT
-from src.paths import XVF_HOST_PATH
+from src.integrations.adapters import ConsolePreviewAdapter, MemoryFrameAdapter, ReSpeakerAdapter
+from src.core.models import Frame, LED_COUNT
+from src.infrastructure.paths import XVF_HOST_PATH
 
 
 def test_console_preview_adapter_formats_frame(capsys):

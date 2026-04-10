@@ -5,15 +5,15 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 project_root = Path(SPECPATH).resolve()
 
-datas = collect_data_files("led_effects", include_py_files=True)
+datas = collect_data_files("src.led_effects", include_py_files=True)
 datas += [
-    (str(project_root / "python_control" / "xvf_host.py"), "python_control"),
-    (str(project_root / "python_control" / "respeaker_get_doa.py"), "python_control"),
+    (str(project_root / "src" / "python_control" / "xvf_host.py"), "src/python_control"),
+    (str(project_root / "src" / "python_control" / "respeaker_get_doa.py"), "src/python_control"),
 ]
 
 hiddenimports = sorted(
     set(
-        collect_submodules("led_effects")
+        collect_submodules("src.led_effects")
         + collect_submodules("uvicorn")
         + collect_submodules("usb")
         + ["libusb_package"]

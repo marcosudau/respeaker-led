@@ -4,11 +4,11 @@ Diese Seite beschreibt das heutige interne Layer-Modell des Service-Kerns in `sr
 
 Sie ist die passende Referenz fuer:
 
-- `src/effect_schema.py`
-- `src/layers.py`
-- `src/runtime.py`
-- `src/composer.py`
-- `src/normalization.py`
+- `src/core/effect_schema.py`
+- `src/core/layers.py`
+- `src/engine/runtime.py`
+- `src/engine/composer.py`
+- `src/engine/normalization.py`
 
 ## Grundidee
 
@@ -65,7 +65,7 @@ Die Regeln sind:
 - das aktuell laufende Event bleibt aktiv
 - die Laufzeit beginnt erst bei Aktivierung des Events
 
-Die Aktivierungszeit wird in `src/layers.py` ueber `__activated_at` verfolgt.
+Die Aktivierungszeit wird in `src/core/layers.py` ueber `__activated_at` verfolgt.
 
 ## Spezialfaelle als normale Effekte
 

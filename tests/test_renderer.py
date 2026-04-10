@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from src.effects import blink, dynamic_frame, progress, pulse, ring_frame, segments, solid, visual_from_spec
-from src.models import LED_COUNT, LayerVisual, Scene
-from src.renderer import SceneRenderer
+from src.engine.effects import blink, dynamic_frame, progress, pulse, ring_frame, segments, solid, visual_from_spec
+from src.core.models import LED_COUNT, LayerVisual, Scene
+from src.engine.renderer import SceneRenderer
 
 
 def render_visual(visual, *, now: float = 0.25):

@@ -5,7 +5,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
-EFFECTS_ROOT = PROJECT_ROOT / "led_effects" / "effects"
+EFFECTS_ROOT = SRC_ROOT / "led_effects" / "effects"
 
 
 def test_core_source_has_no_legacy_widget_or_quick_action_imports():
@@ -31,7 +31,7 @@ def test_core_source_has_no_legacy_widget_or_quick_action_imports():
             assert marker not in text, f"Found legacy marker {marker!r} in {path}"
 
 
-def test_effects_live_in_external_library_folder():
+def test_effects_live_in_src_library_folder():
     assert EFFECTS_ROOT.exists()
     assert EFFECTS_ROOT.is_dir()
     assert (EFFECTS_ROOT / "basic.py").exists()

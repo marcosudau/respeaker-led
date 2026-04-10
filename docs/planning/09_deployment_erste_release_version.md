@@ -159,8 +159,8 @@ Auslieferung zum Beispiel als ZIP oder Installer mit:
 - `led-controller.exe` oder `start-controller.cmd`
 - eingebetteter Python-Runtime oder gebuendeltem Interpreter
 - Anwendungscode
-- `led_effects/effects/`
-- `led_effects/preset_packs/`
+- `src/led_effects/effects/`
+- `src/led_effects/preset_packs/`
 - Konfigurationsdatei
 
 Vorteile:
@@ -193,7 +193,7 @@ Nachteile:
 
 - Packaging-Komplexitaet steigt
 - Debugging und Fehleranalyse werden etwas haerter
-- Datenordner wie `led_effects/effects/` und Presets muessen im Build explizit mitgenommen werden
+- Datenordner wie `src/led_effects/effects/` und Presets muessen im Build explizit mitgenommen werden
 
 ## Meine konkrete Empfehlung zum Format
 
@@ -219,9 +219,10 @@ led-controller-release/
   controller/
     led-controller.exe
     controller.config.json
-    led_effects/
-      effects/
-      preset_packs/
+    src/
+      led_effects/
+        effects/
+        preset_packs/
     runtime_state/
       background_state.json
     logs/
@@ -238,8 +239,8 @@ led-controller-release/
   app/
     main.py
     src/
-    led_effects/
-    python_control/
+      led_effects/
+      python_control/
   controller.config.json
   start-controller.cmd
 ```
@@ -275,8 +276,8 @@ Vor einem Release sollten mindestens laufen:
 Abhaengig vom gewaehlten Format:
 
 - EXE oder Launcher bauen
-- `led_effects/effects/` einpacken
-- `led_effects/preset_packs/` einpacken
+- `src/led_effects/effects/` einpacken
+- `src/led_effects/preset_packs/` einpacken
 - Konfiguration und Standardverzeichnisse anlegen
 
 ## Build-Schritt 4: Release-Struktur pruefen

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 
-from src.color_math import scale_color
-from src.effects import solid
-from src.effect_schema import LayerId
-from src.models import LED_COUNT
-from src.preset_loader import PresetRegistry
-from src.runtime import ControllerRuntime
+from src.core.color_math import scale_color
+from src.engine.effects import solid
+from src.core.effect_schema import LayerId
+from src.core.models import LED_COUNT
+from src.engine.preset_loader import PresetRegistry
+from src.engine.runtime import ControllerRuntime
 
 
 class SilentAdapter:
@@ -174,9 +174,9 @@ def test_controller_can_apply_preset_from_registry(tmp_path):
     (pack_dir / "preset.py").write_text(
         "\n".join(
             [
-                "from src.effects import progress, solid",
-                "from src.models import PresetBuildResult",
-                "from src.spec_utils import parse_hex_color",
+                "from src.engine.effects import progress, solid",
+                "from src.core.models import PresetBuildResult",
+                "from src.infrastructure.spec_utils import parse_hex_color",
                 "",
                 "def build_preset(spec):",
                 "    value = float(spec.get('value', 0))",
