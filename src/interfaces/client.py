@@ -38,11 +38,51 @@ class LocalControllerClient:
     def get_status(self) -> ClientCallResult:
         return self._request_json("GET", "/api/v1/status")
 
-    def list_presets(self) -> ClientCallResult:
-        return self._request_json("GET", "/api/v1/presets")
-
     def list_effects(self) -> ClientCallResult:
         return self._request_json("GET", "/api/v1/effects")
+
+    def list_effects_for_source(self, source_id: str) -> ClientCallResult:
+        return self._request_json("GET", f"/api/v1/effects/{source_id}")
+
+    def get_effect(self, source_id: str, effect_id: str) -> ClientCallResult:
+        return self._request_json("GET", f"/api/v1/effects/{source_id}/{effect_id}")
+
+    def list_effect_presets(self, source_id: str, effect_id: str) -> ClientCallResult:
+        return self._request_json("GET", f"/api/v1/effects/{source_id}/{effect_id}/presets")
+
+    def list_effect_commands_for_effect(self, source_id: str, effect_id: str) -> ClientCallResult:
+        return self._request_json("GET", f"/api/v1/effects/{source_id}/{effect_id}/commands")
+
+    def apply_effect_for_source(
+        self,
+        source_id: str,
+        effect_id: str,
+        target_layer: str,
+        params: dict[str, Any] | None = None,
+        *,
+        duration_ms: int | None = None,
+        priority: int | None = None,
+        enqueue: bool = False,
+        replace_existing: bool = True,
+    ) -> ClientCallResult:
+        return self._request_json(
+            "POST",
+            f"/api/v1/effects/{source_id}/{effect_id}/apply",
+            {
+                "target_layer": target_layer,
+                "params": params or {},
+                "duration_ms": duration_ms,
+                "priority": priority,
+                "enqueue": enqueue,
+                "replace_existing": replace_existing,
+            },
+        )
+
+    def get_effect_preset(self, source_id: str, preset_id: str) -> ClientCallResult:
+        return self._request_json("GET", f"/api/v1/effect-presets/{source_id}/{preset_id}")
+
+    def apply_effect_preset(self, source_id: str, preset_id: str) -> ClientCallResult:
+        return self._request_json("POST", f"/api/v1/effect-presets/{source_id}/{preset_id}/apply")
 
     def list_effect_sources(self) -> ClientCallResult:
         return self._request_json("GET", "/api/v1/effect-sources")
@@ -120,9 +160,6 @@ class LocalControllerClient:
 
     def set_enabled(self, enabled: bool) -> ClientCallResult:
         return self._request_json("POST", "/api/v1/commands/set_enabled", {"enabled": enabled})
-
-    def activate_preset(self, preset_id: str, spec: dict[str, Any] | None = None) -> ClientCallResult:
-        return self._request_json("POST", f"/api/v1/presets/{preset_id}/activate", {"spec": spec or {}})
 
     def apply_effect(
         self,

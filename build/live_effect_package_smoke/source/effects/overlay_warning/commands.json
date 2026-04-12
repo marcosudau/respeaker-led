@@ -1,0 +1,14 @@
+{
+  "commands": {
+    "overlay_warning": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_warning_default"
+      }
+    }
+  }
+}

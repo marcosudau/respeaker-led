@@ -6,7 +6,6 @@ from src.core.color_math import scale_color
 from src.engine.effects import solid
 from src.core.effect_schema import LayerId
 from src.core.models import LED_COUNT
-from src.engine.preset_loader import PresetRegistry
 from src.engine.runtime import ControllerRuntime
 
 
@@ -21,8 +20,8 @@ class SilentAdapter:
         return None
 
 
-def make_controller(registry: PresetRegistry | None = None) -> ControllerRuntime:
-    return ControllerRuntime(adapter=SilentAdapter(), preset_registry=registry)
+def make_controller() -> ControllerRuntime:
+    return ControllerRuntime(adapter=SilentAdapter())
 
 
 def test_render_once_produces_frame_and_stores_last_scene_and_frame():
@@ -154,53 +153,3 @@ def test_controller_can_apply_effect_and_clear_runtime_layer():
 
     assert controller.get_status(now=0.1)["active_visual"] is None
 
-
-def test_controller_can_apply_preset_from_registry(tmp_path):
-    pack_dir = tmp_path / "progress_pack"
-    pack_dir.mkdir()
-    (pack_dir / "preset.yaml").write_text(
-        "\n".join(
-            [
-                "id: sample_progress",
-                "name: Sample Progress",
-                "description: A simple progress preset",
-                "command: sample-progress",
-                "sample_spec: sample.json",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    (pack_dir / "sample.json").write_text(json.dumps({"value": 75, "color": "0x224466"}), encoding="utf-8")
-    (pack_dir / "preset.py").write_text(
-        "\n".join(
-            [
-                "from src.engine.effects import progress, solid",
-                "from src.core.models import PresetBuildResult",
-                "from src.infrastructure.spec_utils import parse_hex_color",
-                "",
-                "def build_preset(spec):",
-                "    value = float(spec.get('value', 0))",
-                "    color = parse_hex_color(spec.get('color', '0x3399FF'))",
-                "    return PresetBuildResult(",
-                "        preset_id='sample_progress',",
-                "        mode='progress',",
-                "        payload={'value': value},",
-                "        visual=progress(value, color=color, base_color=0x010101),",
-                "        state_visual=solid(0x010101),",
-                "        state_mode='solid',",
-                "    )",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    registry = PresetRegistry.discover(tmp_path)
-    controller = make_controller(registry)
-    controller.apply_preset_from_file("sample_progress", pack_dir / "sample.json")
-
-    scene, frame = controller.render_once(now=1.0)
-
-    assert scene.layers[0].name == "state_layer"
-    assert scene.layers[1].name == "active_visual:sample_progress"
-    assert controller.get_status(now=1.0)["active_preset_id"] == "sample_progress"
-    assert frame.leds[0] == 0x224466

@@ -15,6 +15,7 @@ from ..core.effect_schema import BaseEffect, EffectCapabilities, EffectDefinitio
 from ..infrastructure.paths import EFFECTS_LIBRARY_ROOT, EFFECT_PACKAGES_ROOT, PROJECT_ROOT
 from .effect_command_registry import EffectCommandRegistry
 from .effect_package_loader import LoadedEffectPackage, LoadedEffectSet, load_effect_package, load_effect_set
+from .effect_preset_registry import EffectPresetRegistry
 
 
 _EFFECT_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -29,6 +30,7 @@ class EffectLibrarySource:
     autodiscovered: bool = False
     package_id: str | None = None
     package_version: int | None = None
+    preset_count: int = 0
     command_count: int = 0
 
 
@@ -61,6 +63,7 @@ class EffectRegistry:
         self._discovered_sources: list[EffectLibrarySource] = []
         self._blocked_source_paths: set[str] = set()
         self._effects_by_id: dict[str, RegisteredEffectType] = {}
+        self._preset_registry = EffectPresetRegistry()
         self._command_registry = EffectCommandRegistry()
 
         for effect_class in effect_classes or ():
@@ -85,6 +88,9 @@ class EffectRegistry:
 
     def get_command(self, source_id: str, command_name: str):
         return self._command_registry.get(source_id, command_name)
+
+    def get_preset(self, source_id: str, preset_id: str):
+        return self._preset_registry.get(source_id, preset_id)
 
     def list_effect_ids(self) -> list[str]:
         return sorted(self._effects_by_id)
@@ -173,6 +179,9 @@ class EffectRegistry:
     def list_library_sources(self) -> list[EffectLibrarySource]:
         return list(self.list_effect_sources())
 
+    def list_effect_presets(self, source_id: str | None = None, effect_id: str | None = None) -> list[dict]:
+        return [preset.serialize() for preset in self._preset_registry.list_presets(source_id, effect_id)]
+
     def list_effect_commands(self, source_id: str | None = None) -> list[dict]:
         return [command.serialize() for command in self._command_registry.list_commands(source_id)]
 
@@ -213,6 +222,7 @@ class EffectRegistry:
 
     def _rebuild_registry(self, *, reload_modules: bool = False) -> None:
         rebuilt: dict[str, RegisteredEffectType] = {}
+        presets = EffectPresetRegistry()
         commands = EffectCommandRegistry()
         discovered_sources: list[EffectLibrarySource] = []
 
@@ -232,6 +242,7 @@ class EffectRegistry:
             self._load_source_into_registry(
                 source,
                 rebuilt,
+                presets,
                 commands,
                 reload_modules=reload_modules,
             )
@@ -243,12 +254,14 @@ class EffectRegistry:
             self._load_source_into_registry(
                 source,
                 rebuilt,
+                presets,
                 commands,
                 reload_modules=reload_modules,
             )
             discovered_sources.append(source)
 
         self._effects_by_id = rebuilt
+        self._preset_registry = presets
         self._command_registry = commands
         self._discovered_sources = discovered_sources
 
@@ -256,11 +269,16 @@ class EffectRegistry:
         self,
         source: EffectLibrarySource,
         target: dict[str, RegisteredEffectType],
+        preset_registry: EffectPresetRegistry,
         command_registry: EffectCommandRegistry,
         *,
         reload_modules: bool,
     ) -> None:
         if source.kind == "library_path":
+            source.package_id = None
+            source.package_version = None
+            source.preset_count = 0
+            source.command_count = 0
             for effect_class in self._discover_effect_classes(Path(source.path), reload_modules=reload_modules):
                 self._register_effect_class(
                     target,
@@ -273,12 +291,12 @@ class EffectRegistry:
 
         if source.kind == "effect_package":
             loaded = load_effect_package(source.path)
-            self._apply_loaded_effect_package_source(source, target, loaded)
+            self._apply_loaded_effect_package_source(source, target, preset_registry, command_registry, loaded)
             return
 
         if source.kind == "effect_set":
             loaded = load_effect_set(source.path)
-            self._apply_loaded_effect_set_source(source, target, command_registry, loaded)
+            self._apply_loaded_effect_set_source(source, target, preset_registry, command_registry, loaded)
             return
 
         raise ValueError(f"Unsupported source kind: {source.kind}")
@@ -287,12 +305,15 @@ class EffectRegistry:
         self,
         source: EffectLibrarySource,
         target: dict[str, RegisteredEffectType],
+        preset_registry: EffectPresetRegistry,
+        command_registry: EffectCommandRegistry,
         loaded: LoadedEffectPackage,
     ) -> None:
         self._reconcile_source_identity(source, loaded.manifest.source_id)
         source.package_id = loaded.manifest.package_id
         source.package_version = loaded.manifest.version
-        source.command_count = 0
+        source.preset_count = len(loaded.presets)
+        source.command_count = len(loaded.commands)
         self._register_effect_class(
             target,
             loaded.effect_class,
@@ -303,17 +324,21 @@ class EffectRegistry:
             package_id=loaded.manifest.package_id,
             package_version=loaded.manifest.version,
         )
+        preset_registry.register_many(loaded.manifest.source_id, list(loaded.presets))
+        command_registry.register_many(loaded.manifest.source_id, list(loaded.commands))
 
     def _apply_loaded_effect_set_source(
         self,
         source: EffectLibrarySource,
         target: dict[str, RegisteredEffectType],
+        preset_registry: EffectPresetRegistry,
         command_registry: EffectCommandRegistry,
         loaded: LoadedEffectSet,
     ) -> None:
         self._reconcile_source_identity(source, loaded.manifest.source_id)
         source.package_id = loaded.manifest.set_id
         source.package_version = loaded.manifest.version
+        source.preset_count = len(loaded.presets)
         source.command_count = len(loaded.commands)
         for effect in loaded.effects:
             self._register_effect_class(
@@ -326,6 +351,7 @@ class EffectRegistry:
                 package_id=effect.manifest.package_id,
                 package_version=effect.manifest.version,
             )
+        preset_registry.register_many(loaded.manifest.source_id, list(loaded.presets))
         command_registry.register_many(loaded.manifest.source_id, list(loaded.commands))
 
     def _reconcile_source_identity(self, source: EffectLibrarySource, actual_source_id: str) -> None:

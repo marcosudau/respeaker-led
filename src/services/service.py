@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import threading
 import time
 from pathlib import Path
@@ -11,7 +10,6 @@ from ..infrastructure.background_state_store import load_background_state, save_
 from ..core.effect_schema import parse_layer_id
 from ..infrastructure.logging_utils import get_logger
 from ..infrastructure.paths import BACKGROUND_STATE_FILE
-from ..engine.preset_loader import PresetRegistry
 from ..engine.runtime import ControllerRuntime
 from ..core.models import Frame, LED_COUNT
 
@@ -25,14 +23,12 @@ class ControllerService:
         *,
         fps: float = 8.0,
         use_device: bool = True,
-        preset_registry: PresetRegistry | None = None,
         adapter_factory: Callable[[], FrameAdapter] | None = None,
         background_state_file: str | Path | None = None,
         signal_on_s: float = 0.06,
         signal_off_s: float = 0.04,
     ) -> None:
         self.fps = max(1.0, float(fps))
-        self.preset_registry = preset_registry or PresetRegistry.empty()
         self.background_state_file = Path(background_state_file or BACKGROUND_STATE_FILE)
         self.signal_on_s = max(0.0, float(signal_on_s))
         self.signal_off_s = max(0.0, float(signal_off_s))
@@ -41,7 +37,7 @@ class ControllerService:
             use_device=use_device,
             adapter_factory=adapter_factory,
         )
-        self.runtime = ControllerRuntime(adapter=self.adapter, preset_registry=self.preset_registry)
+        self.runtime = ControllerRuntime(adapter=self.adapter)
         self._lock = threading.RLock()
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
@@ -253,9 +249,6 @@ class ControllerService:
     def set_enabled(self, enabled: bool) -> dict[str, Any]:
         return self._mutate(lambda: self.runtime.set_enabled(enabled))
 
-    def list_presets(self) -> list[dict[str, Any]]:
-        return [self.preset_info(preset.manifest.preset_id) for preset in self.preset_registry.list_presets()]
-
     def list_effects(self) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
         for effect_id in self.runtime.effect_registry.list_effect_ids():
@@ -293,6 +286,30 @@ class ControllerService:
             )
         return items
 
+    def list_effects_for_source(self, source_id: str) -> list[dict[str, Any]]:
+        return [item for item in self.list_effects() if item["source_id"] == source_id]
+
+    def effect_info(self, effect_id: str) -> dict[str, Any]:
+        for item in self.list_effects():
+            if item["qualified_id"] == effect_id or item["id"] == effect_id:
+                return item
+        raise KeyError(effect_id)
+
+    def effect_info_for_source(self, source_id: str, effect_id: str) -> dict[str, Any]:
+        qualified_id = f"{source_id}::{effect_id}"
+        for item in self.list_effects():
+            if item["qualified_id"] == qualified_id:
+                return item
+        raise KeyError(qualified_id)
+
+    def list_effect_presets(self, source_id: str | None = None, effect_id: str | None = None) -> list[dict[str, Any]]:
+        with self._lock:
+            return self.runtime.effect_registry.list_effect_presets(source_id, effect_id)
+
+    def effect_preset_info(self, source_id: str, preset_id: str) -> dict[str, Any]:
+        with self._lock:
+            return self.runtime.effect_registry.get_preset(source_id, preset_id).serialize()
+
     def list_effect_sources(self) -> list[dict[str, Any]]:
         with self._lock:
             return [self._serialize_effect_source(source) for source in self.runtime.effect_registry.list_effect_sources()]
@@ -316,33 +333,27 @@ class ControllerService:
         with self._lock:
             return self.runtime.effect_registry.list_effect_commands(source_id)
 
+    def list_effect_commands_for_effect(self, source_id: str, effect_id: str) -> list[dict[str, Any]]:
+        commands = self.list_effect_commands(source_id)
+        presets = {
+            preset["preset_id"]: preset
+            for preset in self.list_effect_presets(source_id, effect_id)
+        }
+        qualified_effect_id = f"{source_id}::{effect_id}"
+        items: list[dict[str, Any]] = []
+        for command in commands:
+            on_action = command["on"]
+            preset_id = on_action.get("preset")
+            if preset_id is not None and preset_id in presets:
+                items.append(command)
+                continue
+            if on_action.get("effect") == qualified_effect_id:
+                items.append(command)
+        return items
+
     def effect_command_info(self, source_id: str, command_name: str) -> dict[str, Any]:
         with self._lock:
             return self.runtime.effect_registry.get_command(source_id, command_name).serialize()
-
-    def preset_info(self, preset_id: str) -> dict[str, Any]:
-        preset = self.preset_registry.get_by_id(preset_id)
-        sample = None if preset.sample_path is None else str(preset.sample_path)
-        return {
-            "id": preset.manifest.preset_id,
-            "name": preset.manifest.name,
-            "description": preset.manifest.description,
-            "command": preset.manifest.command,
-            "target_layer": preset.manifest.target_layer,
-            "supports_cli": preset.manifest.supports_cli,
-            "supports_api": preset.manifest.supports_api,
-            "tags": list(preset.manifest.tags),
-            "sample_spec_path": sample,
-        }
-
-    def preset_sample(self, preset_id: str) -> dict[str, Any]:
-        preset = self.preset_registry.get_by_id(preset_id)
-        if preset.sample_path is None:
-            raise FileNotFoundError(f"Preset {preset_id} does not define a sample spec")
-        return json.loads(Path(preset.sample_path).read_text(encoding="utf-8"))
-
-    def activate_preset(self, preset_id: str, spec: dict[str, Any]) -> dict[str, Any]:
-        return self._mutate(lambda: self.runtime.apply_preset(preset_id, spec))
 
     def apply_effect(
         self,
@@ -382,12 +393,45 @@ class ControllerService:
         desired_state = self._resolve_command_state(command, state)
         return self._mutate(lambda: self._apply_effect_command(command, desired_state))
 
+    def apply_effect_preset(self, source_id: str, preset_id: str) -> dict[str, Any]:
+        return self._mutate(
+            lambda: self.runtime.apply_effect_preset(
+                source_id,
+                preset_id,
+                scene_name=f"preset:{source_id}:{preset_id}",
+                item_id=f"preset:{source_id}:{preset_id}",
+                mode=preset_id,
+                payload={"source_id": source_id, "preset_id": preset_id},
+            )
+        )
+
     def _apply_effect_command(self, command, desired_state: str) -> None:
         action = command.on_action if desired_state == "on" else command.off_action
         if action is None:
             raise ValueError(f"Command {command.command_name!r} does not support state {desired_state!r}")
         if action.action == "clear_layer":
             self.runtime.clear_layer(action.target_layer)
+            return
+        if action.action == "apply_preset":
+            if action.preset_id is None:
+                raise ValueError(f"Command {command.command_name!r} is missing a preset reference")
+            self.runtime.apply_effect_preset(
+                command.source_id,
+                action.preset_id,
+                meta_params={
+                    "__command_source_id": command.source_id,
+                    "__command_name": command.command_name,
+                },
+                duration_ms=action.duration_ms,
+                priority=action.priority,
+                enqueue=action.enqueue,
+                replace_existing=action.replace_existing,
+                scene_name=f"command:{command.source_id}:{command.command_name}",
+                item_id=f"command:{command.source_id}:{command.command_name}",
+                mode=command.command_name,
+                payload={"source_id": command.source_id, "command_name": command.command_name},
+                valid=True,
+            )
             return
 
         params = dict(action.params)
@@ -397,6 +441,9 @@ class ControllerService:
             action.effect_id,
             action.target_layer,
             params,
+            duration_ms=action.duration_ms,
+            priority=action.priority,
+            enqueue=action.enqueue,
             replace_existing=action.replace_existing,
             scene_name=f"command:{command.source_id}:{command.command_name}",
             item_id=f"command:{command.source_id}:{command.command_name}",
@@ -428,6 +475,7 @@ class ControllerService:
             "autodiscovered": source.autodiscovered,
             "package_id": source.package_id,
             "package_version": source.package_version,
+            "preset_count": source.preset_count,
             "command_count": source.command_count,
         }
 

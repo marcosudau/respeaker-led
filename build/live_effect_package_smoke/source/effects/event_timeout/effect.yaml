@@ -1,0 +1,4 @@
+package_id: live_demo.event_timeout
+source_id: app.live_demo
+entry_class: EventTimeoutEffect
+min_service_version: 1.0.0

@@ -125,6 +125,13 @@ def load_source_manifest(root: Path, stem: str) -> dict[str, Any]:
     raise FileNotFoundError(f"Expected {stem}.json or {stem}.yaml in {root}")
 
 
+def load_optional_source_manifest(root: Path, stem: str) -> dict[str, Any] | None:
+    try:
+        return load_source_manifest(root, stem)
+    except FileNotFoundError:
+        return None
+
+
 def parse_hash_manifest(payload: dict[str, Any]) -> HashManifest:
     if not isinstance(payload, dict):
         raise ValueError("hashes.json must contain a JSON object")

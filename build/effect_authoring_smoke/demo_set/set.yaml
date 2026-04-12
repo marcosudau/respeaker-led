@@ -1,0 +1,9 @@
+set_id: authoring_demo
+source_id: app.authoring_demo
+title: Authoring Demo
+version: 1
+min_service_version: 1.0.0
+effects:
+  - state_idle.lefx
+  - overlay_focus.lefx
+  - event_ping.lefx

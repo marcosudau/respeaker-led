@@ -227,6 +227,23 @@ def test_registry_can_register_effect_set_and_commands(tmp_path):
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
                 "layer_name": "MAIN_LAYER",
+                "presets": {
+                    "effect_listening_default": {
+                        "category": "effect",
+                        "target_layer": "MAIN_LAYER",
+                        "params": {"color": "#224466"},
+                    }
+                },
+                "commands": {
+                    "listening": {
+                        "kind": "state_toggle",
+                        "on": {"preset": "effect_listening_default"},
+                        "off": {
+                            "action": "clear_layer",
+                            "target_layer": "MAIN_LAYER",
+                        },
+                    }
+                },
             },
             {
                 "dir_name": "idle",
@@ -236,20 +253,6 @@ def test_registry_can_register_effect_set_and_commands(tmp_path):
                 "layer_name": "STATE_LAYER",
             },
         ],
-        commands={
-            "listening": {
-                "kind": "state_toggle",
-                "on": {
-                    "effect": "app.voice_assistant::listening_blue",
-                    "target_layer": "MAIN_LAYER",
-                    "params": {},
-                },
-                "off": {
-                    "action": "clear_layer",
-                    "target_layer": "MAIN_LAYER",
-                },
-            }
-        },
     )
     package_path = tmp_path / "voice_assistant.lefxset"
     build_effect_set(set_dir, package_path)
@@ -261,7 +264,7 @@ def test_registry_can_register_effect_set_and_commands(tmp_path):
     assert "app.voice_assistant::listening_blue" in registry.list_effect_ids()
     commands = registry.list_effect_commands("app.voice_assistant")
     assert commands[0]["command_name"] == "listening"
-    assert commands[0]["on"]["effect"] == "app.voice_assistant::listening_blue"
+    assert commands[0]["on"]["preset"] == "effect_listening_default"
 
 
 def test_registry_autodiscovers_effect_packages_from_package_root(tmp_path, monkeypatch):
@@ -279,22 +282,25 @@ def test_registry_autodiscovers_effect_packages_from_package_root(tmp_path, monk
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
                 "layer_name": "MAIN_LAYER",
+                "presets": {
+                    "effect_listening_default": {
+                        "category": "effect",
+                        "target_layer": "MAIN_LAYER",
+                        "params": {"color": "#224466"},
+                    }
+                },
+                "commands": {
+                    "listening": {
+                        "kind": "state_toggle",
+                        "on": {"preset": "effect_listening_default"},
+                        "off": {
+                            "action": "clear_layer",
+                            "target_layer": "MAIN_LAYER",
+                        },
+                    }
+                },
             }
         ],
-        commands={
-            "listening": {
-                "kind": "state_toggle",
-                "on": {
-                    "effect": "app.voice_assistant::listening_blue",
-                    "target_layer": "MAIN_LAYER",
-                    "params": {},
-                },
-                "off": {
-                    "action": "clear_layer",
-                    "target_layer": "MAIN_LAYER",
-                },
-            }
-        },
     )
     packages_root.mkdir(parents=True, exist_ok=True)
     package_path = packages_root / "voice_assistant.lefxset"

@@ -7,12 +7,11 @@ from fastapi.testclient import TestClient
 from src.integrations.adapters import MemoryFrameAdapter
 from src.engine.effect_package_builder import build_effect_set
 from src.interfaces.api import create_app
-from src.engine.preset_loader import PresetRegistry
 from tests.package_test_utils import write_effect_set_source
 
 
-def make_client(registry: PresetRegistry | None = None) -> TestClient:
-    app = create_app(fps=12.0, use_device=False, adapter_factory=MemoryFrameAdapter, preset_registry=registry)
+def make_client() -> TestClient:
+    app = create_app(fps=12.0, use_device=False, adapter_factory=MemoryFrameAdapter)
     return TestClient(app)
 
 
@@ -138,66 +137,6 @@ def test_api_apply_effect_returns_404_for_unknown_effect():
         assert response.status_code == 404
 
 
-def test_preset_routes_are_defined_even_without_discovered_presets():
-    with make_client() as client:
-        list_response = client.get("/api/v1/presets")
-        assert list_response.status_code == 200
-        assert list_response.json() == {"items": []}
-
-        detail_response = client.get("/api/v1/presets/not-real")
-        assert detail_response.status_code == 404
-
-
-def test_preset_activation_endpoint_works_with_discovered_pack(tmp_path):
-    pack_dir = tmp_path / "demo_pack"
-    pack_dir.mkdir()
-    (pack_dir / "preset.yaml").write_text(
-        "\n".join(
-            [
-                "id: demo",
-                "name: Demo Preset",
-                "description: Demo preset for API tests",
-                "command: demo-preset",
-                "sample_spec: sample.json",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    (pack_dir / "sample.json").write_text(json.dumps({"color": "0x112233"}), encoding="utf-8")
-    (pack_dir / "preset.py").write_text(
-        "\n".join(
-            [
-                "from src.engine.effects import solid",
-                "from src.core.models import PresetBuildResult",
-                "from src.infrastructure.spec_utils import parse_hex_color",
-                "",
-                "def build_preset(spec):",
-                "    color = parse_hex_color(spec.get('color', '0x112233'))",
-                "    return PresetBuildResult(",
-                "        preset_id='demo',",
-                "        mode='solid',",
-                "        payload={'color': color},",
-                "        visual=solid(color),",
-                "    )",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    registry = PresetRegistry.discover(tmp_path)
-
-    with make_client(registry) as client:
-        sample_response = client.get("/api/v1/presets/demo/sample")
-        assert sample_response.status_code == 200
-
-        activate_response = client.post("/api/v1/presets/demo/activate", json={"spec": {"color": "0x112233"}})
-        assert activate_response.status_code == 200
-        assert activate_response.json()["active_visual"]["id"] == "demo"
-        assert activate_response.json()["active_preset_id"] == "demo"
-
-        assert client.post("/api/v1/main-layer/progress", json={"value": 62}).status_code == 404
-        assert client.put("/api/v1/state-layer/visual", json={}).status_code == 404
-
-
 def test_api_can_register_list_and_invoke_packaged_commands(tmp_path):
     set_dir = tmp_path / "voice_assistant_src"
     write_effect_set_source(
@@ -212,22 +151,25 @@ def test_api_can_register_list_and_invoke_packaged_commands(tmp_path):
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
                 "layer_name": "MAIN_LAYER",
+                "presets": {
+                    "effect_listening_default": {
+                        "category": "effect",
+                        "target_layer": "MAIN_LAYER",
+                        "params": {"color": "#224466"},
+                    }
+                },
+                "commands": {
+                    "listening": {
+                        "kind": "state_toggle",
+                        "on": {"preset": "effect_listening_default"},
+                        "off": {
+                            "action": "clear_layer",
+                            "target_layer": "MAIN_LAYER",
+                        },
+                    }
+                },
             }
         ],
-        commands={
-            "listening": {
-                "kind": "state_toggle",
-                "on": {
-                    "effect": "app.voice_assistant::listening_blue",
-                    "target_layer": "MAIN_LAYER",
-                    "params": {},
-                },
-                "off": {
-                    "action": "clear_layer",
-                    "target_layer": "MAIN_LAYER",
-                },
-            }
-        },
     )
     package_path = tmp_path / "voice_assistant.lefxset"
     build_effect_set(set_dir, package_path)
@@ -246,6 +188,22 @@ def test_api_can_register_list_and_invoke_packaged_commands(tmp_path):
         commands_response = client.get("/api/v1/commands/app.voice_assistant")
         assert commands_response.status_code == 200
         assert commands_response.json()["items"][0]["command_name"] == "listening"
+
+        effect_response = client.get("/api/v1/effects/app.voice_assistant/listening_blue")
+        assert effect_response.status_code == 200
+        assert effect_response.json()["qualified_id"] == "app.voice_assistant::listening_blue"
+
+        presets_response = client.get("/api/v1/effects/app.voice_assistant/listening_blue/presets")
+        assert presets_response.status_code == 200
+        assert presets_response.json()["items"][0]["preset_id"] == "effect_listening_default"
+
+        effect_commands_response = client.get("/api/v1/effects/app.voice_assistant/listening_blue/commands")
+        assert effect_commands_response.status_code == 200
+        assert effect_commands_response.json()["items"][0]["command_name"] == "listening"
+
+        apply_preset_response = client.post("/api/v1/effect-presets/app.voice_assistant/effect_listening_default/apply")
+        assert apply_preset_response.status_code == 200
+        assert apply_preset_response.json()["active_effect_preset_id"] == "app.voice_assistant::effect_listening_default"
 
         on_response = client.post("/api/v1/commands/app.voice_assistant/listening/on")
         assert on_response.status_code == 200

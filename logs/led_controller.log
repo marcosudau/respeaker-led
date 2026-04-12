@@ -61,3 +61,78 @@ KeyError: 'pulse'
 2026-04-10 09:10:22,599 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
 2026-04-10 09:10:22,600 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
 2026-04-10 09:10:23,102 INFO led_controller.service controller service started fps=8.0
+2026-04-10 10:06:24,209 INFO led_controller.cli took over existing instance pid=49000 host=127.0.0.1 port=8765
+2026-04-10 10:06:24,210 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 10:06:24,379 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-10 10:06:24,379 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-10 10:06:24,819 INFO led_controller.service controller service started fps=8.0
+2026-04-10 10:32:42,445 INFO led_controller.cli took over existing instance pid=27760 host=127.0.0.1 port=8765
+2026-04-10 10:32:42,447 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-10 10:32:42,651 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-10 10:32:42,652 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-10 10:32:43,101 INFO led_controller.service controller service started fps=8.0
+2026-04-12 07:53:59,729 INFO led_controller.cli took over existing instance pid=1260 host=127.0.0.1 port=8765
+2026-04-12 07:53:59,731 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 07:53:59,908 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 07:53:59,909 INFO led_controller.service controller service initialized output_mode=console-preview requested_output_mode=device fallback_active=True
+2026-04-12 07:54:00,434 INFO led_controller.service controller service started fps=8.0
+2026-04-12 07:55:35,418 INFO led_controller.service controller service stopped
+2026-04-12 07:55:46,000 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 07:55:46,107 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 07:55:46,108 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 07:55:46,506 INFO led_controller.service controller service started fps=8.0
+2026-04-12 10:56:23,674 INFO led_controller.cli took over existing instance pid=29712 host=127.0.0.1 port=8765
+2026-04-12 10:56:23,675 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 10:56:23,800 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 10:56:23,801 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 10:56:24,280 INFO led_controller.service controller service started fps=8.0
+2026-04-12 11:22:26,071 INFO led_controller.cli took over existing instance pid=27724 host=127.0.0.1 port=8765
+2026-04-12 11:22:26,071 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 11:22:26,179 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 11:22:26,179 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 11:22:26,576 INFO led_controller.service controller service started fps=8.0
+2026-04-12 11:45:19,536 INFO led_controller.service controller service stopped
+2026-04-12 11:45:23,816 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 11:45:23,941 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 11:45:23,941 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 11:45:24,407 INFO led_controller.service controller service started fps=8.0
+2026-04-12 11:51:26,189 INFO led_controller.service controller service stopped
+2026-04-12 11:51:42,815 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 11:51:42,925 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 11:51:42,927 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 11:51:43,324 INFO led_controller.service controller service started fps=8.0
+2026-04-12 11:52:08,226 INFO led_controller.service controller service stopped
+2026-04-12 11:52:10,337 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 11:52:10,441 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 11:52:10,442 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 11:52:10,838 INFO led_controller.service controller service started fps=8.0
+2026-04-12 11:52:34,251 INFO led_controller.service controller service stopped
+2026-04-12 11:52:35,908 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 11:52:36,014 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 11:52:36,015 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 11:52:36,409 INFO led_controller.service controller service started fps=8.0
+2026-04-12 11:55:13,783 INFO led_controller.service controller service stopped
+2026-04-12 11:55:16,235 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 11:55:16,387 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 11:55:16,388 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 11:55:16,877 INFO led_controller.service controller service started fps=8.0
+2026-04-12 11:56:25,468 INFO led_controller.service controller service stopped
+2026-04-12 11:56:29,693 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 11:56:29,798 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 11:56:29,799 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 11:56:30,198 INFO led_controller.service controller service started fps=8.0
+2026-04-12 12:19:32,124 INFO led_controller.service controller service stopped
+2026-04-12 12:19:34,528 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 12:19:34,640 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 12:19:34,641 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 12:19:35,046 INFO led_controller.service controller service started fps=8.0
+2026-04-12 12:23:27,983 INFO led_controller.service controller service stopped
+2026-04-12 12:23:29,899 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 12:23:30,006 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 12:23:30,007 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 12:23:30,409 INFO led_controller.service controller service started fps=8.0
+2026-04-12 13:31:42,034 INFO led_controller.service controller service stopped
+2026-04-12 13:31:45,667 INFO led_controller.cli starting controller service output_mode=device host=127.0.0.1 port=8765 requested_port=8765
+2026-04-12 13:31:45,781 INFO led_controller.service restored persisted background state from P:\CodexApp\led_controller_respeaker\runtime_state\background_state.json
+2026-04-12 13:31:45,782 INFO led_controller.service controller service initialized output_mode=device requested_output_mode=device fallback_active=False
+2026-04-12 13:31:46,204 INFO led_controller.service controller service started fps=8.0

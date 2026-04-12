@@ -13,7 +13,6 @@ from .effects2 import visual_from_spec
 from ..core.layers import LayerStore
 from ..core.models import BaseState, CountdownState, Event, Frame, MainLayerState, Scene, StateLayerState, Visual
 from .normalization import ControllerCommandNormalizer, build_effect_invocation
-from .preset_loader import PresetRegistry
 from .renderer import SceneRenderer
 
 
@@ -42,7 +41,6 @@ class ControllerRuntime:
     def __init__(
         self,
         adapter: FrameAdapter | None = None,
-        preset_registry: PresetRegistry | None = None,
         effect_registry: EffectRegistry | None = None,
     ) -> None:
         self.effect_registry = effect_registry or build_default_effect_registry()
@@ -51,10 +49,9 @@ class ControllerRuntime:
         self.composer = SceneComposer(self.effect_registry)
         self.renderer = SceneRenderer()
         self.adapter = adapter or ConsolePreviewAdapter()
-        self.presets = preset_registry or PresetRegistry.empty()
         self.last_scene: Scene | None = None
         self.last_frame: Frame | None = None
-        self.active_preset_id: str | None = None
+        self.active_effect_preset_id: str | None = None
         self._expire_callbacks: dict[str, Callable[[float], None]] = {}
         self._invocation_sequence = 0
         self._countdown_invocation_id: str | None = None
@@ -160,7 +157,7 @@ class ControllerRuntime:
 
     def clear_active_visual(self) -> None:
         self._clear_layer(LayerId.MAIN_LAYER)
-        self.active_preset_id = None
+        self.active_effect_preset_id = None
 
     def clear_main_layer(self) -> None:
         self.clear_active_visual()
@@ -169,7 +166,7 @@ class ControllerRuntime:
         now = _timestamp_or_now(timestamp)
         name = _normalize_name(state_name, "idle")
         copied_payload = _copy_payload(payload)
-        self.active_preset_id = None
+        self.active_effect_preset_id = None
         self.store.base_state = BaseState(name=name, payload=copied_payload, updated_at=now)
         self._apply_normalized_commands(
             self.normalizer.normalize_set_state(name, copied_payload, timestamp=now),
@@ -279,32 +276,13 @@ class ControllerRuntime:
 
     def reset(self, *, initial_state: str = "idle") -> None:
         self.store = LayerStore()
-        self.active_preset_id = None
+        self.active_effect_preset_id = None
         self._expire_callbacks.clear()
         self._countdown_invocation_id = None
         self.set_state(initial_state, timestamp=time.monotonic())
 
-    def apply_preset(self, preset_id: str, spec: dict) -> None:
-        preset = self.presets.get_by_id(preset_id)
-        result = preset.build_preset(spec)
-        self.active_preset_id = result.preset_id
-        if result.state_visual is not None:
-            self.set_state_visual(result.state_visual, mode=result.state_mode)
-        if result.visual is not None:
-            self.set_active_visual(
-                layer_id=result.preset_id,
-                mode=result.mode,
-                visual=result.visual,
-                payload=result.payload,
-                valid=result.valid,
-            )
-
-    def apply_preset_from_file(self, preset_id: str, spec_file: str | Path) -> None:
-        spec = json.loads(Path(spec_file).read_text(encoding="utf-8"))
-        self.apply_preset(preset_id, spec)
-
     def set_progress(self, value: float, *, color: int = 0x3399FF, base_color: int = 0x03070B) -> None:
-        self.active_preset_id = None
+        self.active_effect_preset_id = None
         now = time.monotonic()
         self._apply_normalized_commands(
             self.normalizer.normalize_set_progress(value, color=color, base_color=base_color, timestamp=now),
@@ -388,6 +366,7 @@ class ControllerRuntime:
         replace_existing: bool = True,
         timestamp: float | None = None,
     ):
+        self.active_effect_preset_id = None
         command_params = dict(params or {})
         if duration_ms is not None:
             command_params["duration_ms"] = int(duration_ms)
@@ -417,6 +396,45 @@ class ControllerRuntime:
             timestamp=now,
         )
         return None if not applied else applied[0]
+
+    def apply_effect_preset(
+        self,
+        source_id: str,
+        preset_id: str,
+        *,
+        meta_params: dict[str, Any] | None = None,
+        duration_ms: int | None = None,
+        priority: int | None = None,
+        enqueue: bool | None = None,
+        replace_existing: bool | None = None,
+        scene_name: str | None = None,
+        item_id: str | None = None,
+        mode: str | None = None,
+        payload: dict[str, Any] | None = None,
+        valid: bool = True,
+        timestamp: float | None = None,
+    ):
+        preset = self.effect_registry.get_preset(source_id, preset_id)
+        params = dict(preset.params)
+        if meta_params:
+            params.update(meta_params)
+        applied = self.apply_effect(
+            preset.qualified_effect_id,
+            preset.target_layer,
+            params,
+            duration_ms=preset.duration_ms if duration_ms is None else duration_ms,
+            priority=preset.priority if priority is None else priority,
+            scene_name=scene_name or f"preset:{preset.qualified_preset_id}",
+            item_id=item_id or preset.preset_id,
+            mode=mode or preset.preset_id,
+            payload=payload,
+            valid=valid,
+            enqueue=preset.enqueue if enqueue is None else enqueue,
+            replace_existing=preset.replace_existing if replace_existing is None else replace_existing,
+            timestamp=timestamp,
+        )
+        self.active_effect_preset_id = preset.qualified_preset_id
+        return applied
 
     def clear_layer(self, target_layer: LayerId) -> None:
         self._clear_layer(target_layer)
@@ -550,7 +568,7 @@ class ControllerRuntime:
                 "valid": main_entry.valid,
                 "visual": self._serialize_invocation_visual(main_invocation),
             },
-            "active_preset_id": self.active_preset_id,
+            "active_effect_preset_id": self.active_effect_preset_id,
             "direction_deg": self.store.direction_deg,
             "brightness": self.store.brightness,
             "enabled": self.store.enabled,

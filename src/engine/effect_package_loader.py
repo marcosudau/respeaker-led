@@ -21,12 +21,15 @@ from .effect_package_schema import (
     parse_hash_manifest,
     validate_manifest_matches_definition,
 )
+from .effect_preset_registry import EffectPresetDefinition, parse_effect_preset_definitions
 
 
 @dataclass(slots=True, frozen=True)
 class LoadedEffectPackage:
     manifest: EffectPackageManifest
     effect_class: type[BaseEffect]
+    presets: tuple[EffectPresetDefinition, ...]
+    commands: tuple[EffectCommandDefinition, ...]
     extracted_root: Path
     origin_path: str
 
@@ -35,6 +38,7 @@ class LoadedEffectPackage:
 class LoadedEffectSet:
     manifest: EffectSetManifest
     effects: tuple[LoadedEffectPackage, ...]
+    presets: tuple[EffectPresetDefinition, ...]
     commands: tuple[EffectCommandDefinition, ...]
     extracted_root: Path
     origin_path: str
@@ -48,6 +52,7 @@ class PackageVerificationResult:
     package_id: str | None = None
     set_id: str | None = None
     effect_ids: tuple[str, ...] = ()
+    preset_ids: tuple[str, ...] = ()
     command_names: tuple[str, ...] = ()
 
 
@@ -85,13 +90,21 @@ def load_effect_set(path: str | Path) -> LoadedEffectSet:
             nested_origin = f"{source_path}!/{file_name}"
             effects.append(_load_effect_package_bytes(archive.read(file_name), origin_path=nested_origin))
 
-        commands_payload = _read_json(archive, "commands.json")
-        commands = tuple(parse_command_definitions(manifest.source_id, commands_payload))
-        _validate_set_members(manifest, effects, commands)
-
+    _validate_set_members(manifest, effects)
+    presets = tuple(
+        preset
+        for effect in effects
+        for preset in effect.presets
+    )
+    commands = tuple(
+        command
+        for effect in effects
+        for command in effect.commands
+    )
     return LoadedEffectSet(
         manifest=manifest,
         effects=tuple(effects),
+        presets=presets,
         commands=commands,
         extracted_root=extracted_root,
         origin_path=str(source_path),
@@ -109,6 +122,8 @@ def inspect_effect_source(path: str | Path) -> dict:
             "qualified_effect_id": loaded.manifest.qualified_effect_id,
             "title": loaded.manifest.title,
             "origin_path": loaded.origin_path,
+            "presets": [preset.preset_id for preset in loaded.presets],
+            "commands": [command.command_name for command in loaded.commands],
         }
 
     return {
@@ -118,6 +133,7 @@ def inspect_effect_source(path: str | Path) -> dict:
         "title": loaded.manifest.title,
         "origin_path": loaded.origin_path,
         "effects": [effect.manifest.qualified_effect_id for effect in loaded.effects],
+        "presets": [preset.preset_id for preset in loaded.presets],
         "commands": [command.command_name for command in loaded.commands],
     }
 
@@ -131,6 +147,8 @@ def verify_effect_source(path: str | Path) -> PackageVerificationResult:
             source_id=loaded.manifest.source_id,
             package_id=loaded.manifest.package_id,
             effect_ids=(loaded.manifest.qualified_effect_id,),
+            preset_ids=tuple(preset.qualified_preset_id for preset in loaded.presets),
+            command_names=tuple(command.command_name for command in loaded.commands),
         )
 
     return PackageVerificationResult(
@@ -139,6 +157,7 @@ def verify_effect_source(path: str | Path) -> PackageVerificationResult:
         source_id=loaded.manifest.source_id,
         set_id=loaded.manifest.set_id,
         effect_ids=tuple(effect.manifest.qualified_effect_id for effect in loaded.effects),
+        preset_ids=tuple(preset.qualified_preset_id for preset in loaded.presets),
         command_names=tuple(command.command_name for command in loaded.commands),
     )
 
@@ -154,11 +173,34 @@ def _load_effect_package_bytes(payload_bytes: bytes, *, origin_path: str) -> Loa
         _verify_archive_hashes(archive, hash_manifest)
         manifest = parse_effect_package_manifest(_read_json(archive, "manifest.json"))
 
-    effect_class = _load_effect_class(extracted_root, manifest)
-    validate_manifest_matches_definition(manifest, effect_class.get_definition())
+        effect_class = _load_effect_class(extracted_root, manifest)
+        validate_manifest_matches_definition(manifest, effect_class.get_definition())
+
+        preset_payload = _read_optional_json(archive, "effect-presets.json")
+        presets = (
+            []
+            if preset_payload is None
+            else parse_effect_preset_definitions(manifest.source_id, effect_class.get_definition(), preset_payload)
+        )
+
+        command_payload = _read_optional_json(archive, "commands.json")
+        commands = (
+            []
+            if command_payload is None
+            else parse_command_definitions(
+                manifest.source_id,
+                command_payload,
+                presets=presets,
+                default_effect_id=manifest.effect_id,
+                source_effect_ids={manifest.qualified_effect_id},
+            )
+        )
+
     return LoadedEffectPackage(
         manifest=manifest,
         effect_class=effect_class,
+        presets=tuple(presets),
+        commands=tuple(commands),
         extracted_root=extracted_root,
         origin_path=origin_path,
     )
@@ -183,6 +225,14 @@ def _read_json(archive: zipfile.ZipFile, name: str) -> dict:
             return json.loads(handle.read().decode("utf-8"))
     except KeyError as exc:
         raise ValueError(f"Archive is missing required file: {name}") from exc
+
+
+def _read_optional_json(archive: zipfile.ZipFile, name: str) -> dict | None:
+    try:
+        with archive.open(name, "r") as handle:
+            return json.loads(handle.read().decode("utf-8"))
+    except KeyError:
+        return None
 
 
 def _verify_archive_hashes(archive: zipfile.ZipFile, hash_manifest: HashManifest) -> None:
@@ -222,21 +272,32 @@ def _load_effect_class(extracted_root: Path, manifest: EffectPackageManifest) ->
 def _validate_set_members(
     manifest: EffectSetManifest,
     effects: list[LoadedEffectPackage],
-    commands: tuple[EffectCommandDefinition, ...],
 ) -> None:
     qualified_ids = {effect.manifest.qualified_effect_id for effect in effects}
     if not qualified_ids:
         raise ValueError("Effect set did not contain any effect packages")
+
+    preset_ids: set[str] = set()
+    command_names: set[str] = set()
     for effect in effects:
         if effect.manifest.source_id != manifest.source_id:
             raise ValueError(
                 f"Effect package source_id {effect.manifest.source_id!r} does not match set source_id {manifest.source_id!r}"
             )
-    for command in commands:
-        for action in (command.on_action, command.off_action):
-            if action is None or action.action != "apply_effect":
-                continue
-            if action.effect_id not in qualified_ids:
+        for preset in effect.presets:
+            if preset.preset_id in preset_ids:
+                raise ValueError(f"Duplicate preset id detected within set source {manifest.source_id!r}: {preset.preset_id!r}")
+            preset_ids.add(preset.preset_id)
+        for command in effect.commands:
+            if command.command_name in command_names:
                 raise ValueError(
-                    f"Command {command.command_name!r} references unknown effect {action.effect_id!r} in set {manifest.set_id!r}"
+                    f"Duplicate command name detected within set source {manifest.source_id!r}: {command.command_name!r}"
                 )
+            command_names.add(command.command_name)
+            for action in (command.on_action, command.off_action):
+                if action is None:
+                    continue
+                if action.effect_id is not None and action.effect_id not in qualified_ids:
+                    raise ValueError(
+                        f"Command {command.command_name!r} references unknown effect {action.effect_id!r} in set {manifest.set_id!r}"
+                    )

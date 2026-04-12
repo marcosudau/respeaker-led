@@ -1,0 +1,10 @@
+presets:
+  event_ping_default:
+    title: "Event Ping Default"
+    category: event
+    target_layer: EVENT_LAYER
+    duration_ms: 450
+    params:
+      color: "#33D1FF"
+    tags:
+      - event

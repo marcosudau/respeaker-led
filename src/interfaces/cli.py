@@ -19,7 +19,6 @@ from .api import create_app
 from .client import LocalControllerClient
 from ..infrastructure.logging_utils import get_logger, setup_logging
 from ..infrastructure.paths import ACTIVE_SERVICE_FILE
-from ..engine.preset_loader import PresetRegistry
 from ..services.service_hosting import (
     clear_active_service_info,
     create_active_service_info,
@@ -54,6 +53,14 @@ def parse_bool_flag(value: str) -> bool:
     raise argparse.ArgumentTypeError(f"Invalid boolean value: {value}")
 
 
+def parse_qualified_identifier(value: str, *, label: str) -> tuple[str, str]:
+    text = str(value or "").strip()
+    source_id, separator, local_id = text.partition("::")
+    if not separator or not source_id or not local_id:
+        raise argparse.ArgumentTypeError(f"{label} must use the form <source_id>::<id>")
+    return source_id, local_id
+
+
 def use_real_device(args) -> bool:
     return not getattr(args, "no_device", False)
 
@@ -75,13 +82,29 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    list_parser = subparsers.add_parser("list-presets", help="List presets exposed by a running local service")
-    add_connection_options(list_parser)
-    list_parser.set_defaults(command_kind="list_presets")
-
     effect_list_parser = subparsers.add_parser("list-effects", help="List built-in effects exposed by a running local service")
     add_connection_options(effect_list_parser)
     effect_list_parser.set_defaults(command_kind="list_effects")
+
+    show_effect_parser = subparsers.add_parser("show-effect", help="Show structured metadata for a qualified effect")
+    add_connection_options(show_effect_parser)
+    show_effect_parser.add_argument("qualified_effect_id")
+    show_effect_parser.set_defaults(command_kind="show_effect")
+
+    list_effect_presets_parser = subparsers.add_parser("list-effect-presets", help="List embedded presets for a qualified effect")
+    add_connection_options(list_effect_presets_parser)
+    list_effect_presets_parser.add_argument("qualified_effect_id")
+    list_effect_presets_parser.set_defaults(command_kind="list_effect_presets")
+
+    list_effect_commands_parser = subparsers.add_parser("list-effect-commands", help="List embedded commands for a qualified effect")
+    add_connection_options(list_effect_commands_parser)
+    list_effect_commands_parser.add_argument("qualified_effect_id")
+    list_effect_commands_parser.set_defaults(command_kind="list_effect_commands")
+
+    apply_effect_preset_parser = subparsers.add_parser("apply-effect-preset", help="Apply a qualified embedded effect preset")
+    add_connection_options(apply_effect_preset_parser)
+    apply_effect_preset_parser.add_argument("qualified_preset_id")
+    apply_effect_preset_parser.set_defaults(command_kind="apply_effect_preset")
 
     effect_source_list_parser = subparsers.add_parser("list-effect-sources", help="List registered or autodiscovered effect sources")
     add_connection_options(effect_source_list_parser)
@@ -213,12 +236,6 @@ def build_parser() -> argparse.ArgumentParser:
     enabled_parser.add_argument("enabled", type=parse_bool_flag)
     enabled_parser.set_defaults(command_kind="set_enabled")
 
-    activate_preset_parser = subparsers.add_parser("activate-preset", help="Activate an optional preset on a running service")
-    add_connection_options(activate_preset_parser)
-    activate_preset_parser.add_argument("preset_id")
-    activate_preset_parser.add_argument("--spec", default="{}")
-    activate_preset_parser.set_defaults(command_kind="activate_preset")
-
     return parser
 
 
@@ -261,7 +278,6 @@ def main() -> int:
         log_file = setup_logging(console=True)
         instance_id: str | None = None
         try:
-            registry = PresetRegistry.discover()
             port_pool = parse_port_pool(args.port_pool) or default_port_pool()
             previous = take_over_existing_instance(ACTIVE_SERVICE_FILE)
             if previous is not None:
@@ -288,7 +304,6 @@ def main() -> int:
             app = create_app(
                 fps=args.fps,
                 use_device=use_device,
-                preset_registry=registry,
                 lifecycle_callback=lambda phase: update_active_service_status(ACTIVE_SERVICE_FILE, instance_info.instance_id, "ready" if phase == "started" else "stopping"),
             )
             config = uvicorn.Config(app, host=args.host, port=selected_port, log_level="info")
@@ -304,8 +319,11 @@ def main() -> int:
             clear_active_service_info(ACTIVE_SERVICE_FILE, instance_id=instance_id)
 
     if args.command_kind in {
-        "list_presets",
         "list_effects",
+        "show_effect",
+        "list_effect_presets",
+        "list_effect_commands",
+        "apply_effect_preset",
         "list_effect_sources",
         "register_effect_source",
         "reload_effect_sources",
@@ -328,15 +346,24 @@ def main() -> int:
         "clear_direction",
         "set_brightness",
         "set_enabled",
-        "activate_preset",
     }:
         setup_logging(console=False)
         client = make_client(args, best_effort=False)
 
-        if args.command_kind == "list_presets":
-            return emit_result(client.list_presets())
         if args.command_kind == "list_effects":
             return emit_result(client.list_effects())
+        if args.command_kind == "show_effect":
+            source_id, effect_id = parse_qualified_identifier(args.qualified_effect_id, label="qualified_effect_id")
+            return emit_result(client.get_effect(source_id, effect_id))
+        if args.command_kind == "list_effect_presets":
+            source_id, effect_id = parse_qualified_identifier(args.qualified_effect_id, label="qualified_effect_id")
+            return emit_result(client.list_effect_presets(source_id, effect_id))
+        if args.command_kind == "list_effect_commands":
+            source_id, effect_id = parse_qualified_identifier(args.qualified_effect_id, label="qualified_effect_id")
+            return emit_result(client.list_effect_commands_for_effect(source_id, effect_id))
+        if args.command_kind == "apply_effect_preset":
+            source_id, preset_id = parse_qualified_identifier(args.qualified_preset_id, label="qualified_preset_id")
+            return emit_result(client.apply_effect_preset(source_id, preset_id))
         if args.command_kind == "list_effect_sources":
             return emit_result(client.list_effect_sources())
         if args.command_kind == "register_effect_source":
@@ -407,8 +434,5 @@ def main() -> int:
             return emit_result(client.set_brightness(args.level))
         if args.command_kind == "set_enabled":
             return emit_result(client.set_enabled(args.enabled))
-        if args.command_kind == "activate_preset":
-            return emit_result(client.activate_preset(args.preset_id, parse_json_payload(args.spec)))
-
     parser.error(f"Unsupported command kind: {args.command_kind}")
     return 2

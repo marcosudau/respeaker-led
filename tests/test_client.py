@@ -125,3 +125,41 @@ def test_client_maps_effect_source_and_packaged_command_requests(monkeypatch):
         ("GET", "/api/v1/commands/app.voice_assistant", None),
         ("POST", "/api/v1/commands/app.voice_assistant/listening/off", None),
     ]
+
+
+def test_client_maps_effect_metadata_and_preset_requests(monkeypatch):
+    recorded: list[tuple[str, str, dict | None]] = []
+
+    def fake_request(self, method: str, path: str, payload=None):
+        recorded.append((method, path, payload))
+        return ClientCallResult(ok=True, status_code=200, data={"ok": True})
+
+    monkeypatch.setattr(LocalControllerClient, "_request_json", fake_request)
+
+    client = LocalControllerClient()
+    assert client.get_effect("app.voice_assistant", "idle_blue").ok is True
+    assert client.list_effect_presets("app.voice_assistant", "idle_blue").ok is True
+    assert client.list_effect_commands_for_effect("app.voice_assistant", "idle_blue").ok is True
+    assert client.get_effect_preset("app.voice_assistant", "state_idle_default").ok is True
+    assert client.apply_effect_preset("app.voice_assistant", "state_idle_default").ok is True
+    assert client.apply_effect_for_source("app.voice_assistant", "idle_blue", "state_layer", {"color": "#112233"}).ok is True
+
+    assert recorded == [
+        ("GET", "/api/v1/effects/app.voice_assistant/idle_blue", None),
+        ("GET", "/api/v1/effects/app.voice_assistant/idle_blue/presets", None),
+        ("GET", "/api/v1/effects/app.voice_assistant/idle_blue/commands", None),
+        ("GET", "/api/v1/effect-presets/app.voice_assistant/state_idle_default", None),
+        ("POST", "/api/v1/effect-presets/app.voice_assistant/state_idle_default/apply", None),
+        (
+            "POST",
+            "/api/v1/effects/app.voice_assistant/idle_blue/apply",
+            {
+                "target_layer": "state_layer",
+                "params": {"color": "#112233"},
+                "duration_ms": None,
+                "priority": None,
+                "enqueue": False,
+                "replace_existing": True,
+            },
+        ),
+    ]

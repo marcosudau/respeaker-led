@@ -1,0 +1,7 @@
+# Primary metadata for this effect source.
+# Title hint: Overlay Focus
+# Suggested primary layer: ONGOING_OVERLAY_LAYER
+package_id: app.authoring_demo.overlay_focus
+source_id: app.authoring_demo
+entry_class: OverlayFocusEffect
+min_service_version: 1.0.0

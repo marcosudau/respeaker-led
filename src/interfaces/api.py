@@ -4,12 +4,11 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Any, Callable
 
-from fastapi import Body, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from ..infrastructure.logging_utils import get_logger
-from ..engine.preset_loader import PresetRegistry
 from ..services.service import ControllerService
 
 
@@ -67,27 +66,30 @@ class ClearLayerCommand(BaseModel):
     target_layer: str
 
 
-class PresetActivationRequest(BaseModel):
-    spec: dict[str, Any] = Field(default_factory=dict)
-
-
 class RegisterEffectSourceRequest(BaseModel):
     path: str
     enabled: bool = True
+
+
+class ApplyEffectRequest(BaseModel):
+    target_layer: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    duration_ms: int | None = None
+    priority: int | None = None
+    enqueue: bool = False
+    replace_existing: bool = True
 
 
 def create_app(
     *,
     fps: float = 8.0,
     use_device: bool = True,
-    preset_registry: PresetRegistry | None = None,
     adapter_factory: Callable[[], Any] | None = None,
     lifecycle_callback: Callable[[str], None] | None = None,
 ) -> FastAPI:
     service = ControllerService(
         fps=fps,
         use_device=use_device,
-        preset_registry=preset_registry,
         adapter_factory=adapter_factory,
     )
 
@@ -134,8 +136,11 @@ def create_app(
             "requested_output_mode": snapshot["requested_output_mode"],
             "render_loop_running": snapshot["render_loop_running"],
             "commands": [
-                "list_presets",
                 "list_effects",
+                "show_effect",
+                "list_effect_presets",
+                "list_effect_commands",
+                "apply_effect_preset",
                 "list_effect_sources",
                 "list_commands",
                 "set_state",
@@ -178,13 +183,60 @@ def create_app(
     def status(request: Request):
         return get_service(request).get_status()
 
-    @app.get("/api/v1/presets")
-    def list_presets(request: Request):
-        return {"items": get_service(request).list_presets()}
-
     @app.get("/api/v1/effects")
     def list_effects(request: Request):
         return {"items": get_service(request).list_effects()}
+
+    @app.get("/api/v1/effects/{source_id}")
+    def list_effects_for_source(source_id: str, request: Request):
+        return {"items": get_service(request).list_effects_for_source(source_id)}
+
+    @app.get("/api/v1/effects/{source_id}/{effect_id}")
+    def effect_detail(source_id: str, effect_id: str, request: Request):
+        try:
+            return get_service(request).effect_info_for_source(source_id, effect_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/v1/effects/{source_id}/{effect_id}/presets")
+    def list_effect_presets(source_id: str, effect_id: str, request: Request):
+        return {"items": get_service(request).list_effect_presets(source_id, effect_id)}
+
+    @app.get("/api/v1/effects/{source_id}/{effect_id}/commands")
+    def list_effect_commands_for_effect(source_id: str, effect_id: str, request: Request):
+        return {"items": get_service(request).list_effect_commands_for_effect(source_id, effect_id)}
+
+    @app.post("/api/v1/effects/{source_id}/{effect_id}/apply")
+    def apply_effect_for_source(source_id: str, effect_id: str, payload: ApplyEffectRequest, request: Request):
+        service = get_service(request)
+        try:
+            return service.apply_effect(
+                f"{source_id}::{effect_id}",
+                payload.target_layer,
+                payload.params,
+                duration_ms=payload.duration_ms,
+                priority=payload.priority,
+                enqueue=payload.enqueue,
+                replace_existing=payload.replace_existing,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/v1/effect-presets/{source_id}/{preset_id}")
+    def effect_preset_detail(source_id: str, preset_id: str, request: Request):
+        try:
+            return get_service(request).effect_preset_info(source_id, preset_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/v1/effect-presets/{source_id}/{preset_id}/apply")
+    def apply_effect_preset(source_id: str, preset_id: str, request: Request):
+        try:
+            return get_service(request).apply_effect_preset(source_id, preset_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.get("/api/v1/effect-sources")
     def list_effect_sources(request: Request):
@@ -209,34 +261,6 @@ def create_app(
         try:
             return get_service(request).remove_effect_source(source_id)
         except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    @app.get("/api/v1/presets/{preset_id}")
-    def preset_detail(preset_id: str, request: Request):
-        service = get_service(request)
-        try:
-            return service.preset_info(preset_id)
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    @app.get("/api/v1/presets/{preset_id}/sample")
-    def preset_sample(preset_id: str, request: Request):
-        service = get_service(request)
-        try:
-            return service.preset_sample(preset_id)
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    @app.post("/api/v1/presets/{preset_id}/activate")
-    def activate_preset(preset_id: str, request: Request, payload: PresetActivationRequest = Body(default_factory=PresetActivationRequest)):
-        service = get_service(request)
-        try:
-            return service.activate_preset(preset_id, payload.spec)
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.post("/api/v1/commands/set_state")

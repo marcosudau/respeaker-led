@@ -31,6 +31,10 @@ def test_parser_includes_effect_and_layer_commands():
     parser = build_parser()
 
     list_parsed = parser.parse_args(["list-effects", "--host", "127.0.0.1"])
+    show_effect_parsed = parser.parse_args(["show-effect", "app.voice_assistant::idle_blue"])
+    list_presets_parsed = parser.parse_args(["list-effect-presets", "app.voice_assistant::idle_blue"])
+    list_effect_commands_parsed = parser.parse_args(["list-effect-commands", "app.voice_assistant::idle_blue"])
+    apply_preset_parsed = parser.parse_args(["apply-effect-preset", "app.voice_assistant::state_idle_default"])
     list_sources_parsed = parser.parse_args(["list-effect-sources", "--host", "127.0.0.1"])
     apply_parsed = parser.parse_args(
         [
@@ -51,6 +55,12 @@ def test_parser_includes_effect_and_layer_commands():
     clear_parsed = parser.parse_args(["clear-layer", "main_layer"])
 
     assert list_parsed.command_kind == "list_effects"
+    assert show_effect_parsed.command_kind == "show_effect"
+    assert show_effect_parsed.qualified_effect_id == "app.voice_assistant::idle_blue"
+    assert list_presets_parsed.command_kind == "list_effect_presets"
+    assert list_effect_commands_parsed.command_kind == "list_effect_commands"
+    assert apply_preset_parsed.command_kind == "apply_effect_preset"
+    assert apply_preset_parsed.qualified_preset_id == "app.voice_assistant::state_idle_default"
     assert list_sources_parsed.command_kind == "list_effect_sources"
     assert apply_parsed.command_kind == "apply_effect"
     assert apply_parsed.effect_id == "solid_color"
@@ -117,3 +127,9 @@ def test_removed_local_demo_and_legacy_widget_commands_are_not_wired():
 
     with pytest.raises(SystemExit):
         parser.parse_args(["showcase"])
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["list-presets"])
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["activate-preset", "demo"])

@@ -1,0 +1,10 @@
+{
+  "commands": {
+    "event_error": {
+      "kind": "event",
+      "on": {
+        "preset": "event_error_default"
+      }
+    }
+  }
+}

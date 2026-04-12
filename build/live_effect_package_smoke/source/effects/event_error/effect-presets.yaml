@@ -1,0 +1,10 @@
+presets:
+  event_error_default:
+    title: "Event Error"
+    category: event
+    target_layer: EVENT_LAYER
+    duration_ms: 450
+    params:
+      color: "0xFF3B30"
+    tags:
+      - event

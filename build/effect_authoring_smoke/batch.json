@@ -1,0 +1,20 @@
+{
+  "effects": [
+    {
+      "effect_id": "state_idle",
+      "layer": "STATE_LAYER",
+      "title": "State Idle"
+    },
+    {
+      "effect_id": "overlay_focus",
+      "layer": "ONGOING_OVERLAY_LAYER",
+      "title": "Overlay Focus"
+    },
+    {
+      "effect_id": "event_ping",
+      "layer": "EVENT_LAYER",
+      "title": "Event Ping"
+    }
+  ],
+  "source_id": "app.authoring_demo"
+}

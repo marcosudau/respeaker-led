@@ -1,0 +1,15 @@
+set_id: live_demo
+source_id: app.live_demo
+title: Live Demo Package
+version: 1
+min_service_version: 1.0.0
+effects:
+  - state_idle
+  - state_recording
+  - state_processing
+  - overlay_direction
+  - overlay_focus
+  - overlay_warning
+  - event_ping
+  - event_error
+  - event_timeout

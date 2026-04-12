@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import re
+from typing import Any
+
+
+_INT_RE = re.compile(r"^[+-]?\d+$")
+_FLOAT_RE = re.compile(r"^[+-]?(\d+\.\d+|\d+\.\d*|\.\d+)$")
+
 
 def _strip_quotes(value: str) -> str:
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
@@ -7,20 +14,42 @@ def _strip_quotes(value: str) -> str:
     return value
 
 
-def _parse_scalar(value: str):
-    value = _strip_quotes(value.strip())
-    lowered = value.lower()
+def _parse_scalar(value: str) -> Any:
+    text = _strip_quotes(value.strip())
+    lowered = text.lower()
     if lowered == "true":
         return True
     if lowered == "false":
         return False
     if lowered in {"null", "none"}:
         return None
-    return value
+    if _INT_RE.match(text):
+        try:
+            return int(text)
+        except ValueError:
+            pass
+    if _FLOAT_RE.match(text):
+        try:
+            return float(text)
+        except ValueError:
+            pass
+    return text
 
 
-def parse_simple_yaml(text: str) -> dict:
-    data: dict[str, object] = {}
+def parse_simple_yaml(text: str) -> dict[str, Any]:
+    try:
+        import yaml
+    except Exception:
+        return _parse_simple_yaml_fallback(text)
+
+    payload = yaml.safe_load(text) or {}
+    if not isinstance(payload, dict):
+        raise ValueError("YAML document must contain a top-level mapping")
+    return payload
+
+
+def _parse_simple_yaml_fallback(text: str) -> dict[str, Any]:
+    data: dict[str, Any] = {}
     active_list_key: str | None = None
 
     for raw_line in text.splitlines():

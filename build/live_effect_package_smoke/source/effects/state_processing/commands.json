@@ -1,0 +1,14 @@
+{
+  "commands": {
+    "state_processing": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_processing_default"
+      }
+    }
+  }
+}

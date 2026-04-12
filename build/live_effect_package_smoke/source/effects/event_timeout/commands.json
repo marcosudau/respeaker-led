@@ -1,0 +1,10 @@
+{
+  "commands": {
+    "event_timeout": {
+      "kind": "event",
+      "on": {
+        "preset": "event_timeout_default"
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "commands": {
+    "event_ping": {
+      "kind": "event",
+      "on": {
+        "preset": "event_ping_default"
+      }
+    }
+  }
+}

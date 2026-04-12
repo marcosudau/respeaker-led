@@ -139,35 +139,3 @@ class Frame:
     leds: list[Color]
     timestamp: float
 
-
-@dataclass(slots=True)
-class PresetManifest:
-    preset_id: str
-    name: str
-    description: str
-    command: str
-    target_layer: str = "active_visual"
-    supports_cli: bool = True
-    supports_api: bool = True
-    sample_spec: str | None = None
-    tags: list[str] = field(default_factory=list)
-
-
-@dataclass(slots=True)
-class PresetBuildResult:
-    preset_id: str
-    mode: str
-    payload: dict[str, Any]
-    visual: Visual
-    state_visual: Visual | None = None
-    state_mode: str = "custom"
-    valid: bool = True
-
-
-@dataclass(slots=True)
-class DiscoveredPreset:
-    manifest: PresetManifest
-    folder: Path
-    module_path: Path
-    sample_path: Path | None
-    build_preset: Callable[[dict[str, Any]], PresetBuildResult]
