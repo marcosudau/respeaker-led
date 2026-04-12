@@ -1,9 +1,0 @@
-presets:
-  overlay_warning_default:
-    title: "Overlay Warning"
-    category: overlay
-    target_layer: ONGOING_OVERLAY_LAYER
-    params:
-      color: "0xFFFFFF"
-    tags:
-      - overlay

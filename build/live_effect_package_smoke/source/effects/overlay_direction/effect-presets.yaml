@@ -1,9 +1,0 @@
-presets:
-  overlay_direction_default:
-    title: "Overlay Direction"
-    category: overlay
-    target_layer: ONGOING_OVERLAY_LAYER
-    params:
-      color: "0x55CCFF"
-    tags:
-      - overlay

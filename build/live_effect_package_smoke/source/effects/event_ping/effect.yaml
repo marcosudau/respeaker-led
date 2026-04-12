@@ -1,4 +1,0 @@
-package_id: live_demo.event_ping
-source_id: app.live_demo
-entry_class: EventPingEffect
-min_service_version: 1.0.0

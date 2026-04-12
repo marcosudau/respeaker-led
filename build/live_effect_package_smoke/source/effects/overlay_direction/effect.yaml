@@ -1,4 +1,0 @@
-package_id: live_demo.overlay_direction
-source_id: app.live_demo
-entry_class: OverlayDirectionEffect
-min_service_version: 1.0.0

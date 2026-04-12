@@ -1,8 +1,8 @@
 # LED Controller Service Release 1
 
-Dieses Paket enthaelt die lokale Windows-EXE fuer den LED-Controller-Service sowie die Unterlagen fuer eine Host-Anwendung.
+Dieses Verzeichnis dient im Repo als Vorlage fuer das Release-1-Bundle. Beim eigentlichen Release-Build wird die lokale Windows-EXE in diese Struktur eingesetzt.
 
-## Inhalt
+## Inhalt des erzeugten Bundles
 
 - `led_controller_service.exe`: die startbare Release-1-Anwendung
 - `docs/HOST_APP_INTEGRATION.md`: Einbindung in eine Host-App
@@ -19,7 +19,7 @@ Am 10.04.2026 wurde diese EXE in zwei Modi geprueft:
 
 Der Hardwaretest hat einen laufenden Dienst mit `output_mode=device` und `device_available=true` bestaetigt.
 
-## Schnellstart
+## Schnellstart im erzeugten Bundle
 
 ### Manuell starten
 

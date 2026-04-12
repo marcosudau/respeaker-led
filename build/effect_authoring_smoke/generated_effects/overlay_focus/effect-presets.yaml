@@ -1,9 +1,0 @@
-presets:
-  overlay_focus_default:
-    title: "Overlay Focus Default"
-    category: overlay
-    target_layer: ONGOING_OVERLAY_LAYER
-    params:
-      color: "#FF66CC"
-    tags:
-      - overlay

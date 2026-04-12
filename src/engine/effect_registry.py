@@ -469,6 +469,8 @@ class EffectRegistry:
             return None
         if module_parts[-1] == "__init__":
             module_parts = module_parts[:-1]
+        if any(not part.isidentifier() for part in module_parts):
+            return None
         return ".".join(module_parts) if module_parts else None
 
     def _effect_classes_from_module(self, module: ModuleType) -> list[type[BaseEffect]]:

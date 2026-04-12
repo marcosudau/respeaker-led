@@ -55,6 +55,35 @@ python .\main.py clear-layer main
 python .\main.py shutdown
 ```
 
+## Entwicklung
+
+Die lokale Entwicklungs- und CI-Umgebung ist auf uv und Python 3.12 ausgerichtet.
+
+### 1. Abhaengigkeiten synchronisieren
+
+```powershell
+uv sync --all-groups
+```
+
+### 2. Tests ausfuehren
+
+```powershell
+uv run pytest -q --basetemp=.pytest_tmp
+```
+
+### 3. Release-Build lokal pruefen
+
+```powershell
+uv run pyinstaller led_controller_service.spec
+uv run python .\tools\verify_release_binary.py .\dist\led_controller_service.exe
+```
+
+### 4. Release-Bundle lokal erzeugen
+
+```powershell
+uv run python .\tools\assemble_release_bundle.py --version (uv run python -c "from src.version import __version__; print(__version__)") --exe .\dist\led_controller_service.exe --output-dir .\artifacts
+```
+
 ## Projektstruktur in kurz
 
 - `src/` enthaelt die fachlich gegliederte Paketstruktur fuer CLI, API, Service, Runtime, Renderer und Effect-Registry

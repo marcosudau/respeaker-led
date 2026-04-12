@@ -1,9 +1,0 @@
-presets:
-  state_recording_default:
-    title: "State Recording"
-    category: state
-    target_layer: STATE_LAYER
-    params:
-      color: "0x11AA55"
-    tags:
-      - state

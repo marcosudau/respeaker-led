@@ -1,9 +1,0 @@
-presets:
-  state_idle_default:
-    title: "State Idle Default"
-    category: state
-    target_layer: STATE_LAYER
-    params:
-      color: "#224466"
-    tags:
-      - state

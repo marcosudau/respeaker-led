@@ -1,4 +1,0 @@
-package_id: live_demo.state_idle
-source_id: app.live_demo
-entry_class: StateIdleEffect
-min_service_version: 1.0.0

@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from ..infrastructure.logging_utils import get_logger
 from ..services.service import ControllerService
+from ..version import __version__
 
 
 logger = get_logger("api")
@@ -107,7 +108,7 @@ def create_app(
 
     app = FastAPI(
         title="LED Controller API",
-        version="1.0.0",
+        version=__version__,
         summary="Local API for the generic frame-based LED controller",
         lifespan=lifespan,
     )
