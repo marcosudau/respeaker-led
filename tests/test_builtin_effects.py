@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from src.led_effects.effects.basic import (
+from tools.effect_building.effects.basic import (
     BlinkColorEffect,
     OffEffect,
     ProgressBarEffect,
     SoftPulseEffect,
     SolidColorEffect,
 )
-from src.led_effects.effects.overlays import (
+from tools.effect_building.effects.overlays import (
     CountdownRingEffect,
     DirectionIndicatorEffect,
     WarningFlashEffect,
 )
-from src.led_effects.effects.ring_effects import (
+from tools.effect_building.effects.ring_effects import (
     DoaDirectionDotEffect,
     FillRingEffect,
     PulsePatternEffect,
