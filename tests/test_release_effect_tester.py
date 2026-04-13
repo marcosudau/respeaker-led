@@ -150,6 +150,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if self.path == "/api/v1/ping":
+            self._write({"ok": True})
+            return
         if self.path == "/api/v1/effects":
             self._write({"items": [{"id": "demo", "qualified_id": "pkg::demo", "source_id": "pkg", "title": "Demo", "supported_layers": ["MAIN_LAYER"], "tags": [], "parameters": {}}]})
             return
