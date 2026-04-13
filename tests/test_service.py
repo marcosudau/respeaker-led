@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
+import pytest
+
+import src.engine.effect_registry as effect_registry_module
 from src.core.models import LED_COUNT
 from src.engine.effect_package_builder import build_effect_set
+from src.infrastructure.paths import DEFAULT_EFFECT_SET_PATH
 from src.services.service import ControllerService
 from tests.package_test_utils import write_effect_set_source
 
@@ -18,6 +23,16 @@ class RecordingAdapter:
 
     def close(self):
         self.closed = True
+
+
+def _startable_service(**kwargs) -> ControllerService:
+    return ControllerService(
+        use_device=False,
+        adapter_factory=RecordingAdapter,
+        signal_on_s=0.0,
+        signal_off_s=0.0,
+        **kwargs,
+    )
 
 
 def test_service_falls_back_to_preview_and_starts_worker_when_adapter_init_fails():
@@ -46,6 +61,28 @@ def test_service_applies_and_persists_default_background_fallback(tmp_path):
     assert snapshot["render_layers"]["state_visual"]["effect_id"] == "solid_color"
     assert snapshot["render_layers"]["state_visual"]["params"] == {"color": "#FFFFFF", "brightness": 0.2}
     assert json.loads(state_file.read_text(encoding="utf-8"))["effect_id"] == "solid_color"
+
+
+def test_service_starts_with_published_default_effect_artifact():
+    assert DEFAULT_EFFECT_SET_PATH.is_file()
+
+    service = _startable_service()
+    try:
+        service.start()
+        default_source = next(source for source in service.list_effect_sources() if source["source_id"] == "default-effects")
+
+        assert service.snapshot()["render_loop_running"] is True
+        assert default_source["kind"] == "effect_set"
+        assert Path(default_source["path"]) == DEFAULT_EFFECT_SET_PATH.resolve()
+    finally:
+        service.stop()
+
+
+def test_service_requires_published_default_effect_artifact(monkeypatch):
+    monkeypatch.setattr(effect_registry_module, "_default_effect_artifact_candidates", lambda: [])
+
+    with pytest.raises(FileNotFoundError, match="Default effect set artifact not found"):
+        _startable_service()
 
 
 def test_service_restores_persisted_background_state_on_start(tmp_path):

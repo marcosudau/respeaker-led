@@ -1,0 +1,73 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run",
+      "loop",
+      "persistent"
+    ],
+    "preemptible": true,
+    "restorable": true,
+    "supports_duration_override": false,
+    "supports_queueing": false,
+    "supports_transparency": false
+  },
+  "defaults": {},
+  "description": "Schaltet alle LEDs des Ziel-Layers aus.",
+  "effect_id": "off",
+  "entry_class": "OffEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "BACKGROUND_STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": true,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "MAIN_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run",
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": null
+    },
+    "STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.off",
+  "parameter_schema": {},
+  "qualified_effect_id": "default-effects::off",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "state",
+    "fallback"
+  ],
+  "title": "Off",
+  "version": 1
+}

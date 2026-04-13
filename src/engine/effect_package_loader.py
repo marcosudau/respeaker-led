@@ -8,6 +8,7 @@ import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 
 from ..core.effect_schema import BaseEffect
 from ..infrastructure.paths import EFFECT_PACKAGE_CACHE_ROOT
@@ -253,13 +254,23 @@ def _load_effect_class(extracted_root: Path, manifest: EffectPackageManifest) ->
     if not module_file.exists():
         raise ValueError(f"Package entry module {manifest.entry_module!r} is missing at {module_file}")
 
-    unique_name = f"effectpkg_{hashlib.sha1(str(extracted_root).encode('utf-8')).hexdigest()}_{manifest.entry_module.replace('.', '_')}"
-    spec = importlib.util.spec_from_file_location(unique_name, module_file)
+    package_name = f"effectpkg_{hashlib.sha1(str(extracted_root).encode('utf-8')).hexdigest()}"
+    payload_root = extracted_root / "payload"
+    relative_module = manifest.entry_module.removeprefix("payload.")
+    module_name = f"{package_name}.{relative_module}"
+
+    package_module = ModuleType(package_name)
+    package_module.__path__ = [str(payload_root)]
+    package_module.__package__ = package_name
+    sys.modules[package_name] = package_module
+
+    spec = importlib.util.spec_from_file_location(module_name, module_file)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Could not import package module {manifest.entry_module!r}")
 
     module = importlib.util.module_from_spec(spec)
-    sys.modules[unique_name] = module
+    module.__package__ = module_name.rpartition(".")[0]
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     effect_class = getattr(module, manifest.entry_class, None)
     if effect_class is None:

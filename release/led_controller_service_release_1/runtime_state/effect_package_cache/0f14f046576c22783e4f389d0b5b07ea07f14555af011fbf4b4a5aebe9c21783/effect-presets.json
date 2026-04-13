@@ -1,0 +1,84 @@
+{
+  "presets": {
+    "effect_scanner_accent": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for scanner (accent).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#140804",
+        "brightness": 0.9,
+        "color": "#FFB347",
+        "segment_length": 4,
+        "speed": 1.35
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "accent",
+        "scanner"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Scanner Accent"
+    },
+    "effect_scanner_main": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for scanner (main).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03070C",
+        "brightness": 0.8,
+        "color": "#55A8FF",
+        "segment_length": 4,
+        "speed": 1.0
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "main",
+        "scanner"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Scanner Main"
+    },
+    "state_scanner_focus": {
+      "category": "state",
+      "description": "Auto-generated state preset for scanner (focus).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03110D",
+        "brightness": 0.72,
+        "color": "#2ED3A8",
+        "segment_length": 4,
+        "speed": 1.1
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "focus",
+        "scanner"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Scanner Focus"
+    },
+    "state_scanner_idle": {
+      "category": "state",
+      "description": "Auto-generated state preset for scanner (idle).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#020814",
+        "brightness": 0.45,
+        "color": "#4A7BFF",
+        "segment_length": 4,
+        "speed": 0.7
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "idle",
+        "scanner"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Scanner Idle"
+    }
+  }
+}

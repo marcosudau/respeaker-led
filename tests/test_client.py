@@ -104,6 +104,28 @@ def test_client_maps_apply_effect_and_clear_layer_commands(monkeypatch):
     ]
 
 
+def test_client_maps_set_direction_command(monkeypatch):
+    recorded: list[tuple[str, str, dict | None]] = []
+
+    def fake_request(self, method: str, path: str, payload=None):
+        recorded.append((method, path, payload))
+        return ClientCallResult(ok=True, status_code=200, data={"ok": True})
+
+    monkeypatch.setattr(LocalControllerClient, "_request_json", fake_request)
+
+    client = LocalControllerClient()
+    result = client.set_direction(120.0)
+
+    assert result.ok is True
+    assert recorded == [
+        (
+            "POST",
+            "/api/v1/commands/set_direction",
+            {"direction": 120.0},
+        )
+    ]
+
+
 def test_client_maps_effect_source_and_packaged_command_requests(monkeypatch):
     recorded: list[tuple[str, str, dict | None]] = []
 

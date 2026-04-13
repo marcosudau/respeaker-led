@@ -149,8 +149,8 @@ class LocalControllerClient:
     def cancel_timeout_countdown(self) -> ClientCallResult:
         return self._request_json("POST", "/api/v1/commands/cancel_timeout_countdown")
 
-    def set_direction(self, direction_deg: float) -> ClientCallResult:
-        return self._request_json("POST", "/api/v1/commands/set_direction", {"direction_deg": direction_deg})
+    def set_direction(self, direction: float) -> ClientCallResult:
+        return self._request_json("POST", "/api/v1/commands/set_direction", {"direction": direction})
 
     def clear_direction(self) -> ClientCallResult:
         return self._request_json("POST", "/api/v1/commands/clear_direction")

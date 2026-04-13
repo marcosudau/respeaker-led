@@ -2,6 +2,10 @@
 
 Diese Datei beschreibt die nahezu implementierbare Zielstruktur fuer das neue Effektmodell.
 
+Hinweis zum heutigen Stand:
+
+Dieses Dokument ist ein historischer Zielentwurf. Die aktuelle Implementierung laedt Default-Effekte ausschliesslich aus `.lefx`- und `.lefxset`-Artefakten; `legacy_visual` und `EffectRegistry.add_library_path(...)` gehoeren nicht mehr zum aktuellen Vertragsstand.
+
 ## Grundprinzip
 
 Die registrierbare Grundeinheit ist eine Python-Effektklasse.

@@ -9,10 +9,9 @@ from ..integrations.adapters import ConsolePreviewAdapter, FrameAdapter
 from .composer import SceneComposer
 from .effect_registry import EffectRegistry, build_default_effect_registry
 from ..core.effect_schema import CommandKind, LayerId, NormalizedCommand, PersistedLayerState
-from .effects2 import visual_from_spec
 from ..core.layers import LayerStore
-from ..core.models import BaseState, CountdownState, Event, Frame, MainLayerState, Scene, StateLayerState, Visual
-from .normalization import ControllerCommandNormalizer, build_effect_invocation
+from ..core.models import BaseState, CountdownState, Frame, Scene
+from .normalization import ControllerCommandNormalizer, build_effect_invocation, canonicalize_effect_params
 from .renderer import SceneRenderer
 
 
@@ -56,111 +55,6 @@ class ControllerRuntime:
         self._invocation_sequence = 0
         self._countdown_invocation_id: str | None = None
         self.reset(initial_state="idle")
-
-    def set_state_layer(self, state_layer: StateLayerState) -> None:
-        if not state_layer.enabled or state_layer.visual is None:
-            self._clear_layer(LayerId.BACKGROUND_STATE_LAYER)
-            return
-        now = time.monotonic()
-        self._apply_normalized_commands(
-            self.normalizer.normalize_legacy_visual(
-                LayerId.BACKGROUND_STATE_LAYER,
-                state_layer.visual,
-                scene_name="state_layer",
-                item_id=state_layer.mode,
-                mode=state_layer.mode,
-                payload={},
-                valid=True,
-                timestamp=now,
-            ),
-            timestamp=now,
-        )
-
-    def set_state_visual(self, visual, *, mode: str = "custom", enabled: bool = True) -> None:
-        if not enabled or visual is None:
-            self._clear_layer(LayerId.BACKGROUND_STATE_LAYER)
-            return
-        now = time.monotonic()
-        self._apply_normalized_commands(
-            self.normalizer.normalize_legacy_visual(
-                LayerId.BACKGROUND_STATE_LAYER,
-                visual,
-                scene_name="state_layer",
-                item_id=mode,
-                mode=mode,
-                payload={},
-                valid=True,
-                timestamp=now,
-            ),
-            timestamp=now,
-        )
-
-    def clear_state_layer(self) -> None:
-        self._clear_layer(LayerId.BACKGROUND_STATE_LAYER)
-
-    def set_main_layer(self, main_layer: MainLayerState | None) -> None:
-        if main_layer is None or main_layer.visual is None:
-            self.clear_active_visual()
-            return
-        self.set_active_visual(
-            layer_id=main_layer.id,
-            mode=main_layer.mode,
-            visual=main_layer.visual,
-            payload=main_layer.payload,
-            valid=main_layer.valid,
-            updated_at=main_layer.updated_at,
-        )
-
-    def set_active_visual(
-        self,
-        *,
-        layer_id: str,
-        mode: str,
-        visual,
-        payload: dict | None = None,
-        valid: bool = True,
-        updated_at: float | None = None,
-    ) -> None:
-        now = _timestamp_or_now(updated_at)
-        self._apply_normalized_commands(
-            self.normalizer.normalize_legacy_visual(
-                LayerId.MAIN_LAYER,
-                visual,
-                scene_name=f"active_visual:{layer_id}",
-                item_id=layer_id,
-                mode=mode,
-                payload=_copy_payload(payload),
-                valid=valid,
-                timestamp=now,
-            ),
-            timestamp=now,
-        )
-
-    def set_main_visual(
-        self,
-        *,
-        layer_id: str,
-        mode: str,
-        visual,
-        payload: dict | None = None,
-        valid: bool = True,
-        updated_at: float | None = None,
-    ) -> None:
-        self.set_active_visual(
-            layer_id=layer_id,
-            mode=mode,
-            visual=visual,
-            payload=payload,
-            valid=valid,
-            updated_at=updated_at,
-        )
-
-    def clear_active_visual(self) -> None:
-        self._clear_layer(LayerId.MAIN_LAYER)
-        self.active_effect_preset_id = None
-
-    def clear_main_layer(self) -> None:
-        self.clear_active_visual()
 
     def set_state(self, state_name: str, payload: dict | None = None, *, timestamp: float | None = None) -> None:
         now = _timestamp_or_now(timestamp)
@@ -255,9 +149,9 @@ class ControllerRuntime:
         self._countdown_invocation_id = None
         self._clear_layer(LayerId.TEMP_OVERLAY_LAYER)
 
-    def set_direction(self, direction_deg: float) -> None:
-        normalized = float(direction_deg) % 360.0
-        self.store.direction_deg = normalized
+    def set_direction(self, direction: float) -> None:
+        normalized = float(direction) % 360.0
+        self.store.direction = normalized
         now = time.monotonic()
         self._apply_normalized_commands(
             self.normalizer.normalize_set_direction(normalized, timestamp=now),
@@ -265,7 +159,7 @@ class ControllerRuntime:
         )
 
     def clear_direction(self) -> None:
-        self.store.direction_deg = None
+        self.store.direction = None
         self._clear_layer(LayerId.ONGOING_OVERLAY_LAYER)
 
     def set_brightness(self, level: float) -> None:
@@ -281,73 +175,18 @@ class ControllerRuntime:
         self._countdown_invocation_id = None
         self.set_state(initial_state, timestamp=time.monotonic())
 
-    def set_progress(self, value: float, *, color: int = 0x3399FF, base_color: int = 0x03070B) -> None:
+    def set_progress(self, value: float, *, color: int = 0x3399FF, background_color: int = 0x03070B) -> None:
         self.active_effect_preset_id = None
         now = time.monotonic()
         self._apply_normalized_commands(
-            self.normalizer.normalize_set_progress(value, color=color, base_color=base_color, timestamp=now),
+            self.normalizer.normalize_set_progress(
+                value,
+                color=color,
+                background_color=background_color,
+                timestamp=now,
+            ),
             timestamp=now,
         )
-
-    def push_event(self, event: Event) -> None:
-        payload = dict(event.payload)
-        payload.setdefault("event_id", event.id)
-        payload.setdefault("priority", event.priority)
-        if event.duration is not None:
-            payload.setdefault("duration_ms", int(event.duration * 1000.0))
-        self._apply_normalized_commands(
-            self.normalizer.normalize_legacy_visual(
-                LayerId.EVENT_LAYER,
-                event.visual,
-                scene_name=f"event:{event.id}",
-                item_id=event.id,
-                mode=event.name,
-                payload=payload,
-                valid=True,
-                source="runtime.push_event",
-                timestamp=event.created_at,
-                priority=event.priority,
-                duration_ms=None if event.duration is None else int(event.duration * 1000.0),
-                enqueue=True,
-                replace_existing=False,
-            ),
-            timestamp=event.created_at,
-        )
-
-    def push_event_visual(
-        self,
-        *,
-        event_id: str,
-        kind: str,
-        visual,
-        priority: int = 100,
-        duration: float | None = 3.0,
-        exclusive: bool | None = None,
-        created_at: float | None = None,
-    ) -> None:
-        del exclusive
-        created_at = time.monotonic() if created_at is None else created_at
-        self._apply_normalized_commands(
-            self.normalizer.normalize_legacy_visual(
-                LayerId.EVENT_LAYER,
-                visual,
-                scene_name=f"event:{event_id}",
-                item_id=event_id,
-                mode=kind,
-                payload={},
-                valid=True,
-                source="runtime.push_event_visual",
-                timestamp=created_at,
-                priority=priority,
-                duration_ms=None if duration is None else int(duration * 1000.0),
-                enqueue=True,
-                replace_existing=False,
-            ),
-            timestamp=created_at,
-        )
-
-    def clear_event_layer(self) -> None:
-        self._clear_layer(LayerId.EVENT_LAYER)
 
     def apply_effect(
         self,
@@ -367,7 +206,7 @@ class ControllerRuntime:
         timestamp: float | None = None,
     ):
         self.active_effect_preset_id = None
-        command_params = dict(params or {})
+        command_params = canonicalize_effect_params(params)
         if duration_ms is not None:
             command_params["duration_ms"] = int(duration_ms)
         if scene_name is not None:
@@ -377,7 +216,7 @@ class ControllerRuntime:
         if mode is not None:
             command_params["__mode"] = mode
         if payload is not None:
-            command_params["__payload"] = dict(payload)
+            command_params["__payload"] = canonicalize_effect_params(payload)
         command_params["__valid"] = bool(valid)
         now = _timestamp_or_now(timestamp)
         applied = self._apply_normalized_commands(
@@ -569,7 +408,7 @@ class ControllerRuntime:
                 "visual": self._serialize_invocation_visual(main_invocation),
             },
             "active_effect_preset_id": self.active_effect_preset_id,
-            "direction_deg": self.store.direction_deg,
+            "direction": self.store.direction,
             "brightness": self.store.brightness,
             "enabled": self.store.enabled,
             "countdown": None
@@ -699,13 +538,6 @@ class ControllerRuntime:
             return value
         if isinstance(value, Path):
             return str(value)
-        if isinstance(value, Visual):
-            return {
-                "__type__": "visual_spec",
-                "type": value.type,
-                "params": self._serialize_persistable_value(value.params),
-                "exclusive": bool(value.exclusive),
-            }
         if callable(value):
             raise TypeError("Callables cannot be persisted")
         if isinstance(value, dict):
@@ -716,13 +548,6 @@ class ControllerRuntime:
 
     def _restore_persisted_value(self, value):
         if isinstance(value, dict):
-            if value.get("__type__") == "visual_spec":
-                spec = {
-                    "type": value.get("type"),
-                    "params": self._restore_persisted_value(value.get("params", {})),
-                    "exclusive": bool(value.get("exclusive", False)),
-                }
-                return visual_from_spec(spec)
             return {str(key): self._restore_persisted_value(item) for key, item in value.items()}
         if isinstance(value, list):
             return [self._restore_persisted_value(item) for item in value]
@@ -733,13 +558,6 @@ class ControllerRuntime:
             return value
         if isinstance(value, Path):
             return str(value)
-        if isinstance(value, Visual):
-            return {
-                "__type__": "visual_spec",
-                "type": value.type,
-                "params": self._signature_value(value.params),
-                "exclusive": bool(value.exclusive),
-            }
         if callable(value):
             return "<callable>"
         if isinstance(value, dict):

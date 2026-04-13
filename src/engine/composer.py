@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from .effect_registry import EffectRegistry, build_default_effect_registry
 from ..core.effect_schema import LayerId, RenderContext
-from .effects import dynamic_frame
 from ..core.layers import LayerEntry, LayerStore
-from ..core.models import LED_COUNT, LayerVisual, Scene
+from ..core.models import LED_COUNT, LayerVisual, Scene, Visual
 
 
 def _public_params(params: dict) -> dict:
@@ -29,8 +28,15 @@ class SceneComposer:
                 LayerVisual(
                     name=self._layer_name(layer_id, entry, invocation),
                     priority=entry.state.priority,
-                    visual=dynamic_frame(
-                        lambda current_now, inv=invocation, current_layer=layer_id: self._render_invocation(inv, current_layer, current_now),
+                    visual=Visual(
+                        "dynamic_frame",
+                        {
+                            "provider": lambda current_now, inv=invocation, current_layer=layer_id: self._render_invocation(
+                                inv,
+                                current_layer,
+                                current_now,
+                            )
+                        },
                         exclusive=False,
                     ),
                 )

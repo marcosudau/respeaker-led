@@ -1,0 +1,88 @@
+{
+  "presets": {
+    "effect_yin_yang_spin_accent": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for yin_yang_spin (accent).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#140804",
+        "brightness": 0.9,
+        "color_a": "#FFB347",
+        "color_b": "#FFD7A1",
+        "reverse": true,
+        "speed": 1.35
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "accent",
+        "yin_yang_spin"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Yin Yang Spin Accent"
+    },
+    "effect_yin_yang_spin_main": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for yin_yang_spin (main).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03070C",
+        "brightness": 0.8,
+        "color_a": "#55A8FF",
+        "color_b": "#E0F2FF",
+        "reverse": false,
+        "speed": 1.0
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "main",
+        "yin_yang_spin"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Yin Yang Spin Main"
+    },
+    "state_yin_yang_spin_focus": {
+      "category": "state",
+      "description": "Auto-generated state preset for yin_yang_spin (focus).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03110D",
+        "brightness": 0.72,
+        "color_a": "#2ED3A8",
+        "color_b": "#C4FFF0",
+        "reverse": false,
+        "speed": 1.1
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "focus",
+        "yin_yang_spin"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Yin Yang Spin Focus"
+    },
+    "state_yin_yang_spin_idle": {
+      "category": "state",
+      "description": "Auto-generated state preset for yin_yang_spin (idle).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#020814",
+        "brightness": 0.45,
+        "color_a": "#4A7BFF",
+        "color_b": "#9BC6FF",
+        "reverse": false,
+        "speed": 0.7
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "idle",
+        "yin_yang_spin"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Yin Yang Spin Idle"
+    }
+  }
+}

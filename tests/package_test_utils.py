@@ -63,7 +63,7 @@ def write_effect_source(
         encoding="utf-8",
     )
     if presets is not None:
-        (root / "effect-presets.yaml").write_text(
+        (root / "presets.yaml").write_text(
             _dump_simple_yaml({"presets": presets}),
             encoding="utf-8",
         )

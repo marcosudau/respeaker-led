@@ -1,0 +1,100 @@
+{
+  "presets": {
+    "event_short_sweep_alert": {
+      "category": "event",
+      "description": "Auto-generated event preset for short_sweep (alert).",
+      "duration_ms": 900,
+      "enqueue": true,
+      "params": {
+        "background_color": "#120102",
+        "brightness": 1.0,
+        "color": "#FF5A5A",
+        "duration_ms": 900,
+        "reverse": false,
+        "segment_length": 3,
+        "speed": 1.35
+      },
+      "priority": 700,
+      "replace_existing": true,
+      "tags": [
+        "event",
+        "alert",
+        "short_sweep"
+      ],
+      "target_layer": "EVENT_LAYER",
+      "title": "Short Sweep Alert"
+    },
+    "event_short_sweep_notice": {
+      "category": "event",
+      "description": "Auto-generated event preset for short_sweep (notice).",
+      "duration_ms": 1000,
+      "enqueue": true,
+      "params": {
+        "background_color": "#120A02",
+        "brightness": 0.9,
+        "color": "#FFD166",
+        "duration_ms": 1000,
+        "reverse": false,
+        "segment_length": 3,
+        "speed": 1.1
+      },
+      "priority": 700,
+      "replace_existing": true,
+      "tags": [
+        "event",
+        "notice",
+        "short_sweep"
+      ],
+      "target_layer": "EVENT_LAYER",
+      "title": "Short Sweep Notice"
+    },
+    "event_short_sweep_success": {
+      "category": "event",
+      "description": "Auto-generated event preset for short_sweep (success).",
+      "duration_ms": 950,
+      "enqueue": true,
+      "params": {
+        "background_color": "#02110A",
+        "brightness": 0.88,
+        "color": "#42D392",
+        "duration_ms": 950,
+        "reverse": false,
+        "segment_length": 3,
+        "speed": 0.95
+      },
+      "priority": 700,
+      "replace_existing": true,
+      "tags": [
+        "event",
+        "success",
+        "short_sweep"
+      ],
+      "target_layer": "EVENT_LAYER",
+      "title": "Short Sweep Success"
+    },
+    "event_short_sweep_urgent": {
+      "category": "event",
+      "description": "Auto-generated event preset for short_sweep (urgent).",
+      "duration_ms": 700,
+      "enqueue": true,
+      "params": {
+        "background_color": "#170102",
+        "brightness": 1.0,
+        "color": "#FF3B30",
+        "duration_ms": 700,
+        "reverse": true,
+        "segment_length": 3,
+        "speed": 1.6
+      },
+      "priority": 700,
+      "replace_existing": true,
+      "tags": [
+        "event",
+        "urgent",
+        "short_sweep"
+      ],
+      "target_layer": "EVENT_LAYER",
+      "title": "Short Sweep Urgent"
+    }
+  }
+}

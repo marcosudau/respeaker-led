@@ -14,7 +14,7 @@ Sie ist richtig fuer dich, wenn du:
 - Die API steuert einen laufenden Service in `src/`
 - Die CLI kann den Service starten oder mit ihm sprechen
 - `list-effects` und `apply-effect` arbeiten gegen denselben laufenden Service
-- Presets bleiben optional und laufen innerhalb desselben Dienstes
+- Effekt-Presets und Commands bleiben optional und laufen innerhalb desselben Dienstes
 - Release 1 ist auf den lokalen Unterprozess-Betrieb ausgelegt
 
 ## Service starten
@@ -44,7 +44,9 @@ Hinweis:
 
 ```powershell
 python .\main.py list-effects
-python .\main.py list-presets
+python .\main.py list-effect-sources
+python .\main.py list-effect-presets default-effects::soft_pulse
+python .\main.py list-commands --source default-effects
 python .\main.py ping
 python .\main.py status
 python .\main.py set-state listening
@@ -59,7 +61,8 @@ python .\main.py set-direction 120
 python .\main.py clear-direction
 python .\main.py set-brightness 0.5
 python .\main.py set-enabled false
-python .\main.py activate-preset mein_preset --spec '{"color":"0x224466"}'
+python .\main.py apply-effect-preset default-effects::effect_soft_pulse_main
+python .\main.py invoke-command default-effects effect_soft_pulse_accent
 ```
 
 ## Release-1-Runtime-Dateien
@@ -225,7 +228,7 @@ Content-Type: application/json
 
 ```json
 {
-  "direction_deg": 120
+  "direction": 120
 }
 ```
 

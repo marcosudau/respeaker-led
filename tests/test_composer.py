@@ -50,14 +50,14 @@ def test_composer_orders_state_active_direction_countdown_and_event_layers():
     )
     store.set_invocation(
         LayerId.MAIN_LAYER,
-        make_invocation("progress_bar", LayerId.MAIN_LAYER, invocation_id="download", created_at=0.0, params={"value": 100, "color": 0x112233, "base_color": 0x112233}),
+        make_invocation("progress_bar", LayerId.MAIN_LAYER, invocation_id="download", created_at=0.0, params={"value": 100, "color": 0x112233, "background_color": 0x112233}),
         scene_name="active_visual:download",
         item_id="download",
         mode="manual",
     )
     store.set_invocation(
         LayerId.ONGOING_OVERLAY_LAYER,
-        make_invocation("direction_indicator", LayerId.ONGOING_OVERLAY_LAYER, invocation_id="direction", created_at=0.0, params={"direction_deg": 120.0}),
+        make_invocation("direction_indicator", LayerId.ONGOING_OVERLAY_LAYER, invocation_id="direction", created_at=0.0, params={"direction": 120.0}),
         scene_name="direction_overlay",
         item_id="direction-overlay",
         mode="direction",
@@ -85,7 +85,7 @@ def test_composer_orders_state_active_direction_countdown_and_event_layers():
             created_at=0.0,
             priority=500,
             duration_ms=2000,
-            params={"color": 0xFF0000, "base_color": 0x120400, "period_ms": 800, "duty_cycle": 0.5, "__scene_name": "event:warning"},
+            params={"color": 0xFF0000, "background_color": 0x120400, "period_ms": 800, "duty_cycle": 0.5, "__scene_name": "event:warning"},
         ),
         enqueue=True,
     )
@@ -113,7 +113,7 @@ def test_event_queue_keeps_running_event_until_it_expires_and_then_uses_priority
             created_at=0.0,
             priority=10,
             duration_ms=3000,
-            params={"color": 0x111111, "base_color": 0x010101, "period_ms": 400, "duty_cycle": 0.5, "__scene_name": "event:first"},
+            params={"color": 0x111111, "background_color": 0x010101, "period_ms": 400, "duty_cycle": 0.5, "__scene_name": "event:first"},
         ),
         enqueue=True,
     )
@@ -126,7 +126,7 @@ def test_event_queue_keeps_running_event_until_it_expires_and_then_uses_priority
             created_at=0.6,
             priority=999,
             duration_ms=1000,
-            params={"color": 0x222222, "base_color": 0x020202, "period_ms": 400, "duty_cycle": 0.5, "__scene_name": "event:second"},
+            params={"color": 0x222222, "background_color": 0x020202, "period_ms": 400, "duty_cycle": 0.5, "__scene_name": "event:second"},
         ),
         enqueue=True,
     )

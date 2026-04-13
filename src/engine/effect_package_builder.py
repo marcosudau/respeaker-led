@@ -8,6 +8,7 @@ import zipfile
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 from ..core.effect_schema import BaseEffect
@@ -148,7 +149,7 @@ def init_effect_source(
 
     created_files = [
         _write_text_file(metadata_path, metadata_text),
-        _write_text_file(target / "effect-presets.yaml", preset_text),
+        _write_text_file(target / "presets.yaml", preset_text),
         _write_text_file(target / "commands.json", command_text),
         _write_text_file(target / "effect.py", effect_py),
     ]
@@ -261,7 +262,7 @@ def _build_effect_package_bytes(source_dir: Path) -> dict[str, Any]:
         vendor=None if metadata.get("vendor") is None else str(metadata.get("vendor")),
     )
 
-    presets_payload = load_optional_source_manifest(source_dir, "effect-presets")
+    presets_payload = load_optional_source_manifest(source_dir, "presets")
     presets = (
         []
         if presets_payload is None
@@ -415,12 +416,21 @@ def _resolve_effect_set_member(effects_root: Path, raw_name: str) -> Path:
 
 
 def _load_effect_class(source_dir: Path, entry_file: Path, configured_entry_class: str | None) -> type[BaseEffect]:
-    unique_name = f"effectsrc_{hashlib.sha1(str(source_dir).encode('utf-8')).hexdigest()}_{entry_file.stem}"
-    spec = importlib.util.spec_from_file_location(unique_name, entry_file)
+    package_name = f"effectsrc_{hashlib.sha1(str(source_dir).encode('utf-8')).hexdigest()}"
+    relative_module = ".".join(entry_file.relative_to(source_dir).with_suffix("").parts)
+    module_name = f"{package_name}.{relative_module}"
+
+    package_module = ModuleType(package_name)
+    package_module.__path__ = [str(source_dir)]
+    package_module.__package__ = package_name
+    sys.modules[package_name] = package_module
+
+    spec = importlib.util.spec_from_file_location(module_name, entry_file)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Could not import source effect module from {entry_file}")
     module = importlib.util.module_from_spec(spec)
-    sys.modules[unique_name] = module
+    module.__package__ = module_name.rpartition(".")[0]
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
 
     if configured_entry_class:
@@ -447,7 +457,7 @@ def _collect_payload_files(source_dir: Path) -> dict[str, bytes]:
             continue
         if "__pycache__" in path.parts:
             continue
-        if path.name in {"effect.json", "effect.yaml", "effect-presets.json", "effect-presets.yaml", "commands.json"}:
+        if path.name in {"effect.json", "effect.yaml", "presets.json", "presets.yaml", "commands.json"}:
             continue
         relative = path.relative_to(source_dir).as_posix()
         destination = f"payload/{relative}"
@@ -614,7 +624,7 @@ def _render_set_metadata(*, format_name: str, set_id: str, source_id: str, title
             "version: 1",
             "min_service_version: 1.0.0",
             "effects:",
-            "  # - add prebuilt .lefx file names or transitional source directory names here",
+            "  # - add prebuilt .lefx file names here",
             "",
         ]
     )

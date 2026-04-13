@@ -45,12 +45,13 @@ Pruefe der Reihe nach:
 - pruefe den Layernamen, zum Beispiel `main`, `state` oder `event`
 - pruefe, ob `--params` gueltiges JSON ist
 
-## Preset wird nicht gefunden
+## Effekt-Preset oder Command wird nicht gefunden
 
-- liegt der Ordner unter `src/led_effects/preset_packs/`?
-- existieren `preset.yaml` und `preset.py`?
-- sind `id` und `command` eindeutig?
-- gibt `build_preset(spec)` wirklich ein `PresetBuildResult` zurueck?
+- pruefe die Quelle mit `python .\main.py list-effect-sources`
+- pruefe die Effekt-ID mit `python .\main.py list-effects`
+- pruefe eingebettete Presets mit `python .\main.py list-effect-presets <source_id>::<effect_id>`
+- pruefe Commands mit `python .\main.py list-commands --source <source_id>`
+- wenn du die Artefakte gerade neu gebaut hast, fuehre `python .\main.py reload-effect-sources` aus oder starte den Service neu
 
 ## Keine Hardware-Ausgabe
 

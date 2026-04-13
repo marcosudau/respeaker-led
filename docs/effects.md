@@ -10,41 +10,48 @@ Ein Effekt ist eine Python-Klasse, die:
 - eine `EffectDefinition` als Klassenattribut besitzt
 - in `render(ctx)` fuer einen Zeitpunkt einen LED-Zustand erzeugt
 
-Der Service scannt standardmaessig den Ordner `src/led_effects/effects/` und registriert dort alle gefundenen konkreten `BaseEffect`-Klassen automatisch.
+Die Python-Klassen sind die Buildquellen. Der Service registriert Standardeffekte nicht direkt aus diesen Dateien, sondern aus gebauten `.lefx`- und `.lefxset`-Artefakten.
 
 ## Wo Effekte heute liegen
 
-Die eigentlichen Effektmodule liegen in:
+Die Buildquellen fuer die Standardeffekte liegen in:
 
-- `src/led_effects/effects/`
-
-Aktuelle Hilfsdateien dort sind zum Beispiel:
-
-- `src/led_effects/effects/common.py`
 - `src/led_effects/effects/basic.py`
 - `src/led_effects/effects/overlays.py`
-- `src/led_effects/effects/compatibility.py`
+- `src/led_effects/effects/ring_effects.py`
+- `src/led_effects/effects/common.py`
+
+Das veroeffentlichte Standard-Artefakt liegt in:
+
+- `src/led_effects/effects/default-effects.lefxset`
+
+Optional zusaetzliche Laufzeit-Artefakte liegen in:
+
+- `src/led_effects/packages/`
+- `packages/` neben der EXE im Release-Bundle
 
 Wichtig:
 
-- `src/` enthaelt die Engine, Runtime und Registry
-- `src/led_effects/effects/` enthaelt die konkreten Effektimplementierungen
-- `src/led_effects/preset_packs/` enthaelt optionale Preset-Bausteine oberhalb einzelner Effekte
+- `src/` enthaelt Engine, Runtime, Registry und Packaging
+- `src/led_effects/effects/` enthaelt die Python-Buildquellen fuer die Standardeffekte
+- `src/led_effects/effects/default-effects.lefxset` ist die Default-Bibliothek fuer Entwicklung und Packaging
+- `src/led_effects/packages/` enthaelt optionale zusaetzliche Effektartefakte
 
 ## Wie der Service Effekte laedt
 
 Beim Aufbau der Default-Registry passiert folgendes:
 
 1. `build_default_effect_registry()` erzeugt eine leere Registry.
-2. Die Registry registriert den Bibliotheksordner `src/led_effects/effects/` als Default-Quelle.
-3. Alle Python-Dateien dort werden gescannt.
-4. Jede konkrete `BaseEffect`-Unterklasse wird validiert und unter ihrer `id` registriert.
+2. Die Runtime sucht zuerst nach `effects/default-effects.lefxset` neben der EXE.
+3. Falls dort kein Bundle-Artefakt liegt, wird in der Entwicklungsumgebung `src/led_effects/effects/default-effects.lefxset` verwendet.
+4. Das Effektset wird als Quelle `default-effects` geladen.
+5. Zusaetzliche `.lefx`- und `.lefxset`-Artefakte koennen aus `packages/` autodiscovered oder ueber CLI/API registriert werden.
 
 Konsequenzen:
 
-- neue Effektdatei anlegen reicht grundsaetzlich aus
-- doppelte Effekt-IDs verhindern den Start oder Reload klar und frueh
-- nach Aenderungen am Effektcode solltest du den Service neu starten
+- neue Python-Datei alleine reicht nicht aus; sie muss in den Buildpfad aufgenommen und gebaut werden
+- doppelte Effekt-IDs verhindern Build, Start oder Reload klar und frueh
+- nach Aenderungen am Effektcode solltest du `python tools/effect_building/build_lefxset.py --rebuild-packages` ausfuehren und danach den Service neu starten oder `reload-effect-sources` verwenden
 
 ## Aus welchen Bausteinen ein Effekt besteht
 
@@ -282,20 +289,24 @@ Der neue Aufbau erlaubt zwei typische Austauschwege:
 
 ### Vorhandenen Effekt weiterentwickeln
 
-- bestehende Datei unter `src/led_effects/effects/` anpassen
+- bestehende Buildquelle unter `src/led_effects/effects/` anpassen
+- `python tools/effect_building/build_lefxset.py --rebuild-packages` ausfuehren
 - gleiche `id` behalten
-- Service neu starten
+- Service neu starten oder `reload-effect-sources` ausfuehren
 
 ### Neuen Effekt neben bestehende setzen
 
-- neue Datei mit neuer `id` anlegen
-- Service neu starten
+- neue Effektklasse mit neuer `id` anlegen
+- falls sie in einem neuen Modul liegt, das Modul in `tools/effect_building/standard_effects.py` in `_MODULE_BUNDLES` aufnehmen
+- `python tools/effect_building/build_lefxset.py --rebuild-packages` ausfuehren
+- Service neu starten oder `reload-effect-sources` ausfuehren
 - ueber `list-effects` und `apply-effect` verwenden
 
 Wichtig:
 
 - parallele doppelte IDs sind nicht erlaubt
-- ein oeffentlicher Runtime-Reload per CLI oder API existiert aktuell nicht
+- Rohquellpfade koennen nicht mehr als Effektquelle registriert werden
+- ein oeffentlicher Reload fuer Artefaktquellen existiert ueber `reload-effect-sources`
 
 ## Beziehung zu Presets
 
@@ -315,5 +326,5 @@ Wenn du daraus spaeter einen wiederverwendbaren Workflow machen willst, baue dar
 - [Schnellstart](getting_started.md)
 - [CLI und API](api_guide.md)
 - [Aktueller Ansatz im Repo](current_approach.md)
-- [Preset-Packs](presets.md)
+- [Effekt-Presets und Commands](presets.md)
 - [Entwickler-Einstiege](dev/index.md)

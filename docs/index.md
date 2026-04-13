@@ -11,7 +11,7 @@ Diese Doku beschreibt nur noch den aktiven Service-Pfad des Repos.
 
 ## Optional
 
-- [Optionale Preset-Packs](presets.md)
+- [Effekt-Presets und Commands](presets.md)
 - [Troubleshooting](troubleshooting.md)
 
 ## Fuer Entwicklung

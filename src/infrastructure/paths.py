@@ -3,20 +3,38 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import tempfile
+
+temp_dir = tempfile.gettempdir()
+
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 RESOURCE_ROOT = Path(getattr(sys, "_MEIPASS", PACKAGE_ROOT.parent)).resolve()
 PROJECT_ROOT = RESOURCE_ROOT
 APP_ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else PROJECT_ROOT
+APP_EFFECTS_ROOT = APP_ROOT / "effects"
+APP_EFFECT_PACKAGES_ROOT = APP_ROOT / "packages"
 SOURCE_ROOT = PROJECT_ROOT / "src"
 LED_EFFECTS_ROOT = SOURCE_ROOT / "led_effects"
 EFFECTS_LIBRARY_ROOT = LED_EFFECTS_ROOT / "effects"
 EFFECT_PACKAGES_ROOT = LED_EFFECTS_ROOT / "packages"
+DEFAULT_EFFECT_SOURCE_ID = "default-effects"
+DEFAULT_EFFECT_SET_FILENAME = "default-effects.lefxset"
+APP_DEFAULT_EFFECT_SET_PATH = APP_EFFECTS_ROOT / DEFAULT_EFFECT_SET_FILENAME
+DEFAULT_EFFECT_SET_PATH = EFFECTS_LIBRARY_ROOT / DEFAULT_EFFECT_SET_FILENAME
 PRESET_PACKS_ROOT = LED_EFFECTS_ROOT / "preset_packs"
-RUNTIME_STATE_ROOT = APP_ROOT / "runtime_state"
+
+TEMP_DIR = Path(tempfile.gettempdir())
+RUNTIME_STATE_ROOT = TEMP_DIR / "respeaker_led_controller_runtime_state"
 EFFECT_PACKAGE_CACHE_ROOT = RUNTIME_STATE_ROOT / "effect_package_cache"
 BACKGROUND_STATE_FILE = RUNTIME_STATE_ROOT / "background_state.json"
 ACTIVE_SERVICE_FILE = RUNTIME_STATE_ROOT / "active_service.json"
+
+# RUNTIME_STATE_ROOT = APP_ROOT / "runtime_state"
+# EFFECT_PACKAGE_CACHE_ROOT = RUNTIME_STATE_ROOT / "effect_package_cache"
+# BACKGROUND_STATE_FILE = RUNTIME_STATE_ROOT / "background_state.json"
+# ACTIVE_SERVICE_FILE = RUNTIME_STATE_ROOT / "active_service.json"
+
 LOGS_ROOT = APP_ROOT / "logs"
 SERVICE_LOG_FILE = LOGS_ROOT / "led_controller.log"
 DOCS_ROOT = RESOURCE_ROOT / "docs"

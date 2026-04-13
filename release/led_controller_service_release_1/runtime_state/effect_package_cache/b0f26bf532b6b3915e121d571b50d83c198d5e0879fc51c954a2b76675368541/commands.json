@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "effect_progress_ring_accent": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_progress_ring_accent"
+      }
+    },
+    "effect_progress_ring_main": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_progress_ring_main"
+      }
+    },
+    "overlay_progress_ring_assist": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_progress_ring_assist"
+      }
+    },
+    "overlay_progress_ring_tracking": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_progress_ring_tracking"
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "host": "127.0.0.1",
+  "instance_id": "d20d962826994f29823eda632831ea0b",
+  "log_file": "P:\\CodexApp\\led_controller_respeaker\\release\\led_controller_service_release_1\\logs\\led_controller.log",
+  "pid": 42824,
+  "port": 8765,
+  "port_pool": [
+    8765,
+    8766,
+    8767,
+    8768,
+    8769,
+    8770
+  ],
+  "requested_port": 8765,
+  "started_at": 1776073621.0894496,
+  "status": "ready"
+}

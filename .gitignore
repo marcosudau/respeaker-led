@@ -16,5 +16,9 @@ artifacts/
 logs/
 runtime_state/*.json
 runtime_state/effect_package_cache/
+tools/effect_building/build_lefx/
+tools/effect_building/build_lefxset/
+tools/effect_building/sources/default-effects/
+tools/effect_building/_generated/default-effects_set/
 release/**/led_controller_service.exe
 release/**/*.zip

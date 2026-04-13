@@ -1,0 +1,144 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run",
+      "loop",
+      "persistent"
+    ],
+    "preemptible": true,
+    "restorable": true,
+    "supports_duration_override": false,
+    "supports_queueing": true,
+    "supports_transparency": false
+  },
+  "defaults": {
+    "background_color": "#000000",
+    "color": "#FFAA00",
+    "duty_cycle": 0.5,
+    "period_ms": 900
+  },
+  "description": "Blinkt zwischen Akzent- und Grundfarbe.",
+  "effect_id": "blink_color",
+  "entry_class": "BlinkColorEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "EVENT_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "priority_fifo",
+      "requires_finite_duration": true,
+      "requires_indefinite_duration": null
+    },
+    "MAIN_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run",
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": null
+    },
+    "ONGOING_OVERLAY_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "TEMP_OVERLAY_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": true,
+      "requires_indefinite_duration": null
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.blink_color",
+  "parameter_schema": {
+    "background_color": {
+      "default": "#000000",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "background_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "color": {
+      "default": "#FFAA00",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "duty_cycle": {
+      "default": 0.5,
+      "description": "",
+      "enum_values": [],
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "duty_cycle",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "period_ms": {
+      "default": 900,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 100,
+      "name": "period_ms",
+      "required": false,
+      "type": "duration_ms",
+      "unit": "ms"
+    }
+  },
+  "qualified_effect_id": "default-effects::blink_color",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "animated"
+  ],
+  "title": "Blink Color",
+  "version": 1
+}

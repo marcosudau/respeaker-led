@@ -67,7 +67,7 @@ python .\main.py status
 ## 5. Einen animierten Effekt auf den State-Layer setzen
 
 ```powershell
-python .\main.py apply-effect soft_pulse state --params '{"color":"0x33AAFF","base_color":"0x02060A","period_ms":1600}'
+python .\main.py apply-effect soft_pulse state --params '{"color":"0x33AAFF","background_color":"0x02060A","period_ms":1600}'
 ```
 
 Damit laeuft ein pulsierender Hintergrundzustand.
@@ -96,18 +96,21 @@ python .\main.py clear-direction
 python .\main.py cancel-countdown
 ```
 
-## 9. Optional Presets abfragen oder aktivieren
+## 9. Optional Effekt-Presets oder Commands nutzen
 
-Vorhandene Presets anzeigen:
+Verfuegbare Effektquellen und Presets anzeigen:
 
 ```powershell
-python .\main.py list-presets
+python .\main.py list-effect-sources
+python .\main.py list-effect-presets default-effects::soft_pulse
+python .\main.py list-commands --source default-effects
 ```
 
-Ein Preset aktivieren, falls eines vorhanden ist:
+Ein eingebettetes Effekt-Preset oder einen Command ausloesen:
 
 ```powershell
-python .\main.py activate-preset mein_preset --spec '{"color":"0x224466"}'
+python .\main.py apply-effect-preset default-effects::effect_soft_pulse_main
+python .\main.py invoke-command default-effects effect_soft_pulse_accent
 ```
 
 ## 10. Service sauber beenden

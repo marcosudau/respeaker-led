@@ -26,6 +26,11 @@ DEFAULT_EVENT_DURATIONS_MS = {
     "notification": 1000,
 }
 
+_PUBLIC_EFFECT_PARAM_ALIASES = {
+    "base_color": "background_color",
+    "direction_deg": "direction",
+}
+
 
 def _normalize_name(value: str, fallback: str) -> str:
     text = str(value or "").strip().lower().replace("-", "_")
@@ -34,6 +39,19 @@ def _normalize_name(value: str, fallback: str) -> str:
 
 def _copy_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
     return dict(payload or {})
+
+
+def canonicalize_effect_params(params: dict[str, Any] | None) -> dict[str, Any]:
+    canonical: dict[str, Any] = {}
+    for key, value in dict(params or {}).items():
+        name = str(key)
+        if name.startswith("__"):
+            canonical[name] = value
+            continue
+        normalized = _PUBLIC_EFFECT_PARAM_ALIASES.get(name, name)
+        if normalized not in canonical or normalized == name:
+            canonical[normalized] = value
+    return canonical
 
 
 def _meta(params: dict[str, Any], **metadata: Any) -> dict[str, Any]:
@@ -98,6 +116,13 @@ def _payload_period_ms(payload: dict[str, Any], default_ms: int) -> int:
     return default_ms
 
 
+def _payload_color(payload: dict[str, Any], key: str, default: int, *aliases: str) -> int:
+    for candidate in (key, *aliases):
+        if candidate in payload:
+            return parse_hex_color(payload.get(candidate), default)
+    return default
+
+
 class ControllerCommandNormalizer:
     def normalize_set_state(
         self,
@@ -110,7 +135,7 @@ class ControllerCommandNormalizer:
         name = _normalize_name(state_name, "idle")
         payload = _copy_payload(payload)
         accent = parse_hex_color(payload.get("color"), _default_state_color(name))
-        background = parse_hex_color(payload.get("base_color"), _default_background_color(name))
+        background = _payload_color(payload, "background_color", _default_background_color(name), "base_color")
         commands = [
             NormalizedCommand(
                 kind=CommandKind.SET_EFFECT,
@@ -143,14 +168,14 @@ class ControllerCommandNormalizer:
         effect_id = "soft_pulse"
         effect_params: dict[str, Any] = {
             "color": accent,
-            "base_color": background,
+            "background_color": background,
             "period_ms": _payload_period_ms(payload, 1600),
         }
         if name == "offline":
             effect_id = "blink_color"
             effect_params = {
                 "color": accent,
-                "base_color": background,
+                "background_color": background,
                 "period_ms": 1200,
                 "duty_cycle": 0.25,
             }
@@ -164,7 +189,7 @@ class ControllerCommandNormalizer:
             effect_id = "blink_color"
             effect_params = {
                 "color": accent,
-                "base_color": background,
+                "background_color": background,
                 "period_ms": 700,
                 "duty_cycle": 0.55,
             }
@@ -212,10 +237,10 @@ class ControllerCommandNormalizer:
         duration_ms = payload.get("duration_ms", DEFAULT_EVENT_DURATIONS_MS.get(name, 1000))
         priority = int(payload.get("priority", DEFAULT_EVENT_PRIORITIES.get(name, 300)))
         accent = parse_hex_color(payload.get("color"), _default_event_color(name))
-        background = parse_hex_color(payload.get("base_color"), _default_event_background(name))
+        background = _payload_color(payload, "background_color", _default_event_background(name), "base_color")
         params = {
             "color": accent,
-            "base_color": background,
+            "background_color": background,
             "duration_ms": None if duration_ms is None else int(duration_ms),
         }
         if name in {"trigger_received", "wakeword_ack"}:
@@ -254,23 +279,23 @@ class ControllerCommandNormalizer:
 
     def normalize_set_direction(
         self,
-        direction_deg: float,
+        direction: float,
         *,
         source: str = "runtime.set_direction",
         timestamp: float | None = None,
     ) -> list[NormalizedCommand]:
-        normalized = float(direction_deg) % 360.0
+        normalized = float(direction) % 360.0
         return [
             NormalizedCommand(
                 kind=CommandKind.SET_EFFECT,
                 target_layer=LayerId.ONGOING_OVERLAY_LAYER,
                 effect_id="direction_indicator",
                 params=_meta(
-                    {"direction_deg": normalized},
+                    {"direction": normalized},
                     scene_name="direction_overlay",
                     item_id="direction-overlay",
                     mode="direction",
-                    payload={"direction_deg": normalized},
+                    payload={"direction": normalized},
                     valid=True,
                 ),
                 source=source,
@@ -352,7 +377,7 @@ class ControllerCommandNormalizer:
         value: float,
         *,
         color: int = 0x3399FF,
-        base_color: int = 0x03070B,
+        background_color: int = 0x03070B,
         source: str = "runtime.set_progress",
         timestamp: float | None = None,
     ) -> list[NormalizedCommand]:
@@ -368,7 +393,7 @@ class ControllerCommandNormalizer:
                 target_layer=LayerId.MAIN_LAYER,
                 effect_id="progress_bar",
                 params=_meta(
-                    {"value": float(value), "color": int(color), "base_color": int(base_color)},
+                    {"value": float(value), "color": int(color), "background_color": int(background_color)},
                     scene_name="active_visual:progress",
                     item_id="progress",
                     mode="progress",
@@ -380,47 +405,6 @@ class ControllerCommandNormalizer:
             )
         )
         return commands
-
-    def normalize_legacy_visual(
-        self,
-        layer_id: LayerId,
-        visual,
-        *,
-        scene_name: str,
-        item_id: str,
-        mode: str,
-        payload: dict[str, Any] | None = None,
-        valid: bool = True,
-        source: str = "runtime.legacy_visual",
-        timestamp: float | None = None,
-        priority: int | None = None,
-        duration_ms: int | None = None,
-        enqueue: bool = False,
-        replace_existing: bool = True,
-    ) -> list[NormalizedCommand]:
-        params = {"visual": visual}
-        if duration_ms is not None:
-            params["duration_ms"] = int(duration_ms)
-        return [
-            NormalizedCommand(
-                kind=CommandKind.SET_EFFECT,
-                target_layer=layer_id,
-                effect_id="legacy_visual",
-                params=_meta(
-                    params,
-                    scene_name=scene_name,
-                    item_id=item_id,
-                    mode=mode,
-                    payload=_copy_payload(payload),
-                    valid=valid,
-                ),
-                priority=priority,
-                source=source,
-                timestamp=timestamp,
-                enqueue=enqueue,
-                replace_existing=replace_existing,
-            )
-        ]
 
 
 def _preferred_playback_mode(layer_id: LayerId, allowed_modes: tuple[PlaybackMode, ...], requested_duration_ms: int | None) -> PlaybackMode:
@@ -489,5 +473,6 @@ def build_effect_invocation(
 
 __all__ = [
     "ControllerCommandNormalizer",
+    "canonicalize_effect_params",
     "build_effect_invocation",
 ]

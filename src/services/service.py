@@ -237,8 +237,8 @@ class ControllerService:
     def cancel_timeout_countdown(self) -> dict[str, Any]:
         return self._mutate(self.runtime.cancel_timeout_countdown)
 
-    def set_direction(self, direction_deg: float) -> dict[str, Any]:
-        return self._mutate(lambda: self.runtime.set_direction(direction_deg))
+    def set_direction(self, direction: float) -> dict[str, Any]:
+        return self._mutate(lambda: self.runtime.set_direction(direction))
 
     def clear_direction(self) -> dict[str, Any]:
         return self._mutate(self.runtime.clear_direction)
@@ -250,57 +250,23 @@ class ControllerService:
         return self._mutate(lambda: self.runtime.set_enabled(enabled))
 
     def list_effects(self) -> list[dict[str, Any]]:
-        items: list[dict[str, Any]] = []
-        for effect_id in self.runtime.effect_registry.list_effect_ids():
-            registered = self.runtime.effect_registry.get(effect_id)
-            definition = registered.definition
-            items.append(
-                {
-                    "id": definition.id,
-                    "qualified_id": registered.qualified_effect_id,
-                    "title": definition.title,
-                    "description": definition.description,
-                    "source_id": registered.source_id,
-                    "source_kind": registered.source_kind,
-                    "package_id": registered.package_id,
-                    "package_version": registered.package_version,
-                    "defaults": dict(definition.defaults),
-                    "tags": list(definition.tags),
-                    "supported_layers": [
-                        layer_id.value for layer_id, rule in definition.layer_rules.items() if rule.allowed
-                    ],
-                    "parameters": {
-                        name: {
-                            "type": param.type,
-                            "required": param.required,
-                            "default": param.default,
-                            "description": param.description,
-                            "minimum": param.minimum,
-                            "maximum": param.maximum,
-                            "enum_values": list(param.enum_values),
-                            "unit": param.unit,
-                        }
-                        for name, param in definition.parameter_schema.items()
-                    },
-                }
-            )
-        return items
+        with self._lock:
+            return [self._serialize_registered_effect(effect) for effect in self.runtime.effect_registry.list_registered_effects()]
 
     def list_effects_for_source(self, source_id: str) -> list[dict[str, Any]]:
-        return [item for item in self.list_effects() if item["source_id"] == source_id]
+        with self._lock:
+            return [
+                self._serialize_registered_effect(effect)
+                for effect in self.runtime.effect_registry.list_registered_effects(source_id)
+            ]
 
     def effect_info(self, effect_id: str) -> dict[str, Any]:
-        for item in self.list_effects():
-            if item["qualified_id"] == effect_id or item["id"] == effect_id:
-                return item
-        raise KeyError(effect_id)
+        with self._lock:
+            return self._serialize_registered_effect(self.runtime.effect_registry.get(effect_id))
 
     def effect_info_for_source(self, source_id: str, effect_id: str) -> dict[str, Any]:
-        qualified_id = f"{source_id}::{effect_id}"
-        for item in self.list_effects():
-            if item["qualified_id"] == qualified_id:
-                return item
-        raise KeyError(qualified_id)
+        with self._lock:
+            return self._serialize_registered_effect(self.runtime.effect_registry.get_for_source(source_id, effect_id))
 
     def list_effect_presets(self, source_id: str | None = None, effect_id: str | None = None) -> list[dict[str, Any]]:
         with self._lock:
@@ -334,26 +300,43 @@ class ControllerService:
             return self.runtime.effect_registry.list_effect_commands(source_id)
 
     def list_effect_commands_for_effect(self, source_id: str, effect_id: str) -> list[dict[str, Any]]:
-        commands = self.list_effect_commands(source_id)
-        presets = {
-            preset["preset_id"]: preset
-            for preset in self.list_effect_presets(source_id, effect_id)
-        }
-        qualified_effect_id = f"{source_id}::{effect_id}"
-        items: list[dict[str, Any]] = []
-        for command in commands:
-            on_action = command["on"]
-            preset_id = on_action.get("preset")
-            if preset_id is not None and preset_id in presets:
-                items.append(command)
-                continue
-            if on_action.get("effect") == qualified_effect_id:
-                items.append(command)
-        return items
+        with self._lock:
+            return self.runtime.effect_registry.list_effect_commands_for_effect(source_id, effect_id)
 
     def effect_command_info(self, source_id: str, command_name: str) -> dict[str, Any]:
         with self._lock:
             return self.runtime.effect_registry.get_command(source_id, command_name).serialize()
+
+    def _serialize_registered_effect(self, registered) -> dict[str, Any]:
+        definition = registered.definition
+        return {
+            "id": definition.id,
+            "qualified_id": registered.qualified_effect_id,
+            "title": definition.title,
+            "description": definition.description,
+            "source_id": registered.source_id,
+            "source_kind": registered.source_kind,
+            "package_id": registered.package_id,
+            "package_version": registered.package_version,
+            "defaults": dict(definition.defaults),
+            "tags": list(definition.tags),
+            "supported_layers": [
+                layer_id.value for layer_id, rule in definition.layer_rules.items() if rule.allowed
+            ],
+            "parameters": {
+                name: {
+                    "type": param.type,
+                    "required": param.required,
+                    "default": param.default,
+                    "description": param.description,
+                    "minimum": param.minimum,
+                    "maximum": param.maximum,
+                    "enum_values": list(param.enum_values),
+                    "unit": param.unit,
+                }
+                for name, param in definition.parameter_schema.items()
+            },
+        }
 
     def apply_effect(
         self,

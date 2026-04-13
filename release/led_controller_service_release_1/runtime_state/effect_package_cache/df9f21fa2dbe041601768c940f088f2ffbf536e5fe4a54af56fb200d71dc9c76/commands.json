@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "effect_opposing_markers_accent": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_opposing_markers_accent"
+      }
+    },
+    "effect_opposing_markers_main": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_opposing_markers_main"
+      }
+    },
+    "overlay_opposing_markers_assist": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_opposing_markers_assist"
+      }
+    },
+    "overlay_opposing_markers_tracking": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_opposing_markers_tracking"
+      }
+    }
+  }
+}

@@ -1,24 +1,42 @@
 from __future__ import annotations
 
 import hashlib
-import importlib
-import importlib.util
 import inspect
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
-from types import ModuleType
 from typing import Iterable
 
 from ..core.effect_schema import BaseEffect, EffectCapabilities, EffectDefinition, EffectParamDefinition, LayerRule
-from ..infrastructure.paths import EFFECTS_LIBRARY_ROOT, EFFECT_PACKAGES_ROOT, PROJECT_ROOT
+from ..infrastructure.paths import (
+    APP_DEFAULT_EFFECT_SET_PATH,
+    APP_EFFECT_PACKAGES_ROOT,
+    DEFAULT_EFFECT_SET_PATH,
+    DEFAULT_EFFECT_SOURCE_ID,
+    EFFECT_PACKAGES_ROOT,
+)
 from .effect_command_registry import EffectCommandRegistry
 from .effect_package_loader import LoadedEffectPackage, LoadedEffectSet, load_effect_package, load_effect_set
 from .effect_preset_registry import EffectPresetRegistry
 
 
 _EFFECT_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def _default_effect_artifact_candidates() -> list[Path]:
+    candidates = [
+        APP_DEFAULT_EFFECT_SET_PATH,
+        DEFAULT_EFFECT_SET_PATH,
+    ]
+    deduplicated: list[Path] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        key = str(candidate.resolve()) if candidate.exists() else str(candidate)
+        if key in seen:
+            continue
+        deduplicated.append(candidate)
+        seen.add(key)
+    return deduplicated
 
 
 @dataclass(slots=True)
@@ -63,20 +81,12 @@ class EffectRegistry:
         self._discovered_sources: list[EffectLibrarySource] = []
         self._blocked_source_paths: set[str] = set()
         self._effects_by_id: dict[str, RegisteredEffectType] = {}
+        self._effect_aliases: dict[str, str] = {}
         self._preset_registry = EffectPresetRegistry()
         self._command_registry = EffectCommandRegistry()
 
         for effect_class in effect_classes or ():
             self.register(effect_class)
-
-    def register_builtin_effects(
-        self,
-        source_id: str = "default-effects",
-        path: str | Path | None = None,
-    ) -> EffectLibrarySource:
-        source = self.add_library_path(path or EFFECTS_LIBRARY_ROOT, enabled=True, source_id=source_id)
-        self._rebuild_registry()
-        return source
 
     def register(self, effect_class: type[BaseEffect], source_id: str = "builtin") -> None:
         self._validate_effect_class(effect_class)
@@ -84,7 +94,7 @@ class EffectRegistry:
         self._rebuild_registry()
 
     def get(self, effect_id: str) -> RegisteredEffectType:
-        return self._effects_by_id[effect_id]
+        return self._effects_by_id[self._effect_aliases.get(effect_id, effect_id)]
 
     def get_command(self, source_id: str, command_name: str):
         return self._command_registry.get(source_id, command_name)
@@ -94,30 +104,6 @@ class EffectRegistry:
 
     def list_effect_ids(self) -> list[str]:
         return sorted(self._effects_by_id)
-
-    def add_library_path(
-        self,
-        path: str | Path,
-        *,
-        enabled: bool = True,
-        source_id: str | None = None,
-    ) -> EffectLibrarySource:
-        resolved = self._path_key(path)
-        existing = self._find_configured_source_by_path(resolved)
-        if existing is not None:
-            existing.enabled = enabled
-            if source_id is not None:
-                existing.source_id = source_id
-            return existing
-
-        source = EffectLibrarySource(
-            source_id=source_id or f"library:{hashlib.sha1(resolved.encode('utf-8')).hexdigest()[:12]}",
-            path=resolved,
-            kind="library_path",
-            enabled=enabled,
-        )
-        self._configured_sources.append(source)
-        return source
 
     def register_effect_source(
         self,
@@ -176,8 +162,17 @@ class EffectRegistry:
             key=lambda item: (item.source_id, item.path),
         )
 
-    def list_library_sources(self) -> list[EffectLibrarySource]:
-        return list(self.list_effect_sources())
+    def list_registered_effects(self, source_id: str | None = None) -> list[RegisteredEffectType]:
+        effects = list(self._effects_by_id.values())
+        if source_id is not None:
+            effects = [effect for effect in effects if effect.source_id == source_id]
+        return sorted(effects, key=lambda item: (item.source_id, item.local_effect_id, item.registered_id))
+
+    def get_for_source(self, source_id: str, effect_id: str) -> RegisteredEffectType:
+        for effect in self.list_registered_effects(source_id):
+            if effect_id in {effect.local_effect_id, effect.registered_id, effect.qualified_effect_id}:
+                return effect
+        raise KeyError(f"{source_id}::{effect_id}")
 
     def list_effect_presets(self, source_id: str | None = None, effect_id: str | None = None) -> list[dict]:
         return [preset.serialize() for preset in self._preset_registry.list_presets(source_id, effect_id)]
@@ -185,8 +180,24 @@ class EffectRegistry:
     def list_effect_commands(self, source_id: str | None = None) -> list[dict]:
         return [command.serialize() for command in self._command_registry.list_commands(source_id)]
 
+    def list_effect_commands_for_effect(self, source_id: str, effect_id: str) -> list[dict]:
+        registered = self.get_for_source(source_id, effect_id)
+        presets = {
+            preset.preset_id: preset
+            for preset in self._preset_registry.list_presets(source_id, registered.local_effect_id)
+        }
+        items = []
+        for command in self._command_registry.list_commands(source_id):
+            on_action = command.on_action
+            if on_action.preset_id is not None and on_action.preset_id in presets:
+                items.append(command)
+                continue
+            if on_action.effect_id == registered.qualified_effect_id:
+                items.append(command)
+        return [command.serialize() for command in items]
+
     def reload(self) -> None:
-        self._rebuild_registry(reload_modules=True)
+        self._rebuild_registry()
 
     def _upsert_effect_source(
         self,
@@ -220,7 +231,7 @@ class EffectRegistry:
                 return source
         return None
 
-    def _rebuild_registry(self, *, reload_modules: bool = False) -> None:
+    def _rebuild_registry(self) -> None:
         rebuilt: dict[str, RegisteredEffectType] = {}
         presets = EffectPresetRegistry()
         commands = EffectCommandRegistry()
@@ -244,7 +255,6 @@ class EffectRegistry:
                 rebuilt,
                 presets,
                 commands,
-                reload_modules=reload_modules,
             )
 
         for source in self._discover_autodiscovered_sources():
@@ -256,11 +266,11 @@ class EffectRegistry:
                 rebuilt,
                 presets,
                 commands,
-                reload_modules=reload_modules,
             )
             discovered_sources.append(source)
 
         self._effects_by_id = rebuilt
+        self._effect_aliases = self._build_effect_aliases(rebuilt)
         self._preset_registry = presets
         self._command_registry = commands
         self._discovered_sources = discovered_sources
@@ -271,24 +281,7 @@ class EffectRegistry:
         target: dict[str, RegisteredEffectType],
         preset_registry: EffectPresetRegistry,
         command_registry: EffectCommandRegistry,
-        *,
-        reload_modules: bool,
     ) -> None:
-        if source.kind == "library_path":
-            source.package_id = None
-            source.package_version = None
-            source.preset_count = 0
-            source.command_count = 0
-            for effect_class in self._discover_effect_classes(Path(source.path), reload_modules=reload_modules):
-                self._register_effect_class(
-                    target,
-                    effect_class,
-                    source.source_id,
-                    source_kind=source.kind,
-                    origin_path=source.path,
-                )
-            return
-
         if source.kind == "effect_package":
             loaded = load_effect_package(source.path)
             self._apply_loaded_effect_package_source(source, target, preset_registry, command_registry, loaded)
@@ -318,11 +311,21 @@ class EffectRegistry:
             target,
             loaded.effect_class,
             loaded.manifest.source_id,
-            registration_id=loaded.manifest.qualified_effect_id,
+            registration_id=self._loaded_registration_id(
+                loaded.manifest.source_id,
+                loaded.manifest.effect_id,
+                loaded.manifest.qualified_effect_id,
+            ),
             source_kind=source.kind,
             origin_path=loaded.origin_path,
             package_id=loaded.manifest.package_id,
             package_version=loaded.manifest.version,
+        )
+        self._validate_loaded_source_bindings(
+            loaded.manifest.source_id,
+            {loaded.manifest.qualified_effect_id},
+            loaded.presets,
+            loaded.commands,
         )
         preset_registry.register_many(loaded.manifest.source_id, list(loaded.presets))
         command_registry.register_many(loaded.manifest.source_id, list(loaded.commands))
@@ -345,12 +348,22 @@ class EffectRegistry:
                 target,
                 effect.effect_class,
                 loaded.manifest.source_id,
-                registration_id=effect.manifest.qualified_effect_id,
+                registration_id=self._loaded_registration_id(
+                    loaded.manifest.source_id,
+                    effect.manifest.effect_id,
+                    effect.manifest.qualified_effect_id,
+                ),
                 source_kind=source.kind,
                 origin_path=effect.origin_path,
                 package_id=effect.manifest.package_id,
                 package_version=effect.manifest.version,
             )
+        self._validate_loaded_source_bindings(
+            loaded.manifest.source_id,
+            {effect.manifest.qualified_effect_id for effect in loaded.effects},
+            loaded.presets,
+            loaded.commands,
+        )
         preset_registry.register_many(loaded.manifest.source_id, list(loaded.presets))
         command_registry.register_many(loaded.manifest.source_id, list(loaded.commands))
 
@@ -364,25 +377,86 @@ class EffectRegistry:
             )
 
     def _discover_autodiscovered_sources(self) -> list[EffectLibrarySource]:
-        root = Path(EFFECT_PACKAGES_ROOT)
-        if not root.exists():
-            return []
         sources: list[EffectLibrarySource] = []
-        for path in sorted(root.rglob("*")):
-            if not path.is_file():
+        seen_paths: set[str] = set()
+        for root in (Path(APP_EFFECT_PACKAGES_ROOT), Path(EFFECT_PACKAGES_ROOT)):
+            if not root.exists():
                 continue
-            if path.suffix.lower() not in {".lefx", ".lefxset"}:
-                continue
-            sources.append(
-                EffectLibrarySource(
-                    source_id=f"pending:{hashlib.sha1(str(path.resolve()).encode('utf-8')).hexdigest()[:12]}",
-                    path=self._path_key(path),
-                    kind="effect_package" if path.suffix.lower() == ".lefx" else "effect_set",
-                    enabled=True,
-                    autodiscovered=True,
+            for path in sorted(root.rglob("*")):
+                if not path.is_file():
+                    continue
+                if path.suffix.lower() not in {".lefx", ".lefxset"}:
+                    continue
+                resolved_path = self._path_key(path)
+                if resolved_path in seen_paths:
+                    continue
+                seen_paths.add(resolved_path)
+                sources.append(
+                    EffectLibrarySource(
+                        source_id=f"pending:{hashlib.sha1(str(path.resolve()).encode('utf-8')).hexdigest()[:12]}",
+                        path=resolved_path,
+                        kind="effect_package" if path.suffix.lower() == ".lefx" else "effect_set",
+                        enabled=True,
+                        autodiscovered=True,
+                    )
                 )
-            )
         return sources
+
+    def _validate_loaded_source_bindings(
+        self,
+        source_id: str,
+        source_effect_ids: set[str],
+        presets,
+        commands,
+    ) -> None:
+        preset_map = {preset.preset_id: preset for preset in presets}
+        for preset in presets:
+            if preset.qualified_effect_id not in source_effect_ids:
+                raise ValueError(
+                    f"Preset {preset.preset_id!r} references unknown effect {preset.qualified_effect_id!r} in source {source_id!r}"
+                )
+        for command in commands:
+            for action in (command.on_action, command.off_action):
+                if action is None or action.action == "clear_layer":
+                    continue
+                if action.preset_id is not None:
+                    preset = preset_map.get(action.preset_id)
+                    if preset is None:
+                        raise ValueError(
+                            f"Command {command.command_name!r} references unknown preset {action.preset_id!r} in source {source_id!r}"
+                        )
+                    if preset.qualified_effect_id not in source_effect_ids:
+                        raise ValueError(
+                            f"Command {command.command_name!r} targets preset {action.preset_id!r} for unknown effect {preset.qualified_effect_id!r}"
+                        )
+                    continue
+                if action.effect_id is not None and action.effect_id not in source_effect_ids:
+                    raise ValueError(
+                        f"Command {command.command_name!r} references unknown effect {action.effect_id!r} in source {source_id!r}"
+                    )
+
+    def _loaded_registration_id(self, source_id: str, local_effect_id: str, qualified_effect_id: str) -> str:
+        if source_id == DEFAULT_EFFECT_SOURCE_ID:
+            return local_effect_id
+        return qualified_effect_id
+
+    def _build_effect_aliases(self, registered: dict[str, RegisteredEffectType]) -> dict[str, str]:
+        aliases: dict[str, str] = {}
+        for registered_id, effect in registered.items():
+            if "::" in registered_id:
+                continue
+            qualified_id = effect.qualified_effect_id
+            if qualified_id == registered_id:
+                continue
+            if qualified_id in registered:
+                continue
+            existing = aliases.get(qualified_id)
+            if existing is not None and existing != registered_id:
+                raise ValueError(
+                    f"Duplicate effect alias detected: {qualified_id} (registrations: {existing}, {registered_id})"
+                )
+            aliases[qualified_id] = registered_id
+        return aliases
 
     def _register_effect_class(
         self,
@@ -416,106 +490,24 @@ class EffectRegistry:
             package_version=package_version,
         )
 
-    def _discover_effect_classes(self, root: Path, *, reload_modules: bool = False) -> list[type[BaseEffect]]:
-        if not root.exists():
-            return []
-
-        module_files = sorted(
-            path
-            for path in root.rglob("*.py")
-            if "__pycache__" not in path.parts and path.name != "__init__.py"
-        )
-        discovered: list[type[BaseEffect]] = []
-        seen: set[type[BaseEffect]] = set()
-        for module_file in module_files:
-            module = self._load_module(module_file, reload_module=reload_modules)
-            for effect_class in self._effect_classes_from_module(module):
-                if effect_class not in seen:
-                    discovered.append(effect_class)
-                    seen.add(effect_class)
-        return discovered
-
-    def _load_module(self, module_path: Path, *, reload_module: bool = False) -> ModuleType:
-        project_module_name = self._project_module_name(module_path)
-        if project_module_name is not None:
-            importlib.invalidate_caches()
-            if project_module_name in sys.modules:
-                if reload_module:
-                    return importlib.reload(sys.modules[project_module_name])
-                return sys.modules[project_module_name]
-            return importlib.import_module(project_module_name)
-
-        unique_name = f"respeaker_effect_{hashlib.sha1(str(module_path).encode('utf-8')).hexdigest()}"
-        spec = importlib.util.spec_from_file_location(unique_name, module_path)
-        if spec is None or spec.loader is None:
-            raise RuntimeError(f"Could not load effect module from {module_path}")
-
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[unique_name] = module
-        spec.loader.exec_module(module)
-        return module
-
-    def _project_module_name(self, module_path: Path) -> str | None:
-        try:
-            relative = module_path.resolve().relative_to(PROJECT_ROOT.resolve())
-        except ValueError:
-            return None
-
-        if relative.suffix != ".py":
-            return None
-
-        module_parts = list(relative.with_suffix("").parts)
-        if not module_parts:
-            return None
-        if module_parts[-1] == "__init__":
-            module_parts = module_parts[:-1]
-        if any(not part.isidentifier() for part in module_parts):
-            return None
-        return ".".join(module_parts) if module_parts else None
-
-    def _effect_classes_from_module(self, module: ModuleType) -> list[type[BaseEffect]]:
-        effect_classes: list[type[BaseEffect]] = []
-        for value in module.__dict__.values():
-            if not inspect.isclass(value):
-                continue
-            if value is BaseEffect:
-                continue
-            if not issubclass(value, BaseEffect):
-                continue
-            if inspect.isabstract(value):
-                continue
-            effect_classes.append(value)
-        return effect_classes
-
     def _validate_effect_class(self, effect_class: type[BaseEffect]) -> None:
         if not inspect.isclass(effect_class) or not issubclass(effect_class, BaseEffect):
-            raise TypeError(f"Expected BaseEffect subclass, got {effect_class!r}")
+            raise TypeError(f"{effect_class!r} is not a BaseEffect subclass")
 
-        definition = getattr(effect_class, "definition", None)
-        if not isinstance(definition, EffectDefinition):
-            raise TypeError(f"{effect_class.__name__} must define an EffectDefinition in 'definition'")
-
-        if not definition.id or not _EFFECT_ID_RE.match(definition.id):
-            raise ValueError(
-                f"Effect id must be snake_case and start with a lowercase letter: {definition.id!r}"
-            )
-        if not definition.title.strip():
-            raise ValueError(f"Effect {definition.id!r} must define a non-empty title")
-        if not definition.description.strip():
-            raise ValueError(f"Effect {definition.id!r} must define a non-empty description")
-        if definition.version < 1:
-            raise ValueError(f"Effect {definition.id!r} must have version >= 1")
+        definition = effect_class.get_definition()
+        if not _EFFECT_ID_RE.match(definition.id):
+            raise ValueError(f"Effect id must be snake_case, got {definition.id!r}")
 
         if not isinstance(definition.capabilities, EffectCapabilities):
-            raise TypeError(f"Effect {definition.id!r} has invalid capabilities")
+            raise TypeError(f"Effect {definition.id!r} capabilities are invalid")
 
         for key, value in definition.parameter_schema.items():
+            if not isinstance(value, EffectParamDefinition):
+                raise TypeError(f"Effect {definition.id!r} parameter {key!r} is invalid")
             if key != value.name:
                 raise ValueError(
                     f"Effect {definition.id!r} parameter schema key/name mismatch: {key!r} != {value.name!r}"
                 )
-            if not isinstance(value, EffectParamDefinition):
-                raise TypeError(f"Effect {definition.id!r} parameter {key!r} is invalid")
 
         for key, value in definition.layer_rules.items():
             if not isinstance(value, LayerRule):
@@ -526,6 +518,21 @@ class EffectRegistry:
 
 
 def build_default_effect_registry() -> EffectRegistry:
-    registry = EffectRegistry()
-    registry.register_builtin_effects()
-    return registry
+    errors: list[str] = []
+    for artifact_path in _default_effect_artifact_candidates():
+        if not artifact_path.is_file():
+            continue
+        registry = EffectRegistry()
+        try:
+            registry.register_effect_set(artifact_path, source_id=DEFAULT_EFFECT_SOURCE_ID)
+            return registry
+        except Exception as exc:
+            errors.append(f"{artifact_path}: {exc}")
+            continue
+    if errors:
+        raise RuntimeError(
+            "Failed to load the default effect set artifact. "
+            + " | ".join(errors)
+        )
+    candidates = ", ".join(str(path) for path in _default_effect_artifact_candidates())
+    raise FileNotFoundError(f"Default effect set artifact not found. Checked: {candidates}")

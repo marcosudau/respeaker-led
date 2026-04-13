@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 from src.core.color_math import scale_color
-from src.engine.effects import solid
 from src.core.effect_schema import LayerId
 from src.core.models import LED_COUNT
 from src.engine.runtime import ControllerRuntime
@@ -42,11 +41,16 @@ def test_render_once_produces_frame_and_stores_last_scene_and_frame():
 def test_render_once_marks_invalid_active_visual_with_diagnostic_overlay():
     controller = make_controller()
     controller.set_state("idle", timestamp=0.0)
-    controller.set_active_visual(
-        layer_id="broken",
+    controller.apply_effect(
+        "solid_color",
+        LayerId.MAIN_LAYER,
+        {"color": "0x020202"},
+        scene_name="active_visual:broken",
+        item_id="broken",
         mode="manual",
-        visual=solid(0x020202),
+        payload={},
         valid=False,
+        timestamp=0.0,
     )
 
     scene, frame = controller.render_once(now=0.0)
@@ -112,23 +116,6 @@ def test_runtime_can_export_and_restore_persisted_background_state():
     assert frame.leds == [0x333333] * LED_COUNT
 
 
-def test_runtime_can_persist_and_restore_legacy_background_visuals():
-    controller = make_controller()
-    controller.set_state_visual(solid(0x112233), mode="custom")
-
-    disposition, persisted_state = controller.background_state_persistence_snapshot()
-
-    assert disposition == "persistable"
-    assert persisted_state is not None
-    assert persisted_state.effect_id == "legacy_visual"
-
-    restored = make_controller()
-    restored.restore_persisted_background_state(persisted_state)
-    _, frame = restored.render_once(now=0.0)
-
-    assert frame.leds == [0x112233] * LED_COUNT
-
-
 def test_runtime_applies_default_background_fallback_as_dim_white():
     controller = make_controller()
     controller.apply_default_background_state()
@@ -152,4 +139,20 @@ def test_controller_can_apply_effect_and_clear_runtime_layer():
     controller.render_once(now=0.1)
 
     assert controller.get_status(now=0.1)["active_visual"] is None
+
+
+def test_runtime_canonicalizes_legacy_effect_param_aliases_in_public_status():
+    controller = make_controller()
+    controller.apply_effect(
+        "progress_bar",
+        LayerId.MAIN_LAYER,
+        {"value": 50, "color": "#112233", "base_color": "#010101"},
+        timestamp=0.0,
+    )
+
+    status = controller.get_status(now=0.0)
+    params = status["active_visual"]["visual"]["params"]
+
+    assert params["background_color"] == "#010101"
+    assert "base_color" not in params
 

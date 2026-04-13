@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "effect_blink_pattern_accent": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_blink_pattern_accent"
+      }
+    },
+    "effect_blink_pattern_main": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_blink_pattern_main"
+      }
+    },
+    "state_blink_pattern_focus": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_blink_pattern_focus"
+      }
+    },
+    "state_blink_pattern_idle": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_blink_pattern_idle"
+      }
+    }
+  }
+}

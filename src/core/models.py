@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 
 LED_COUNT = 12
 Color = int
-FrameProvider = Callable[[float], list[Color | None]]
 
 DEFAULT_BASE_STATE = "idle"
 BASE_STATE_NAMES = (
@@ -56,50 +54,6 @@ class BaseState:
     name: str = DEFAULT_BASE_STATE
     payload: dict[str, Any] = field(default_factory=dict)
     updated_at: float = 0.0
-
-
-@dataclass(slots=True)
-class StateLayerState:
-    mode: str = "off"
-    visual: Visual | None = None
-    enabled: bool = True
-
-
-@dataclass(slots=True)
-class ActiveVisualState:
-    id: str
-    mode: str
-    payload: dict[str, Any] = field(default_factory=dict)
-    visual: Visual | None = None
-    valid: bool = True
-    updated_at: float = 0.0
-
-
-MainLayerState = ActiveVisualState
-
-
-@dataclass(slots=True)
-class Event:
-    id: str
-    name: str
-    visual: Visual
-    payload: dict[str, Any] = field(default_factory=dict)
-    priority: int = 100
-    created_at: float = 0.0
-    duration: float | None = 3.0
-    exclusive: bool = True
-    active: bool = True
-
-    def is_expired(self, now: float) -> bool:
-        if not self.active:
-            return True
-        if self.duration is None:
-            return False
-        return now >= self.created_at + self.duration
-
-    @property
-    def kind(self) -> str:
-        return self.name
 
 
 @dataclass(slots=True)

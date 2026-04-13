@@ -1,0 +1,88 @@
+{
+  "presets": {
+    "effect_radar_sweep_accent": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for radar_sweep (accent).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#140804",
+        "brightness": 0.9,
+        "color": "#FFB347",
+        "reverse": true,
+        "speed": 1.35,
+        "trail_length": 5
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "accent",
+        "radar_sweep"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Radar Sweep Accent"
+    },
+    "effect_radar_sweep_main": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for radar_sweep (main).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03070C",
+        "brightness": 0.8,
+        "color": "#55A8FF",
+        "reverse": false,
+        "speed": 1.0,
+        "trail_length": 5
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "main",
+        "radar_sweep"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Radar Sweep Main"
+    },
+    "state_radar_sweep_focus": {
+      "category": "state",
+      "description": "Auto-generated state preset for radar_sweep (focus).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03110D",
+        "brightness": 0.72,
+        "color": "#2ED3A8",
+        "reverse": false,
+        "speed": 1.1,
+        "trail_length": 5
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "focus",
+        "radar_sweep"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Radar Sweep Focus"
+    },
+    "state_radar_sweep_idle": {
+      "category": "state",
+      "description": "Auto-generated state preset for radar_sweep (idle).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#020814",
+        "brightness": 0.45,
+        "color": "#4A7BFF",
+        "reverse": false,
+        "speed": 0.7,
+        "trail_length": 5
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "idle",
+        "radar_sweep"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Radar Sweep Idle"
+    }
+  }
+}

@@ -33,6 +33,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # wichtig für GitVersion
 
       - uses: actions/setup-python@v5
         with:
@@ -43,6 +45,9 @@ jobs:
 
       - name: Sync dependencies
         run: uv sync --all-groups
+
+      - name: Build default effect set
+        run: uv run python tools/effect_building/build_lefxset.py --rebuild-packages
 
       - name: Build release binary
         run: uv run pyinstaller led_controller_service.spec
@@ -55,3 +60,49 @@ jobs:
         with:
           name: led_controller_service_windows_x64
           path: dist/led_controller_service.exe
+
+      # -------------------------
+      # VERSION.yaml erzeugen
+      # -------------------------
+      - name: Write VERSION.yaml
+        run: |
+          echo "version: \"${{ steps.gitversion.outputs.semVer }}\"" > VERSION.yaml
+          echo "major: ${{ steps.gitversion.outputs.major }}" >> VERSION.yaml
+          echo "minor: ${{ steps.gitversion.outputs.minor }}" >> VERSION.yaml
+          echo "patch: ${{ steps.gitversion.outputs.patch }}" >> VERSION.yaml
+          echo "build_metadata: \"${{ steps.gitversion.outputs.buildMetadata }}\"" >> VERSION.yaml
+          echo "commit: \"${{ github.sha }}\"" >> VERSION.yaml
+
+      - name: Commit VERSION.yaml
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add VERSION.yaml
+          git commit -m "Update VERSION.yaml to ${{ steps.gitversion.outputs.semVer }}" || echo "No changes"
+          git push
+
+      # -------------------------
+      # GitVersion + Auto-Patch
+      # -------------------------
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v0.9.7
+        with:
+          versionSpec: '5.x'
+
+      - name: Determine Version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0.9.7
+
+      - name: Create Patch Tag
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "refs/tags/v${{ steps.gitversion.outputs.semVer }}",
+              sha: context.sha
+            })

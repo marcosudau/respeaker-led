@@ -3,6 +3,10 @@
 Stand: 2026-04-10
 Status: finale Konzeptfassung fuer die experimentelle Umsetzung auf Branch `codex/effekt-dateien`
 
+Hinweis zum heutigen Stand:
+
+Das Dokument bleibt als Konzeptstand erhalten. Die spaetere Implementierung registriert Effektquellen ausschliesslich als `.lefx`- oder `.lefxset`-Artefakte; Rohquellpfade und `library_path` sind kein aktueller Runtime-Vertrag mehr.
+
 ## 1. Einordnung und Ergebnis aus den letzten Anmerkungen
 
 Die Anmerkungen aus `08__05_konzept_effekt_dateien.md` sind in den entscheidenden Punkten sinnvoll und verbessern das Konzept.

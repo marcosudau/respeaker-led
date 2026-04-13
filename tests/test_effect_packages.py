@@ -76,7 +76,7 @@ def _write_effect_source(
         encoding="utf-8",
     )
     if presets is not None:
-        (root / "effect-presets.yaml").write_text(
+        (root / "presets.yaml").write_text(
             _dump_simple_yaml({"presets": presets}),
             encoding="utf-8",
         )
@@ -180,7 +180,7 @@ def test_init_and_validate_effect_source_scaffold(tmp_path):
 
     assert scaffold.kind == "effect_source"
     assert (target_dir / "effect.yaml").exists()
-    assert (target_dir / "effect-presets.yaml").exists()
+    assert (target_dir / "presets.yaml").exists()
     assert (target_dir / "commands.json").exists()
     assert (target_dir / "effect.py").exists()
     assert (target_dir / "assets").is_dir()
@@ -211,7 +211,7 @@ def test_init_effect_batch_creates_multiple_scaffolds(tmp_path):
     results = init_effect_batch(batch_file, tmp_path / "generated")
 
     assert [result.target_path.name for result in results] == ["idle_blue", "event_ping"]
-    assert (tmp_path / "generated" / "idle_blue" / "effect-presets.yaml").exists()
+    assert (tmp_path / "generated" / "idle_blue" / "presets.yaml").exists()
     assert (tmp_path / "generated" / "event_ping" / "commands.json").exists()
 
 

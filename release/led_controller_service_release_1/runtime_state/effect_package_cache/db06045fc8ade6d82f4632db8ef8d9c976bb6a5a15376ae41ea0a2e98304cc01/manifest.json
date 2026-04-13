@@ -1,0 +1,169 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run",
+      "loop",
+      "persistent"
+    ],
+    "preemptible": true,
+    "restorable": true,
+    "supports_duration_override": true,
+    "supports_queueing": false,
+    "supports_transparency": true
+  },
+  "defaults": {
+    "background_color": "#000000",
+    "brightness": 1.0,
+    "color": "#FF9F1A",
+    "reverse": false,
+    "segment_length": 6,
+    "total_ms": 1000
+  },
+  "description": "Countdown als schrumpfendes Segment mit Richtung und Gesamtzeit.",
+  "effect_id": "countdown_segment",
+  "entry_class": "CountdownSegmentEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "MAIN_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run",
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": true,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": null
+    },
+    "ONGOING_OVERLAY_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": true,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "TEMP_OVERLAY_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run"
+      ],
+      "allows_transparency": true,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": true,
+      "requires_indefinite_duration": null
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.countdown_segment",
+  "parameter_schema": {
+    "background_color": {
+      "default": "#000000",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "background_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "brightness": {
+      "default": 1.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "brightness",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "color": {
+      "default": "#FF9F1A",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "deadline_ts": {
+      "default": null,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "deadline_ts",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "remaining_ms": {
+      "default": null,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "remaining_ms",
+      "required": false,
+      "type": "duration_ms",
+      "unit": null
+    },
+    "reverse": {
+      "default": false,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "reverse",
+      "required": false,
+      "type": "bool",
+      "unit": null
+    },
+    "segment_length": {
+      "default": 6,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 1,
+      "name": "segment_length",
+      "required": false,
+      "type": "int",
+      "unit": null
+    },
+    "total_ms": {
+      "default": 1000,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 1,
+      "name": "total_ms",
+      "required": false,
+      "type": "duration_ms",
+      "unit": "ms"
+    }
+  },
+  "qualified_effect_id": "default-effects::countdown_segment",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "overlay",
+    "timer",
+    "segment"
+  ],
+  "title": "Countdown Segment",
+  "version": 1
+}

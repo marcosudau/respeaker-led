@@ -36,6 +36,21 @@ def _parse_scalar(value: str) -> Any:
     return text
 
 
+def _strip_comments(value: str) -> str:
+    result: list[str] = []
+    in_single = False
+    in_double = False
+    for char in value:
+        if char == "'" and not in_double:
+            in_single = not in_single
+        elif char == '"' and not in_single:
+            in_double = not in_double
+        elif char == "#" and not in_single and not in_double:
+            break
+        result.append(char)
+    return "".join(result).rstrip()
+
+
 def parse_simple_yaml(text: str) -> dict[str, Any]:
     try:
         import yaml
@@ -49,39 +64,90 @@ def parse_simple_yaml(text: str) -> dict[str, Any]:
 
 
 def _parse_simple_yaml_fallback(text: str) -> dict[str, Any]:
-    data: dict[str, Any] = {}
-    active_list_key: str | None = None
-
+    prepared: list[tuple[int, str, str]] = []
     for raw_line in text.splitlines():
-        line = raw_line.split("#", 1)[0].rstrip()
+        line = _strip_comments(raw_line)
         if not line.strip():
             continue
+        indent = len(line) - len(line.lstrip(" "))
+        prepared.append((indent, line.lstrip(), raw_line))
 
-        stripped = line.lstrip()
-        if stripped.startswith("- "):
-            if active_list_key is None:
-                raise ValueError(f"List item without active key in line: {raw_line}")
-            current = data.setdefault(active_list_key, [])
-            if not isinstance(current, list):
-                raise ValueError(f"Key '{active_list_key}' is not a list")
-            current.append(_parse_scalar(stripped[2:]))
-            continue
+    if not prepared:
+        return {}
+    if prepared[0][0] != 0:
+        raise ValueError("YAML document must start at indentation level 0")
 
-        key, separator, raw_value = line.partition(":")
-        if not separator:
-            raise ValueError(f"Invalid yaml line: {raw_line}")
+    def _next_block_kind(start_index: int, parent_indent: int) -> str | None:
+        if start_index >= len(prepared):
+            return None
+        next_indent, next_text, _ = prepared[start_index]
+        if next_indent <= parent_indent:
+            return None
+        return "list" if next_text.startswith("- ") else "mapping"
 
-        key = key.strip()
-        value = raw_value.strip()
-        if not key:
-            raise ValueError(f"Missing key in yaml line: {raw_line}")
+    def _parse_mapping(start_index: int, indent: int) -> tuple[dict[str, Any], int]:
+        data: dict[str, Any] = {}
+        index = start_index
+        while index < len(prepared):
+            current_indent, current_text, raw_line = prepared[index]
+            if current_indent < indent:
+                break
+            if current_indent != indent or current_text.startswith("- "):
+                raise ValueError(f"Invalid mapping entry in line: {raw_line}")
 
-        if value == "":
-            data[key] = []
-            active_list_key = key
-            continue
+            key, separator, raw_value = current_text.partition(":")
+            if not separator:
+                raise ValueError(f"Invalid yaml line: {raw_line}")
+            key = key.strip()
+            value = raw_value.strip()
+            if not key:
+                raise ValueError(f"Missing key in yaml line: {raw_line}")
 
-        data[key] = _parse_scalar(value)
-        active_list_key = None
+            index += 1
+            if value:
+                data[key] = _parse_scalar(value)
+                continue
 
-    return data
+            block_kind = _next_block_kind(index, indent)
+            if block_kind is None:
+                data[key] = {}
+                continue
+            if block_kind == "list":
+                data[key], index = _parse_list(index, indent + 2)
+                continue
+            data[key], index = _parse_mapping(index, indent + 2)
+        return data, index
+
+    def _parse_list(start_index: int, indent: int) -> tuple[list[Any], int]:
+        items: list[Any] = []
+        index = start_index
+        while index < len(prepared):
+            current_indent, current_text, raw_line = prepared[index]
+            if current_indent < indent:
+                break
+            if current_indent != indent or not current_text.startswith("- "):
+                raise ValueError(f"Invalid list entry in line: {raw_line}")
+
+            item_value = current_text[2:].strip()
+            index += 1
+            if item_value:
+                items.append(_parse_scalar(item_value))
+                continue
+
+            block_kind = _next_block_kind(index, indent)
+            if block_kind is None:
+                items.append(None)
+                continue
+            if block_kind == "list":
+                nested_items, index = _parse_list(index, indent + 2)
+                items.append(nested_items)
+                continue
+            nested_mapping, index = _parse_mapping(index, indent + 2)
+            items.append(nested_mapping)
+        return items, index
+
+    parsed, next_index = _parse_mapping(0, 0)
+    if next_index != len(prepared):
+        _, _, raw_line = prepared[next_index]
+        raise ValueError(f"Unexpected yaml content starting at line: {raw_line}")
+    return parsed

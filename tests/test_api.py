@@ -93,10 +93,10 @@ def test_api_generic_command_flow():
 
         direction_response = client.post(
             "/api/v1/commands/set_direction",
-            json={"direction_deg": 120.0},
+            json={"direction": 120.0},
         )
         assert direction_response.status_code == 200
-        assert direction_response.json()["direction_deg"] == 120.0
+        assert direction_response.json()["direction"] == 120.0
 
         brightness_response = client.post(
             "/api/v1/commands/set_brightness",
@@ -115,7 +115,7 @@ def test_api_generic_command_flow():
 
         clear_direction_response = client.post("/api/v1/commands/clear_direction")
         assert clear_direction_response.status_code == 200
-        assert clear_direction_response.json()["direction_deg"] is None
+        assert clear_direction_response.json()["direction"] is None
 
         cancel_countdown_response = client.post("/api/v1/commands/cancel_timeout_countdown")
         assert cancel_countdown_response.status_code == 200

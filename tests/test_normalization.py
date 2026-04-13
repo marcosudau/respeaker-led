@@ -20,6 +20,8 @@ def test_set_state_normalization_maps_recording_to_background_and_state_invocati
 
     assert invocation.playback_mode is PlaybackMode.PERSISTENT
     assert invocation.params["period_ms"] == 1100
+    assert invocation.params["background_color"] == 0x031108
+    assert "base_color" not in invocation.params
     assert invocation.params["__scene_name"] == "active_visual:base-state:recording"
 
 
@@ -52,6 +54,8 @@ def test_emit_event_normalization_produces_single_run_event_invocation():
     assert invocation.playback_mode is PlaybackMode.SINGLE_RUN
     assert invocation.requested_duration_ms == 1200
     assert invocation.priority == 600
+    assert invocation.params["background_color"] == 0x1A1005
+    assert "base_color" not in invocation.params
 
 
 def test_direction_normalization_targets_ongoing_overlay_layer():
@@ -61,4 +65,4 @@ def test_direction_normalization_targets_ongoing_overlay_layer():
     assert len(commands) == 1
     assert commands[0].target_layer is LayerId.ONGOING_OVERLAY_LAYER
     assert commands[0].effect_id == "direction_indicator"
-    assert commands[0].params["direction_deg"] == 120.0
+    assert commands[0].params["direction"] == 120.0

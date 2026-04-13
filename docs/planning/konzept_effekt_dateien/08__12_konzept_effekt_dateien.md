@@ -130,7 +130,7 @@ Ein einzelner Effekt-Source-Ordner sollte kuenftig so aussehen:
 ```text
 my_effect/
   effect.yaml
-  effect-presets.yaml
+  presets.yaml
   commands.json
   effect.py
   assets/
@@ -140,7 +140,7 @@ my_effect/
 Dabei gilt:
 
 - `effect.yaml` ist Pflicht
-- `effect-presets.yaml` ist optional
+- `presets.yaml` ist optional
 - `commands.json` ist optional
 
 ## 4.2 Neues Ziel fuer `.lefx`
@@ -177,7 +177,7 @@ my_set/
 ```
 
 `commands.json` auf Set-Ebene faellt weg.
-`effect-presets.yaml` auf Set-Ebene faellt ebenfalls weg.
+`presets.yaml` auf Set-Ebene faellt ebenfalls weg.
 
 ## 4.4 Neues Ziel fuer `.lefxset`
 
@@ -247,15 +247,15 @@ Also:
 
 Hier wuerde ich bewusst von deinem Vorschlag abweichen:
 
-Metadaten sollten **nicht** als Commands abgebildet werden.
+Metadaten werden **nicht** als Commands abgebildet.
 
-Also nicht:
+Also **FALSCH**:
 
 - `soft_pulsing_ring.title`
 - `soft_pulsing_ring.params`
 - `soft_pulsing_ring.info`
 
-Sondern:
+Sondern **RICHTIG**::
 
 - strukturierte Effekt-Info-Endpunkte
 - strukturierte Listen fuer Presets und Commands eines Effekts

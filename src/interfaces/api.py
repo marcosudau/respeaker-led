@@ -42,7 +42,7 @@ class CountdownUpdateCommand(BaseModel):
 
 
 class DirectionCommand(BaseModel):
-    direction_deg: float
+    direction: float
 
 
 class BrightnessCommand(BaseModel):
@@ -339,7 +339,7 @@ def create_app(
 
     @app.post("/api/v1/commands/set_direction")
     def set_direction(request: Request, payload: DirectionCommand):
-        return get_service(request).set_direction(payload.direction_deg)
+        return get_service(request).set_direction(payload.direction)
 
     @app.post("/api/v1/commands/clear_direction")
     def clear_direction(request: Request):

@@ -18,6 +18,8 @@ Dieser Ordner sammelt die zentrale Planungs- und Zieldokumentation fuer die Neua
   Konkrete, einzeln testbare Umsetzungsschritte fuer den Umbau
 - [07_empirischer_planabgleich_01_bis_05.md](07_empirischer_planabgleich_01_bis_05.md)
   Ausfuehrlicher Soll/Ist-Abgleich der urspruenglichen Planungsdokumente 01 bis 05
+- [08_restplan_nach_lefx_build_first.md](08_restplan_nach_lefx_build_first.md)
+  Aktualisierter Restplan nach erfolgreichem LEFX- und LEFXSET-Build der Standard-Effekte
 
 ## Zweck dieses Ordners
 

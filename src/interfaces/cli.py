@@ -219,7 +219,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     direction_set_parser = subparsers.add_parser("set-direction", help="Set the optional direction marker")
     add_connection_options(direction_set_parser)
-    direction_set_parser.add_argument("direction_deg", type=float)
+    direction_set_parser.add_argument("direction", type=float)
     direction_set_parser.set_defaults(command_kind="set_direction")
 
     direction_clear_parser = subparsers.add_parser("clear-direction", help="Clear the optional direction marker")
@@ -427,7 +427,7 @@ def main() -> int:
         if args.command_kind == "cancel_countdown":
             return emit_result(client.cancel_timeout_countdown())
         if args.command_kind == "set_direction":
-            return emit_result(client.set_direction(args.direction_deg))
+            return emit_result(client.set_direction(args.direction))
         if args.command_kind == "clear_direction":
             return emit_result(client.clear_direction())
         if args.command_kind == "set_brightness":

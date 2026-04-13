@@ -3,6 +3,10 @@
 Stand: 2026-04-10
 Status: finaler Konzeptentwurf fuer experimentelle Umsetzung auf Branch `codex/effekt-dateien`
 
+Hinweis zum heutigen Stand:
+
+Das Dokument bleibt als Konzeptstand erhalten. Die spaetere Implementierung hat jedoch die hier noch diskutierten Rohquellpfade verworfen und registriert Effektquellen heute ausschliesslich als `.lefx`- oder `.lefxset`-Artefakte.
+
 ## 1. Zielbild
 
 Die bestehende Runtime mit `BaseEffect`, `EffectDefinition`, `EffectRegistry`, `ControllerRuntime`, API und CLI bleibt der fachliche Kern des Systems.

@@ -6,6 +6,7 @@ Hinweis:
 
 Dieser Bericht beschreibt den Stand vor der spaeteren Auslagerung der konkreten Effektklassen in `src/led_effects/effects/`.
 Die hier genannten frueheren Dateipfade fuer Effektimplementierungen in `src/` sind deshalb heute nur noch historisch zu lesen.
+Zusaetzlich gilt: Die im Bericht noch erwaehnten Zwischenstufen `legacy_visual` und `EffectRegistry.add_library_path(...)` wurden im finalen LEFX-Cleanup entfernt.
 
 ## Zweck dieses Berichts
 
@@ -84,7 +85,7 @@ Auch die ausdruecklich genannten Spezialfaelle wurden aus der Runtime herausgezo
 
 Bewertung: ueberwiegend bis weitgehend erfuellt.
 
-Die Zielarchitektur ist im Service-Kern heute real vorhanden. Eine kleine Einschraenkung bleibt bei den Presets: Diese liefern teilweise noch Legacy-Visuals und werden ueber die Kompatibilitaetshuellen `legacy_visual`, `set_state_visual(...)` und `set_active_visual(...)` eingebracht. Das umgeht die Engine nicht, ist aber noch nicht die strengste denkbare Endform des Zielbildes.
+Die Zielarchitektur ist im Service-Kern heute real vorhanden. Die hier damals noch genannte Einschraenkung mit `legacy_visual`, `set_state_visual(...)` und `set_active_visual(...)` war ein Zwischenstand und ist inzwischen beseitigt.
 
 ## 02 Effektdefinition und Registry
 

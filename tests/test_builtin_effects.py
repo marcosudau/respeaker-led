@@ -101,8 +101,8 @@ def test_builtin_registry_exposes_initial_effect_set():
         "sparkle_burst",
         "short_ping",
     }.issubset(set(registry.list_effect_ids()))
-    assert registry.get("off").effect_class is OffEffect
-    assert registry.get("warning_flash").effect_class is WarningFlashEffect
+    assert registry.get("off").qualified_effect_id == "default-effects::off"
+    assert registry.get("warning_flash").definition.title == WarningFlashEffect.definition.title
 
 
 def test_all_new_effects_expose_general_brightness_parameter():
@@ -145,6 +145,15 @@ def test_all_new_effects_expose_general_brightness_parameter():
         assert definition.defaults["brightness"] == 1.0
 
 
+def test_builtin_registry_uses_final_public_parameter_names():
+    registry = build_default_effect_registry()
+
+    assert "background_color" in registry.get("soft_pulse").definition.parameter_schema
+    assert "base_color" not in registry.get("soft_pulse").definition.parameter_schema
+    assert "direction" in registry.get("direction_indicator").definition.parameter_schema
+    assert "direction_deg" not in registry.get("direction_indicator").definition.parameter_schema
+
+
 def test_off_effect_renders_black_frame_and_supports_persistent_background_layer():
     effect = OffEffect()
     definition = effect.get_definition()
@@ -176,7 +185,7 @@ def test_soft_pulse_effect_reaches_base_and_accent_color_at_deterministic_times(
     definition = effect.get_definition()
     params = {
         "color": "#204060",
-        "base_color": "#102030",
+        "background_color": "#102030",
         "period_ms": 2000,
     }
     start_frame = effect.render(
@@ -214,7 +223,7 @@ def test_warning_flash_effect_is_event_only_and_uses_priority_fifo_queueing():
     definition = effect.get_definition()
     params = {
         "color": "#FFAA00",
-        "base_color": "#120400",
+        "background_color": "#120400",
         "period_ms": 400,
         "duty_cycle": 0.5,
     }
@@ -255,7 +264,7 @@ def test_progress_bar_effect_renders_expected_led_split():
             ProgressBarEffect,
             layer_id=LayerId.MAIN_LAYER,
             led_count=6,
-            params={"value": 50, "color": "#112233", "base_color": "#010101"},
+            params={"value": 50, "color": "#112233", "background_color": "#010101"},
         )
     )
 
@@ -269,7 +278,7 @@ def test_direction_indicator_effect_marks_center_and_neighbors_transparently():
             DirectionIndicatorEffect,
             layer_id=LayerId.ONGOING_OVERLAY_LAYER,
             led_count=12,
-            params={"direction_deg": 120.0},
+            params={"direction": 120.0},
             playback_mode=PlaybackMode.PERSISTENT,
         )
     )

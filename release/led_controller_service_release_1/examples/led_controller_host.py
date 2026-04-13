@@ -103,8 +103,8 @@ class LedControllerRelease1:
     def list_effects(self) -> dict[str, Any]:
         return self._request_json("GET", "/api/v1/effects")
 
-    def list_presets(self) -> dict[str, Any]:
-        return self._request_json("GET", "/api/v1/presets")
+    def list_effect_sources(self) -> dict[str, Any]:
+        return self._request_json("GET", "/api/v1/effect-sources")
 
     def set_state(self, state_name: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request_json("POST", "/api/v1/commands/set_state", {"state_name": state_name, "payload": payload or {}})
@@ -174,8 +174,8 @@ class LedControllerRelease1:
     def cancel_countdown(self) -> dict[str, Any]:
         return self._request_json("POST", "/api/v1/commands/cancel_timeout_countdown")
 
-    def set_direction(self, direction_deg: float) -> dict[str, Any]:
-        return self._request_json("POST", "/api/v1/commands/set_direction", {"direction_deg": direction_deg})
+    def set_direction(self, direction: float) -> dict[str, Any]:
+        return self._request_json("POST", "/api/v1/commands/set_direction", {"direction": direction})
 
     def clear_direction(self) -> dict[str, Any]:
         return self._request_json("POST", "/api/v1/commands/clear_direction")
@@ -186,8 +186,11 @@ class LedControllerRelease1:
     def set_enabled(self, enabled: bool) -> dict[str, Any]:
         return self._request_json("POST", "/api/v1/commands/set_enabled", {"enabled": enabled})
 
-    def activate_preset(self, preset_id: str, spec: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self._request_json("POST", f"/api/v1/presets/{preset_id}/activate", {"spec": spec or {}})
+    def get_effect_preset(self, source_id: str, preset_id: str) -> dict[str, Any]:
+        return self._request_json("GET", f"/api/v1/effect-presets/{source_id}/{preset_id}")
+
+    def apply_effect_preset(self, source_id: str, preset_id: str) -> dict[str, Any]:
+        return self._request_json("POST", f"/api/v1/effect-presets/{source_id}/{preset_id}/apply")
 
     def close(self, *, force: bool = False, wait_timeout: float = 10.0) -> None:
         process = self.process

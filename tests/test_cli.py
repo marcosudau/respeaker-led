@@ -20,11 +20,14 @@ def test_parser_includes_countdown_and_remote_control_commands():
     parser = build_parser()
 
     parsed = parser.parse_args(["start-countdown", "5000", "--remaining-ms", "1500", "--follow-up-state", "transcribing"])
+    direction_parsed = parser.parse_args(["set-direction", "120"])
 
     assert parsed.command_kind == "start_countdown"
     assert parsed.total_ms == 5000
     assert parsed.remaining_ms == 1500
     assert parsed.follow_up_state == "transcribing"
+    assert direction_parsed.command_kind == "set_direction"
+    assert direction_parsed.direction == 120.0
 
 
 def test_parser_includes_effect_and_layer_commands():

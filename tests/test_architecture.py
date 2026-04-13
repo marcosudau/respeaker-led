@@ -34,6 +34,5 @@ def test_core_source_has_no_legacy_widget_or_quick_action_imports():
 def test_effects_live_in_src_library_folder():
     assert EFFECTS_ROOT.exists()
     assert EFFECTS_ROOT.is_dir()
-    assert (EFFECTS_ROOT / "basic.py").exists()
-    assert (EFFECTS_ROOT / "overlays.py").exists()
+    assert (EFFECTS_ROOT / "default-effects.lefxset").exists()
     assert not (SRC_ROOT / "builtin_effects.py").exists()

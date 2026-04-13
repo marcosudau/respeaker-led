@@ -52,10 +52,10 @@ class EffectPackageManifest:
             "runtime": self.runtime,
             "entry_module": self.entry_module,
             "entry_class": self.entry_class,
-            "defaults": dict(self.defaults),
-            "parameter_schema": dict(self.parameter_schema),
-            "layer_rules": dict(self.layer_rules),
-            "capabilities": dict(self.capabilities),
+            "defaults": _json_normalize(self.defaults),
+            "parameter_schema": _json_normalize(self.parameter_schema),
+            "layer_rules": _json_normalize(self.layer_rules),
+            "capabilities": _json_normalize(self.capabilities),
             "min_service_version": self.min_service_version,
             "tags": list(self.tags),
         }
@@ -64,7 +64,7 @@ class EffectPackageManifest:
         if self.vendor is not None:
             payload["vendor"] = self.vendor
         if self.build_meta:
-            payload["build_meta"] = dict(self.build_meta)
+            payload["build_meta"] = _json_normalize(self.build_meta)
         if self.created_at is not None:
             payload["created_at"] = self.created_at
         if self.compatible_hardware:
@@ -235,7 +235,7 @@ def parse_effect_set_manifest(payload: dict[str, Any]) -> EffectSetManifest:
 
 def serialize_effect_definition(definition: EffectDefinition) -> dict[str, Any]:
     return {
-        "defaults": dict(definition.defaults),
+        "defaults": _json_normalize(definition.defaults),
         "parameter_schema": {
             name: serialize_param_definition(param)
             for name, param in definition.parameter_schema.items()
@@ -257,10 +257,10 @@ def serialize_param_definition(param: EffectParamDefinition) -> dict[str, Any]:
         "name": param.name,
         "type": param.type,
         "required": param.required,
-        "default": param.default,
+        "default": _json_normalize(param.default),
         "description": param.description,
-        "minimum": param.minimum,
-        "maximum": param.maximum,
+        "minimum": _json_normalize(param.minimum),
+        "maximum": _json_normalize(param.maximum),
         "enum_values": list(param.enum_values),
         "unit": param.unit,
     }
@@ -288,6 +288,14 @@ def serialize_effect_capabilities(capabilities: EffectCapabilities) -> dict[str,
         "restorable": capabilities.restorable,
         "data_driven": capabilities.data_driven,
     }
+
+
+def _json_normalize(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _json_normalize(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_normalize(item) for item in value]
+    return value
 
 
 def validate_manifest_matches_definition(manifest: EffectPackageManifest, definition: EffectDefinition) -> None:

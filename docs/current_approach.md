@@ -1,6 +1,6 @@
 # Aktueller Ansatz Im Repo
 
-Stand: 2026-04-09
+Stand: 2026-04-13
 
 Es gibt nur noch einen aktiven Ansatz im Repo:
 
@@ -19,9 +19,9 @@ Die relevanten Einstiegspunkte sind:
 - `src/services/service.py`
 - `src/engine/runtime.py`
 
-Optional bleiben Preset-Packs unter `src/led_effects/preset_packs/` erhalten. Sie erweitern denselben Service, bilden aber keinen eigenen Betriebsweg mehr.
+Optional bleiben zusaetzliche Effektquellen unter `src/led_effects/packages/` oder in einem Release-Bundle unter `packages/` erhalten. Sie erweitern denselben Service, bilden aber keinen eigenen Betriebsweg mehr.
 
-Die eigentlichen Effektmodule liegen jetzt dateibasiert unter `src/led_effects/effects/`.
+Die Standardeffekte werden als Python-Buildquellen unter `src/led_effects/effects/` gepflegt und ueber `tools/effect_building/build_lefxset.py` in Artefakte gebaut. Die Runtime bootstrapped standardmaessig aus `src/led_effects/effects/default-effects.lefxset`; im Release-Bundle wird bevorzugt `effects/default-effects.lefxset` neben der EXE geladen.
 
 ## Datenfluss
 
@@ -56,7 +56,7 @@ Der Service kann heute direkt:
 
 ## Verfuegbare Standardeffekte
 
-Die aktuelle Effektbibliothek lebt in `src/led_effects/effects/`.
+Die aktuelle Standardbibliothek wird aus dem Effektset `default-effects.lefxset` geladen.
 
 Wichtige IDs sind:
 
@@ -68,11 +68,11 @@ Wichtige IDs sind:
 - `direction_indicator`
 - `countdown_ring`
 - `warning_flash`
-- `legacy_visual`
 
 Die vollstaendige Liste bekommst du ueber:
 
 ```powershell
+python .\main.py list-effect-sources
 python .\main.py list-effects
 ```
 
@@ -89,10 +89,11 @@ Wie Effektdateien aufgebaut sind und wie du neue Effektmodule erstellst, steht i
 
 Fuer CLI und API werden kuerzere Layernamen wie `background`, `state`, `main`, `temp_overlay`, `ongoing_overlay` und `event` akzeptiert.
 
-## Bewusst offene Punkte
+## Abgeschlossene Bereinigungen
 
-- Presets duerfen weiterhin Legacy-Visuals an die Runtime liefern.
-- Registry-Library-Pfade und Reload bleiben intern und sind nicht oeffentlich ueber CLI oder API verfuegbar.
+- Die Runtime akzeptiert keine `legacy_visual`-Kompatibilitaet mehr.
+- Die Default-Registry faellt nicht mehr auf rohe Python-Bibliothekspfade zurueck.
+- Zusatzeffekte werden ausschliesslich als `.lefx`- oder `.lefxset`-Artefakte registriert oder autodiscovered.
 
 ## Background-State-Persistenz
 

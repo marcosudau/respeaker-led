@@ -60,7 +60,7 @@ def _event_sort_key(invocation: EffectInvocation) -> tuple[int, float]:
 class LayerStore:
     base_state: BaseState = field(default_factory=BaseState)
     countdown: CountdownState | None = None
-    direction_deg: float | None = None
+    direction: float | None = None
     brightness: float = 1.0
     enabled: bool = True
     layers: dict[LayerId, LayerEntry] = field(default_factory=_default_entries)

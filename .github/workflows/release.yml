@@ -14,6 +14,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -25,18 +27,22 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-groups
 
-      - name: Read version
+      # -------------------------
+      # Version aus Tag extrahieren
+      # -------------------------
+      - name: Extract version from tag
         id: version
         shell: pwsh
         run: |
-          $version = (uv run python -c "from src.version import __version__; print(__version__)").Trim()
+          $tag = $env:GITHUB_REF_NAME
+          $version = $tag.TrimStart("v")
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          if ($env:GITHUB_REF_NAME -ne "v$version") {
-            throw "Tag $env:GITHUB_REF_NAME does not match src.version $version"
-          }
 
       - name: Run tests
         run: uv run pytest -q --basetemp=.pytest_tmp
+
+      - name: Build default effect set
+        run: uv run python tools/effect_building/build_lefxset.py --rebuild-packages
 
       - name: Build release binary
         run: uv run pyinstaller led_controller_service.spec
@@ -46,6 +52,9 @@ jobs:
 
       - name: Assemble release bundle
         run: uv run python tools/assemble_release_bundle.py --version ${{ steps.version.outputs.version }} --exe dist/led_controller_service.exe --output-dir artifacts --force
+
+      - name: Verify release bundle
+        run: uv run python tools/verify_release_bundle.py artifacts/led_controller_service_${{ steps.version.outputs.version }}_windows_x64
 
       - name: Archive release bundle
         id: bundle
@@ -64,10 +73,35 @@ jobs:
         with:
           name: led_controller_service_${{ steps.version.outputs.version }}_windows_x64
           path: ${{ steps.bundle.outputs.zip_path }}
+      # -------------------------
+      # Auto-Changelog generieren
+      # -------------------------
+      - name: Install changelog generator
+        run: npm install -g github-changelog-generator
+
+      - name: Generate CHANGELOG.md
+        env:
+          CHANGELOG_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          github-changelog-generator \
+            --user ${{ github.repository_owner }} \
+            --project ${{ github.event.repository.name }} \
+            --token ${{ secrets.GITHUB_TOKEN }} \
+            --since-tag $(git describe --tags --abbrev=0 HEAD^) \
+            --output CHANGELOG.md
+
+      - name: Upload CHANGELOG.md
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: CHANGELOG.md
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.bundle.outputs.zip_path }}
+          files: |
+            ${{ steps.bundle.outputs.zip_path }}
+            CHANGELOG.md
           name: LED Controller Service v${{ steps.version.outputs.version }}
-          generate_release_notes: true
+          body_path: CHANGELOG.md
+          generate_release_notes: false
