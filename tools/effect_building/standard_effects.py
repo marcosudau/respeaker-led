@@ -19,7 +19,7 @@ DEFAULT_SOURCE_ID = "default-effects"
 DEFAULT_SOURCES_ROOT = TOOLS_ROOT / "sources" / DEFAULT_SOURCE_ID
 DEFAULT_LEFX_ROOT = TOOLS_ROOT / "build_lefx" / DEFAULT_SOURCE_ID
 DEFAULT_LEFXSET_ROOT = TOOLS_ROOT / "build_lefxset"
-DEFAULT_PUBLISH_COPY = PROJECT_ROOT / "src" / "led_effects" / "effects" / f"{DEFAULT_SOURCE_ID}.lefxset"
+DEFAULT_PUBLISH_COPY = PROJECT_ROOT / "src" / "led_effects" / f"{DEFAULT_SOURCE_ID}.lefxset"
 DEFAULT_SET_WORK_ROOT = TOOLS_ROOT / "_generated" / f"{DEFAULT_SOURCE_ID}_set"
 
 _MODULE_BUNDLES = (
