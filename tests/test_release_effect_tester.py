@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QLineEdit, QPu
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-MODULE_PATH = PROJECT_ROOT / "release" / "led_controller_service_release_1" / "pyside6_effect_tester.py"
+MODULE_PATH = PROJECT_ROOT / "tools" / "PySide6TestApp" / "pyside6_effect_tester.py"
 
 
 def load_module():
