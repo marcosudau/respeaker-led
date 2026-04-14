@@ -38,6 +38,34 @@ jobs:
           $version = $tag.TrimStart("v")
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
+      # -------------------------
+      # VERSION.yaml erzeugen
+      # -------------------------
+      - name: Write VERSION.yaml
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $parts = $version.Split(".")
+          $major = $parts[0]
+          $minor = $parts[1]
+          $patch = $parts[2]
+
+          Set-Content VERSION.yaml "version: `"$version`""
+          Add-Content VERSION.yaml "major: $major"
+          Add-Content VERSION.yaml "minor: $minor"
+          Add-Content VERSION.yaml "patch: $patch"
+          Add-Content VERSION.yaml "build_metadata: `"`""
+          Add-Content VERSION.yaml "commit: `"$env:GITHUB_SHA`""
+
+      # -------------------------
+      # src/version.py erzeugen
+      # -------------------------
+      - name: Write src/version.py
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          Set-Content src/version.py "__version__ = `"$version`""
+
       - name: Run tests
         run: uv run pytest -q --basetemp=.pytest_tmp
 
@@ -68,33 +96,21 @@ jobs:
           Compress-Archive -Path $bundleRoot -DestinationPath $zipPath
           "zip_path=$zipPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-      - name: Upload release artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: led_controller_service_${{ steps.version.outputs.version }}_windows_x64
-          path: ${{ steps.bundle.outputs.zip_path }}
       # -------------------------
-      # Auto-Changelog generieren
+      # Auto-Changelog
       # -------------------------
-      - name: Install changelog generator
-        run: npm install -g github-changelog-generator
-
       - name: Generate CHANGELOG.md
-        env:
-          CHANGELOG_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          github-changelog-generator \
-            --user ${{ github.repository_owner }} \
-            --project ${{ github.event.repository.name }} \
-            --token ${{ secrets.GITHUB_TOKEN }} \
-            --since-tag $(git describe --tags --abbrev=0 HEAD^) \
-            --output CHANGELOG.md
-
-      - name: Upload CHANGELOG.md
-        uses: actions/upload-artifact@v4
-        with:
-          name: changelog
-          path: CHANGELOG.md
+          set -e
+          current_tag="${GITHUB_REF_NAME}"
+          prev_tag=$(git describe --tags --abbrev=0 "${current_tag}^" 2>/dev/null || echo "")
+          echo "## ${current_tag}" > CHANGELOG.md
+          if [ -z "$prev_tag" ]; then
+            git log --oneline >> CHANGELOG.md
+          else
+            git log --oneline "${prev_tag}..${current_tag}" >> CHANGELOG.md
+          fi
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
@@ -102,6 +118,7 @@ jobs:
           files: |
             ${{ steps.bundle.outputs.zip_path }}
             CHANGELOG.md
+            VERSION.yaml
           name: LED Controller Service v${{ steps.version.outputs.version }}
           body_path: CHANGELOG.md
           generate_release_notes: false
