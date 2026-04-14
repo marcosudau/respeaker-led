@@ -1,0 +1,28 @@
+{
+  "commands": {
+    "event_short_sweep_alert": {
+      "kind": "event",
+      "on": {
+        "preset": "event_short_sweep_alert"
+      }
+    },
+    "event_short_sweep_notice": {
+      "kind": "event",
+      "on": {
+        "preset": "event_short_sweep_notice"
+      }
+    },
+    "event_short_sweep_success": {
+      "kind": "event",
+      "on": {
+        "preset": "event_short_sweep_success"
+      }
+    },
+    "event_short_sweep_urgent": {
+      "kind": "event",
+      "on": {
+        "preset": "event_short_sweep_urgent"
+      }
+    }
+  }
+}

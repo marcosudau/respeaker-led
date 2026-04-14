@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "effect_pulse_pattern_accent": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_pulse_pattern_accent"
+      }
+    },
+    "effect_pulse_pattern_main": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_pulse_pattern_main"
+      }
+    },
+    "state_pulse_pattern_focus": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_pulse_pattern_focus"
+      }
+    },
+    "state_pulse_pattern_idle": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_pulse_pattern_idle"
+      }
+    }
+  }
+}

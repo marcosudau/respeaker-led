@@ -1,0 +1,72 @@
+{
+  "presets": {
+    "effect_solid_color_accent": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for solid_color (accent).",
+      "enqueue": false,
+      "params": {
+        "brightness": 0.9,
+        "color": "#FFB347"
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "accent",
+        "solid_color"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Solid Color Accent"
+    },
+    "effect_solid_color_main": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for solid_color (main).",
+      "enqueue": false,
+      "params": {
+        "brightness": 0.8,
+        "color": "#55A8FF"
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "main",
+        "solid_color"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Solid Color Main"
+    },
+    "state_solid_color_focus": {
+      "category": "state",
+      "description": "Auto-generated state preset for solid_color (focus).",
+      "enqueue": false,
+      "params": {
+        "brightness": 0.72,
+        "color": "#2ED3A8"
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "focus",
+        "solid_color"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Solid Color Focus"
+    },
+    "state_solid_color_idle": {
+      "category": "state",
+      "description": "Auto-generated state preset for solid_color (idle).",
+      "enqueue": false,
+      "params": {
+        "brightness": 0.45,
+        "color": "#4A7BFF"
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "idle",
+        "solid_color"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Solid Color Idle"
+    }
+  }
+}

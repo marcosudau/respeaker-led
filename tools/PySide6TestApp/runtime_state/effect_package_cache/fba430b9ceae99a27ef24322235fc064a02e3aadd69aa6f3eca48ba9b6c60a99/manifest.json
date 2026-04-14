@@ -1,0 +1,121 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run",
+      "loop",
+      "persistent"
+    ],
+    "preemptible": true,
+    "restorable": true,
+    "supports_duration_override": false,
+    "supports_queueing": false,
+    "supports_transparency": false
+  },
+  "defaults": {
+    "brightness": 1.0,
+    "color": "#33AAFF"
+  },
+  "description": "Faerbt den gesamten Ziel-Layer statisch ein.",
+  "effect_id": "solid_color",
+  "entry_class": "SolidColorEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "BACKGROUND_STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": true,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "MAIN_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run",
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": null
+    },
+    "ONGOING_OVERLAY_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "TEMP_OVERLAY_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": true,
+      "requires_indefinite_duration": null
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.solid_color",
+  "parameter_schema": {
+    "brightness": {
+      "default": 1.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "brightness",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "color": {
+      "default": "#33AAFF",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    }
+  },
+  "qualified_effect_id": "default-effects::solid_color",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "state"
+  ],
+  "title": "Solid Color",
+  "version": 1
+}

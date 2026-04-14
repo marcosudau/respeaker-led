@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "effect_solid_color_accent": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_solid_color_accent"
+      }
+    },
+    "effect_solid_color_main": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_solid_color_main"
+      }
+    },
+    "state_solid_color_focus": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_solid_color_focus"
+      }
+    },
+    "state_solid_color_idle": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_solid_color_idle"
+      }
+    }
+  }
+}

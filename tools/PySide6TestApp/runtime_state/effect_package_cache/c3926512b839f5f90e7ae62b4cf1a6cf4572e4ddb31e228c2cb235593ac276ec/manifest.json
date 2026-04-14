@@ -1,0 +1,136 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run",
+      "loop",
+      "persistent"
+    ],
+    "preemptible": true,
+    "restorable": true,
+    "supports_duration_override": false,
+    "supports_queueing": false,
+    "supports_transparency": false
+  },
+  "defaults": {
+    "background_color": "#000000",
+    "brightness": 1.0,
+    "color": "#FFFFFF",
+    "reverse": false,
+    "speed": 6.0
+  },
+  "description": "Ein einzelner Laufpunkt mit konfigurierbarer Richtung und Geschwindigkeit.",
+  "effect_id": "chase_dot",
+  "entry_class": "ChaseDotEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "BACKGROUND_STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": true,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "MAIN_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run",
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": null
+    },
+    "STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.chase_dot",
+  "parameter_schema": {
+    "background_color": {
+      "default": "#000000",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "background_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "brightness": {
+      "default": 1.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "brightness",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "color": {
+      "default": "#FFFFFF",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "reverse": {
+      "default": false,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "reverse",
+      "required": false,
+      "type": "bool",
+      "unit": null
+    },
+    "speed": {
+      "default": 6.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 0.0,
+      "name": "speed",
+      "required": false,
+      "type": "float",
+      "unit": null
+    }
+  },
+  "qualified_effect_id": "default-effects::chase_dot",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "state",
+    "animated",
+    "dot"
+  ],
+  "title": "Chase Dot",
+  "version": 1
+}

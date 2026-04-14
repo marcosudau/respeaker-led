@@ -1,0 +1,88 @@
+{
+  "presets": {
+    "effect_doa_direction_dot_accent": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for doa_direction_dot (accent).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#140804",
+        "brightness": 0.9,
+        "color": "#FFB347",
+        "direction": 240.0,
+        "point_size": 2,
+        "target_led": 3
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "accent",
+        "doa_direction_dot"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "DoA Direction Dot Accent"
+    },
+    "effect_doa_direction_dot_main": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for doa_direction_dot (main).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03070C",
+        "brightness": 0.8,
+        "color": "#55A8FF",
+        "direction": 60.0,
+        "point_size": 2,
+        "target_led": 0
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "main",
+        "doa_direction_dot"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "DoA Direction Dot Main"
+    },
+    "overlay_doa_direction_dot_assist": {
+      "category": "overlay",
+      "description": "Auto-generated overlay preset for doa_direction_dot (assist).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#000000",
+        "brightness": 0.6,
+        "color": "#7FC9FF",
+        "direction": 90.0,
+        "point_size": 2,
+        "target_led": 0
+      },
+      "replace_existing": true,
+      "tags": [
+        "overlay",
+        "assist",
+        "doa_direction_dot"
+      ],
+      "target_layer": "ONGOING_OVERLAY_LAYER",
+      "title": "DoA Direction Dot Assist"
+    },
+    "overlay_doa_direction_dot_tracking": {
+      "category": "overlay",
+      "description": "Auto-generated overlay preset for doa_direction_dot (tracking).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#000000",
+        "brightness": 0.85,
+        "color": "#33FFAA",
+        "direction": 150.0,
+        "point_size": 2,
+        "target_led": 1
+      },
+      "replace_existing": true,
+      "tags": [
+        "overlay",
+        "tracking",
+        "doa_direction_dot"
+      ],
+      "target_layer": "ONGOING_OVERLAY_LAYER",
+      "title": "DoA Direction Dot Tracking"
+    }
+  }
+}

@@ -16,33 +16,33 @@ from src.engine.effect_package_loader import LoadedEffectPackage, load_effect_pa
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_ROOT = PROJECT_ROOT / "tools" / "effect_building"
 DEFAULT_SOURCE_ID = "default-effects"
-DEFAULT_SOURCES_ROOT = TOOLS_ROOT / "sources" / DEFAULT_SOURCE_ID
-DEFAULT_LEFX_ROOT = TOOLS_ROOT / "build_lefx" / DEFAULT_SOURCE_ID
-DEFAULT_LEFXSET_ROOT = TOOLS_ROOT / "build_lefxset"
-DEFAULT_PUBLISH_COPY = PROJECT_ROOT / "src" / "led_effects" / f"{DEFAULT_SOURCE_ID}.lefxset"
-DEFAULT_SET_WORK_ROOT = TOOLS_ROOT / "_generated" / f"{DEFAULT_SOURCE_ID}_set"
+DEFAULT_SOURCES_ROOT = TOOLS_ROOT / "build" / "sources" / DEFAULT_SOURCE_ID
+DEFAULT_LEFX_ROOT = TOOLS_ROOT  / "build" / "build_lefx" / DEFAULT_SOURCE_ID
+DEFAULT_LEFXSET_ROOT = TOOLS_ROOT / "build" /  "build_lefxset"
+DEFAULT_PUBLISH_COPY = PROJECT_ROOT / "src" / "led_effects" / "effects" / f"{DEFAULT_SOURCE_ID}.lefxset"
+DEFAULT_SET_WORK_ROOT = TOOLS_ROOT / "build" /  "_generated" / f"{DEFAULT_SOURCE_ID}_set"
 
 _MODULE_BUNDLES = (
     (
-        "tools.effect_building.effects.basic",
-        PROJECT_ROOT / "tools" / "effect_building" / "effects" / "basic.py",
+        "tools.effect_building.effect_definitions.basic",
+        PROJECT_ROOT / "tools" / "effect_building" / "effect_definitions" / "basic.py",
         (
-            PROJECT_ROOT / "tools" / "effect_building" / "effects" / "common.py",
+            PROJECT_ROOT / "tools" / "effect_building" / "effect_definitions" / "common.py",
         ),
     ),
     (
-        "tools.effect_building.effects.overlays",
-        PROJECT_ROOT / "tools" / "effect_building" / "effects" / "overlays.py",
+        "tools.effect_building.effect_definitions.overlays",
+        PROJECT_ROOT / "tools" / "effect_building" / "effect_definitions" / "overlays.py",
         (
-            PROJECT_ROOT / "tools" / "effect_building" / "effects" / "basic.py",
-            PROJECT_ROOT / "tools" / "effect_building" / "effects" / "common.py",
+            PROJECT_ROOT / "tools" / "effect_building" / "effect_definitions" / "basic.py",
+            PROJECT_ROOT / "tools" / "effect_building" / "effect_definitions" / "common.py",
         ),
     ),
     (
-        "tools.effect_building.effects.ring_effects",
-        PROJECT_ROOT / "tools" / "effect_building" / "effects" / "ring_effects.py",
+        "tools.effect_building.effect_definitions.ring_effects",
+        PROJECT_ROOT / "tools" / "effect_building" / "effect_definitions" / "ring_effects.py",
         (
-            PROJECT_ROOT / "tools" / "effect_building" / "effects" / "common.py",
+            PROJECT_ROOT / "tools" / "effect_building" / "effect_definitions" / "common.py",
         ),
     ),
 )

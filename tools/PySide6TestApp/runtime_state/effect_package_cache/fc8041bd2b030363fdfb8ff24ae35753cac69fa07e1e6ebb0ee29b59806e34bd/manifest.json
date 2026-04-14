@@ -1,0 +1,164 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run",
+      "loop",
+      "persistent"
+    ],
+    "preemptible": true,
+    "restorable": true,
+    "supports_duration_override": false,
+    "supports_queueing": false,
+    "supports_transparency": false
+  },
+  "defaults": {
+    "background_color": "#000000",
+    "brightness": 1.0,
+    "color": "#33AAFF",
+    "decay_curve": "linear",
+    "reverse": false,
+    "segment_length": 4,
+    "speed": 4.0
+  },
+  "description": "Rotierendes Segment mit Helligkeitsabnahme ueber die Segmentlaenge.",
+  "effect_id": "fading_rotating_segment",
+  "entry_class": "FadingRotatingSegmentEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "BACKGROUND_STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": true,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "MAIN_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run",
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": null
+    },
+    "STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.fading_rotating_segment",
+  "parameter_schema": {
+    "background_color": {
+      "default": "#000000",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "background_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "brightness": {
+      "default": 1.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "brightness",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "color": {
+      "default": "#33AAFF",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "decay_curve": {
+      "default": "linear",
+      "description": "",
+      "enum_values": [
+        "linear",
+        "quadratic",
+        "exponential"
+      ],
+      "maximum": null,
+      "minimum": null,
+      "name": "decay_curve",
+      "required": false,
+      "type": "enum",
+      "unit": null
+    },
+    "reverse": {
+      "default": false,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "reverse",
+      "required": false,
+      "type": "bool",
+      "unit": null
+    },
+    "segment_length": {
+      "default": 4,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 1,
+      "name": "segment_length",
+      "required": false,
+      "type": "int",
+      "unit": null
+    },
+    "speed": {
+      "default": 4.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 0.0,
+      "name": "speed",
+      "required": false,
+      "type": "float",
+      "unit": null
+    }
+  },
+  "qualified_effect_id": "default-effects::fading_rotating_segment",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "state",
+    "animated",
+    "segment"
+  ],
+  "title": "Fading Rotating Segment",
+  "version": 1
+}

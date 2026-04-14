@@ -1,0 +1,119 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run"
+    ],
+    "preemptible": true,
+    "restorable": false,
+    "supports_duration_override": false,
+    "supports_queueing": true,
+    "supports_transparency": false
+  },
+  "defaults": {
+    "background_color": "#000000",
+    "brightness": 1.0,
+    "color": "#33AAFF",
+    "duration_ms": 650,
+    "min_brightness": 0.1,
+    "speed": 1.0
+  },
+  "description": "Kurzer weicher Puls zwischen minimaler und maximaler Helligkeit.",
+  "effect_id": "short_soft_pulse",
+  "entry_class": "ShortSoftPulseEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "EVENT_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "priority_fifo",
+      "requires_finite_duration": true,
+      "requires_indefinite_duration": null
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.short_soft_pulse",
+  "parameter_schema": {
+    "background_color": {
+      "default": "#000000",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "background_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "brightness": {
+      "default": 1.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "brightness",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "color": {
+      "default": "#33AAFF",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "duration_ms": {
+      "default": 650,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 1,
+      "name": "duration_ms",
+      "required": false,
+      "type": "duration_ms",
+      "unit": "ms"
+    },
+    "min_brightness": {
+      "default": 0.1,
+      "description": "",
+      "enum_values": [],
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "min_brightness",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "speed": {
+      "default": 1.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 0.0,
+      "name": "speed",
+      "required": false,
+      "type": "float",
+      "unit": null
+    }
+  },
+  "qualified_effect_id": "default-effects::short_soft_pulse",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "event",
+    "pulse"
+  ],
+  "title": "Short Soft Pulse",
+  "version": 1
+}

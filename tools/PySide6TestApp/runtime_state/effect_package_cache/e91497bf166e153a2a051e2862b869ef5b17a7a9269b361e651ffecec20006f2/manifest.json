@@ -1,0 +1,97 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run",
+      "loop",
+      "persistent"
+    ],
+    "preemptible": true,
+    "restorable": true,
+    "supports_duration_override": false,
+    "supports_queueing": false,
+    "supports_transparency": false
+  },
+  "defaults": {
+    "background_color": "#050505",
+    "color": "#33AAFF",
+    "value": 0.0
+  },
+  "description": "Bildet einen Fortschritt ringfoermig als normale Effektklasse ab.",
+  "effect_id": "progress_bar",
+  "entry_class": "ProgressBarEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "MAIN_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run",
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": null
+    },
+    "TEMP_OVERLAY_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": true,
+      "requires_indefinite_duration": null
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.progress_bar",
+  "parameter_schema": {
+    "background_color": {
+      "default": "#050505",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "background_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "color": {
+      "default": "#33AAFF",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "value": {
+      "default": 0.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": 100.0,
+      "minimum": 0.0,
+      "name": "value",
+      "required": false,
+      "type": "float",
+      "unit": null
+    }
+  },
+  "qualified_effect_id": "default-effects::progress_bar",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "progress"
+  ],
+  "title": "Progress Bar",
+  "version": 1
+}

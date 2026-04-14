@@ -1,0 +1,12 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "commands.json": "bf2bb09098ecd4f0f3595c40c44b3d8bfd6038c56ec39b796da2ec9e15b6adf0",
+    "effect-presets.json": "a8a444bbaccb34288f1fb988dbf80def91496b5b9de5c3eced0600c1aaa17d8e",
+    "manifest.json": "ef33526af1a430b61418428aaa6df384099a1dc4d1b099af04f28afe3a16584f",
+    "payload/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "payload/common.py": "6138053e90a7bcab472f4c0f7b11052e4d9caff726755be9bea55e7e35416ede",
+    "payload/effect.py": "008d40eede569e393bdb03c47c33c2b790aea7f7b053333b0c679752e6d77e75",
+    "payload/extra/__init__.py": "6c515513d8d129cccdcb81e199e816a02e8a38bfcdade8fe6a0dfb0c0203cda0"
+  }
+}

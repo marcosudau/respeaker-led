@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "effect_rotating_gradient_accent": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_rotating_gradient_accent"
+      }
+    },
+    "effect_rotating_gradient_main": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_rotating_gradient_main"
+      }
+    },
+    "state_rotating_gradient_focus": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_rotating_gradient_focus"
+      }
+    },
+    "state_rotating_gradient_idle": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_rotating_gradient_idle"
+      }
+    }
+  }
+}

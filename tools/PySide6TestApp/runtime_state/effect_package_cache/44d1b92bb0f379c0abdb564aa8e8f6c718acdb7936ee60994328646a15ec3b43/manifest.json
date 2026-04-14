@@ -1,0 +1,94 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run"
+    ],
+    "preemptible": true,
+    "restorable": false,
+    "supports_duration_override": true,
+    "supports_queueing": false,
+    "supports_transparency": true
+  },
+  "defaults": {
+    "color": "#FF9F1A",
+    "marker_color": "#FFF3D1",
+    "total_ms": 1000
+  },
+  "description": "Stellt einen Countdown als normale temporale Overlay-Effektklasse dar.",
+  "effect_id": "countdown_ring",
+  "entry_class": "CountdownRingEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "TEMP_OVERLAY_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run"
+      ],
+      "allows_transparency": true,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": true,
+      "requires_indefinite_duration": null
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.countdown_ring",
+  "parameter_schema": {
+    "color": {
+      "default": "#FF9F1A",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "deadline_ts": {
+      "default": null,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "deadline_ts",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "marker_color": {
+      "default": "#FFF3D1",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "marker_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "total_ms": {
+      "default": 1000,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 1,
+      "name": "total_ms",
+      "required": false,
+      "type": "duration_ms",
+      "unit": "ms"
+    }
+  },
+  "qualified_effect_id": "default-effects::countdown_ring",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "overlay",
+    "countdown"
+  ],
+  "title": "Countdown Ring",
+  "version": 1
+}

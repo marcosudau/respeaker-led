@@ -1,0 +1,84 @@
+{
+  "presets": {
+    "effect_blink_pattern_accent": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for blink_pattern (accent).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#140804",
+        "brightness": 0.9,
+        "color": "#FFB347",
+        "pattern": "double",
+        "speed": 1.35
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "accent",
+        "blink_pattern"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Blink Pattern Accent"
+    },
+    "effect_blink_pattern_main": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for blink_pattern (main).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03070C",
+        "brightness": 0.8,
+        "color": "#55A8FF",
+        "pattern": "single",
+        "speed": 1.0
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "main",
+        "blink_pattern"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Blink Pattern Main"
+    },
+    "state_blink_pattern_focus": {
+      "category": "state",
+      "description": "Auto-generated state preset for blink_pattern (focus).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03110D",
+        "brightness": 0.72,
+        "color": "#2ED3A8",
+        "pattern": "double",
+        "speed": 1.1
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "focus",
+        "blink_pattern"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Blink Pattern Focus"
+    },
+    "state_blink_pattern_idle": {
+      "category": "state",
+      "description": "Auto-generated state preset for blink_pattern (idle).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#020814",
+        "brightness": 0.45,
+        "color": "#4A7BFF",
+        "pattern": "single",
+        "speed": 0.7
+      },
+      "replace_existing": true,
+      "tags": [
+        "state",
+        "idle",
+        "blink_pattern"
+      ],
+      "target_layer": "STATE_LAYER",
+      "title": "Blink Pattern Idle"
+    }
+  }
+}

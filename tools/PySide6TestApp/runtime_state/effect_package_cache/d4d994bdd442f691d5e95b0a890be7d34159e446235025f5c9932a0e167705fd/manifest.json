@@ -1,0 +1,85 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "loop",
+      "persistent"
+    ],
+    "preemptible": true,
+    "restorable": true,
+    "supports_duration_override": false,
+    "supports_queueing": false,
+    "supports_transparency": true
+  },
+  "defaults": {
+    "center_color": "#EAF8FF",
+    "direction": 0.0,
+    "side_color": "#7FC9FF"
+  },
+  "description": "Markiert eine Richtung als halbtransparente Ring-Einblendung.",
+  "effect_id": "direction_indicator",
+  "entry_class": "DirectionIndicatorEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "ONGOING_OVERLAY_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": true,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.direction_indicator",
+  "parameter_schema": {
+    "center_color": {
+      "default": "#EAF8FF",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "center_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "direction": {
+      "default": 0.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "direction",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "side_color": {
+      "default": "#7FC9FF",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "side_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    }
+  },
+  "qualified_effect_id": "default-effects::direction_indicator",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "overlay",
+    "direction"
+  ],
+  "title": "Direction Indicator",
+  "version": 1
+}

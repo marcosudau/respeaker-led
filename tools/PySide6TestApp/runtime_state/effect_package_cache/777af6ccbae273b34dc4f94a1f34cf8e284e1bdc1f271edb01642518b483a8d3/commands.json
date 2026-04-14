@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "effect_yin_yang_spin_accent": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_yin_yang_spin_accent"
+      }
+    },
+    "effect_yin_yang_spin_main": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_yin_yang_spin_main"
+      }
+    },
+    "state_yin_yang_spin_focus": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_yin_yang_spin_focus"
+      }
+    },
+    "state_yin_yang_spin_idle": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_yin_yang_spin_idle"
+      }
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "presets": {
+    "effect_highlighted_segment_accent": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for highlighted_segment (accent).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#140804",
+        "brightness": 0.9,
+        "color": "#FFB347",
+        "position": 3,
+        "segment_length": 4
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "accent",
+        "highlighted_segment"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Highlighted Segment Accent"
+    },
+    "effect_highlighted_segment_main": {
+      "category": "effect",
+      "description": "Auto-generated effect preset for highlighted_segment (main).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#03070C",
+        "brightness": 0.8,
+        "color": "#55A8FF",
+        "position": 0,
+        "segment_length": 4
+      },
+      "replace_existing": true,
+      "tags": [
+        "effect",
+        "main",
+        "highlighted_segment"
+      ],
+      "target_layer": "MAIN_LAYER",
+      "title": "Highlighted Segment Main"
+    },
+    "overlay_highlighted_segment_assist": {
+      "category": "overlay",
+      "description": "Auto-generated overlay preset for highlighted_segment (assist).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#000000",
+        "brightness": 0.6,
+        "color": "#7FC9FF",
+        "position": 0,
+        "segment_length": 4
+      },
+      "replace_existing": true,
+      "tags": [
+        "overlay",
+        "assist",
+        "highlighted_segment"
+      ],
+      "target_layer": "ONGOING_OVERLAY_LAYER",
+      "title": "Highlighted Segment Assist"
+    },
+    "overlay_highlighted_segment_tracking": {
+      "category": "overlay",
+      "description": "Auto-generated overlay preset for highlighted_segment (tracking).",
+      "enqueue": false,
+      "params": {
+        "background_color": "#000000",
+        "brightness": 0.85,
+        "color": "#33FFAA",
+        "position": 1,
+        "segment_length": 4
+      },
+      "replace_existing": true,
+      "tags": [
+        "overlay",
+        "tracking",
+        "highlighted_segment"
+      ],
+      "target_layer": "ONGOING_OVERLAY_LAYER",
+      "title": "Highlighted Segment Tracking"
+    }
+  }
+}

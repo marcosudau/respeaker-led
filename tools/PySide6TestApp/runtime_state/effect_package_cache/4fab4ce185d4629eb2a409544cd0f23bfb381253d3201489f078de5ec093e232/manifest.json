@@ -1,0 +1,148 @@
+{
+  "capabilities": {
+    "data_driven": false,
+    "playback_modes": [
+      "single_run",
+      "loop",
+      "persistent"
+    ],
+    "preemptible": true,
+    "restorable": true,
+    "supports_duration_override": false,
+    "supports_queueing": false,
+    "supports_transparency": false
+  },
+  "defaults": {
+    "background_color": "#000000",
+    "brightness": 1.0,
+    "color": "#33FFAA",
+    "reverse": false,
+    "speed": 5.0,
+    "trail_length": 5
+  },
+  "description": "Radar-Sweep mit heller Spitze und auslaufendem Schweif.",
+  "effect_id": "radar_sweep",
+  "entry_class": "RadarSweepEffect",
+  "entry_module": "payload.effect",
+  "format": "lefx/1",
+  "layer_rules": {
+    "BACKGROUND_STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": true,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    },
+    "MAIN_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "single_run",
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": null
+    },
+    "STATE_LAYER": {
+      "allowed": true,
+      "allowed_playback_modes": [
+        "loop",
+        "persistent"
+      ],
+      "allows_transparency": false,
+      "persistent_storage": false,
+      "queue_mode": "forbidden",
+      "requires_finite_duration": null,
+      "requires_indefinite_duration": true
+    }
+  },
+  "min_service_version": "1.0.0",
+  "package_id": "default-effects.radar_sweep",
+  "parameter_schema": {
+    "background_color": {
+      "default": "#000000",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "background_color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "brightness": {
+      "default": 1.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "name": "brightness",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "color": {
+      "default": "#33FFAA",
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "color",
+      "required": false,
+      "type": "color",
+      "unit": null
+    },
+    "reverse": {
+      "default": false,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": null,
+      "name": "reverse",
+      "required": false,
+      "type": "bool",
+      "unit": null
+    },
+    "speed": {
+      "default": 5.0,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 0.0,
+      "name": "speed",
+      "required": false,
+      "type": "float",
+      "unit": null
+    },
+    "trail_length": {
+      "default": 5,
+      "description": "",
+      "enum_values": [],
+      "maximum": null,
+      "minimum": 1,
+      "name": "trail_length",
+      "required": false,
+      "type": "int",
+      "unit": null
+    }
+  },
+  "qualified_effect_id": "default-effects::radar_sweep",
+  "runtime": "python_base_effect/1",
+  "source_id": "default-effects",
+  "tags": [
+    "builtin",
+    "state",
+    "animated",
+    "sweep"
+  ],
+  "title": "Radar Sweep",
+  "version": 1
+}

@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "effect_fading_rotating_segment_accent": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_fading_rotating_segment_accent"
+      }
+    },
+    "effect_fading_rotating_segment_main": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_fading_rotating_segment_main"
+      }
+    },
+    "state_fading_rotating_segment_focus": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_fading_rotating_segment_focus"
+      }
+    },
+    "state_fading_rotating_segment_idle": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_fading_rotating_segment_idle"
+      }
+    }
+  }
+}

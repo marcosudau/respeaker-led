@@ -1,0 +1,1 @@
+"""Dateibasierte Effektbibliothek fuer den laufenden LED-Service."""

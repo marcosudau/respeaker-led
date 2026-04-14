@@ -1,0 +1,88 @@
+{
+  "presets": {
+    "event_short_flash_alert": {
+      "category": "event",
+      "description": "Auto-generated event preset for short_flash (alert).",
+      "duration_ms": 900,
+      "enqueue": true,
+      "params": {
+        "background_color": "#120102",
+        "brightness": 1.0,
+        "color": "#FF5A5A",
+        "duration_ms": 900
+      },
+      "priority": 700,
+      "replace_existing": true,
+      "tags": [
+        "event",
+        "alert",
+        "short_flash"
+      ],
+      "target_layer": "EVENT_LAYER",
+      "title": "Short Flash Alert"
+    },
+    "event_short_flash_notice": {
+      "category": "event",
+      "description": "Auto-generated event preset for short_flash (notice).",
+      "duration_ms": 1000,
+      "enqueue": true,
+      "params": {
+        "background_color": "#120A02",
+        "brightness": 0.9,
+        "color": "#FFD166",
+        "duration_ms": 1000
+      },
+      "priority": 700,
+      "replace_existing": true,
+      "tags": [
+        "event",
+        "notice",
+        "short_flash"
+      ],
+      "target_layer": "EVENT_LAYER",
+      "title": "Short Flash Notice"
+    },
+    "event_short_flash_success": {
+      "category": "event",
+      "description": "Auto-generated event preset for short_flash (success).",
+      "duration_ms": 950,
+      "enqueue": true,
+      "params": {
+        "background_color": "#02110A",
+        "brightness": 0.88,
+        "color": "#42D392",
+        "duration_ms": 950
+      },
+      "priority": 700,
+      "replace_existing": true,
+      "tags": [
+        "event",
+        "success",
+        "short_flash"
+      ],
+      "target_layer": "EVENT_LAYER",
+      "title": "Short Flash Success"
+    },
+    "event_short_flash_urgent": {
+      "category": "event",
+      "description": "Auto-generated event preset for short_flash (urgent).",
+      "duration_ms": 700,
+      "enqueue": true,
+      "params": {
+        "background_color": "#170102",
+        "brightness": 1.0,
+        "color": "#FF3B30",
+        "duration_ms": 700
+      },
+      "priority": 700,
+      "replace_existing": true,
+      "tags": [
+        "event",
+        "urgent",
+        "short_flash"
+      ],
+      "target_layer": "EVENT_LAYER",
+      "title": "Short Flash Urgent"
+    }
+  }
+}
