@@ -35,7 +35,7 @@ Hinweis:
 - Alle anderen CLI-Kommandos sprechen den laufenden Service ueber HTTP an.
 - Vor dem Start wird die Portverfuegbarkeit geprueft.
 - Wenn `--port-pool` gesetzt ist, kann der Service auf einen freien Port aus dieser Liste ausweichen.
-- Der effektiv verwendete Host und Port werden als JSON auf stdout und in `runtime_state/active_service.json` ausgegeben.
+- Der effektiv verwendete Host und Port werden als JSON auf stdout und in `active_service.json` im Temp-Verzeichnis des Service ausgegeben.
 - Es ist genau eine aktive Instanz vorgesehen; eine neu gestartete Instanz versucht eine alte aktive Instanz zuerst zu beenden.
 
 ## Wichtige lokale CLI-Befehle
@@ -65,15 +65,15 @@ python .\main.py apply-effect-preset default-effects::effect_soft_pulse_main
 python .\main.py invoke-command default-effects effect_soft_pulse_accent
 ```
 
-## Release-1-Runtime-Dateien
+## Runtime-Dateien
 
 Wichtige Dateien im laufenden Unterprozess-Modell:
 
-- `runtime_state/active_service.json` mit PID, Host, Port, Status und Logdatei der aktiven Instanz
-- `runtime_state/background_state.json` fuer den persistierten Background-State
+- `active_service.json` im Temp-Verzeichnis des Service mit PID, Host, Port, Status und Logdatei der aktiven Instanz
+- `background_state.json` im Temp-Verzeichnis des Service fuer den persistierten Background-State
 - `logs/led_controller.log` fuer das einfache Basislogging
 
-Die Host-Anwendung kann `runtime_state/active_service.json` verwenden, um bei Portpool-Fallback den effektiv gestarteten Port zu erfahren.
+Die Host-Anwendung kann `active_service.json` verwenden, um bei Portpool-Fallback den effektiv gestarteten Port zu erfahren.
 
 ## Fuer `apply-effect` relevante Layernamen
 

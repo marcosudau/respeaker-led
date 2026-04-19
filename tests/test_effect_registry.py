@@ -19,7 +19,7 @@ from src.core.effect_schema import (
     PlaybackMode,
     RenderContext,
 )
-from src.infrastructure.paths import DEFAULT_EFFECT_SET_PATH
+from tests.build_artifact_helpers import default_effect_set_path
 from tests.package_test_utils import write_effect_set_source
 
 
@@ -132,7 +132,8 @@ def test_registry_rejects_invalid_effect_id():
 
 
 def test_default_registry_registers_builtin_effects():
-    assert DEFAULT_EFFECT_SET_PATH.is_file()
+    configured_default_effect_set = default_effect_set_path()
+    assert configured_default_effect_set.is_file()
 
     registry = build_default_effect_registry()
     sources = {source.source_id: source for source in registry.list_effect_sources()}
@@ -141,7 +142,7 @@ def test_default_registry_registers_builtin_effects():
     assert registry.get("off").source_id == "default-effects"
     assert registry.get("default-effects::solid_color").definition.id == "solid_color"
     assert sources["default-effects"].kind == "effect_set"
-    assert Path(sources["default-effects"].path) == DEFAULT_EFFECT_SET_PATH.resolve()
+    assert Path(sources["default-effects"].path) == configured_default_effect_set.resolve()
 
 
 def test_default_registry_prefers_first_available_artifact_candidate(tmp_path, monkeypatch):
@@ -165,7 +166,8 @@ def test_default_registry_prefers_first_available_artifact_candidate(tmp_path, m
     bundle_artifact = tmp_path / "effects" / "default-effects.lefxset"
     bundle_artifact.parent.mkdir(parents=True, exist_ok=True)
     build_effect_set(set_dir, bundle_artifact)
-    monkeypatch.setattr(effect_registry_module, "_default_effect_artifact_candidates", lambda: [bundle_artifact, DEFAULT_EFFECT_SET_PATH])
+    monkeypatch.setattr(effect_registry_module, "_default_effect_artifact_candidates", lambda: [bundle_artifact, default_effect_set_path()])
+    monkeypatch.setattr(effect_registry_module, "_configured_builtin_effect_paths", lambda: [bundle_artifact])
 
     registry = build_default_effect_registry()
     sources = {source.source_id: source for source in registry.list_effect_sources()}
@@ -352,7 +354,7 @@ def test_registry_autodiscovers_effect_packages_from_package_root(tmp_path, monk
     package_path = packages_root / "voice_assistant.lefxset"
     build_effect_set(set_dir, package_path)
 
-    monkeypatch.setattr(effect_registry_module, "EFFECT_PACKAGES_ROOT", packages_root)
+    monkeypatch.setattr(effect_registry_module, "APP_EFFECT_PACKAGES_ROOT", packages_root)
     registry = EffectRegistry()
     registry.reload()
 

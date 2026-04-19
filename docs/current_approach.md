@@ -1,13 +1,13 @@
 # Aktueller Ansatz Im Repo
 
-Stand: 2026-04-13
+Stand: 2026-04-19
 
-Es gibt nur noch einen aktiven Ansatz im Repo:
+Es gibt nur noch einen aktiven Produktpfad im Repo:
 
-- ein dauerhaft laufender lokaler Controller-Service
+- einen dauerhaft laufenden lokalen Controller-Service
 - Steuerung per CLI oder HTTP
 
-Fuer Release 1 ist dieser Service explizit auf den lokalen Unterprozess-Betrieb ausgelegt.
+Fuer die aktuelle Release-Strecke ist dieser Service auf den lokalen Unterprozess-Betrieb ausgelegt.
 
 ## Einstiegspunkte
 
@@ -19,9 +19,15 @@ Die relevanten Einstiegspunkte sind:
 - `src/services/service.py`
 - `src/engine/runtime.py`
 
-Optional bleiben zusaetzliche Effektquellen unter `src/led_effects/packages/` oder in einem Release-Bundle unter `packages/` erhalten. Sie erweitern denselben Service, bilden aber keinen eigenen Betriebsweg mehr.
+## Wichtige Trennung
 
-Die Standardeffekte werden als Python-Buildquellen unter `src/led_effects/effects/` gepflegt und ueber `tools/effect_building/build_lefxset.py` in Artefakte gebaut. Die Runtime bootstrapped standardmaessig aus `src/led_effects/effects/default-effects.lefxset`; im Release-Bundle wird bevorzugt `effects/default-effects.lefxset` neben der EXE geladen.
+Damit keine Begriffe durcheinandergehen, gilt heute diese klare Aufteilung:
+
+- `build-tools/` ist der normale Build fuer EXE und Release-Bundle.
+- `tools/effect_building/` ist das separate Effekt-Building.
+- `src/` enthaelt den laufenden Service, Runtime, Registry und Loader.
+
+Der normale Build erzeugt die Service-EXE und das Release-Bundle. Er konsumiert nur fertige `.lefx`- und `.lefxset`-Artefakte, die ueber `build-tools/build_config.json` konfiguriert sind.
 
 ## Datenfluss
 
@@ -58,6 +64,8 @@ Der Service kann heute direkt:
 
 Die aktuelle Standardbibliothek wird aus dem Effektset `default-effects.lefxset` geladen.
 
+Die Runtime bevorzugt im Bundle `effects/default-effects.lefxset` neben der EXE. Fuer Entwicklungsstarts kennt sie zusaetzlich die in `build-tools/build_config.json` konfigurierten Builtin-Artefakte.
+
 Wichtige IDs sind:
 
 - `off`
@@ -76,7 +84,7 @@ python .\main.py list-effect-sources
 python .\main.py list-effects
 ```
 
-Wie Effektdateien aufgebaut sind und wie du neue Effektmodule erstellst, steht in [effects.md](effects.md).
+Die Einbindung von Effekt-Artefakten und die Trennung zwischen normalem Build und Effekt-Building stehen in [effects.md](effects.md).
 
 ## Finale Layer
 
@@ -93,17 +101,15 @@ Fuer CLI und API werden kuerzere Layernamen wie `background`, `state`, `main`, `
 
 - Die Runtime akzeptiert keine `legacy_visual`-Kompatibilitaet mehr.
 - Die Default-Registry faellt nicht mehr auf rohe Python-Bibliothekspfade zurueck.
-- Zusatzeffekte werden ausschliesslich als `.lefx`- oder `.lefxset`-Artefakte registriert oder autodiscovered.
+- Zusaetzeffekte werden ausschliesslich als `.lefx`- oder `.lefxset`-Artefakte registriert oder autodiscovered.
 
-## Background-State-Persistenz
+## Runtime-Persistenz
 
-Der Service speichert den aktiven `BACKGROUND_STATE_LAYER` jetzt in `runtime_state/background_state.json` und stellt ihn beim Start wieder her.
+Der Service speichert den aktiven `BACKGROUND_STATE_LAYER` in `background_state.json` im Temp-Verzeichnis `respeaker_led_controller_runtime_state/` und stellt ihn beim Start wieder her.
 
 Wenn keine gueltige Persistenzdatei vorhanden ist, setzt der Service als Start-Fallback einen statischen weissen Hintergrund mit `brightness=0.2`, damit das Geraet einen laufenden Service sichtbar anzeigt.
 
-## Release-1-Runtime-Metadaten
-
-Fuer den Unterprozess-Betrieb schreibt der Service zusaetzlich `runtime_state/active_service.json`.
+Fuer den Unterprozess-Betrieb schreibt der Service zusaetzlich `active_service.json` in dasselbe Temp-Verzeichnis.
 
 Diese Datei enthaelt die aktive PID sowie Host und Port der laufenden Instanz und ist der vorgesehene Rueckkanal fuer Host-Anwendungen, wenn wegen eines Portpools nicht der urspruenglich angefragte Port verwendet wurde.
 
@@ -111,4 +117,4 @@ Diese Datei enthaelt die aktive PID sowie Host und Port der laufenden Instanz un
 
 - der direkte Effects-Engine-Pfad
 - lokale Demo- und Showcase-Kommandos ausserhalb des Service-Betriebs
-- die dazugehoerige Nutzer- und Entwickler-Doku
+- rohe Builtin-Effektquellen unter `src/`

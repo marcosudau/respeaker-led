@@ -1,11 +1,8 @@
 # reSpeaker LED Controller Service
 
-Dieses Repo konzentriert sich jetzt auf genau einen Betriebsweg:
+Dieses Repo konzentriert sich auf einen dauerhaft laufenden lokalen LED-Service, der per CLI oder HTTP gesteuert wird.
 
-- einen dauerhaft laufenden lokalen LED-Service starten
-- diesen Service per CLI oder HTTP steuern
-
-Der direkte Effects-Engine-Pfad wurde entfernt. Alle aktiven Einstiege laufen jetzt ueber `main.py`, `src/interfaces/cli.py`, `src/interfaces/api.py` und `src/services/service.py`.
+Alle aktiven Einstiegspunkte laufen ueber `main.py`, `src/interfaces/cli.py`, `src/interfaces/api.py` und `src/services/service.py`.
 
 ## Schnellstart
 
@@ -57,7 +54,7 @@ python .\main.py shutdown
 
 ## Entwicklung
 
-Die lokale Entwicklungs- und CI-Umgebung ist auf uv und Python 3.12 ausgerichtet.
+Die lokale Entwicklungs- und CI-Umgebung ist auf `uv` und Python 3.12 ausgerichtet.
 
 ### 1. Abhaengigkeiten synchronisieren
 
@@ -71,31 +68,44 @@ uv sync --all-groups
 uv run pytest -q --basetemp=.pytest_tmp
 ```
 
-### 3. Release-Build lokal pruefen
+## Building
+
+Der Standard-Build laeuft ueber [build-tools/build.py](build-tools/build.py) und liest seine Schalter und Effektquellen aus [build-tools/build_config.json](build-tools/build_config.json).
 
 ```powershell
-uv run pyinstaller led_controller_service.spec
-uv run python .\tools\verify_release_binary.py .\dist\led_controller_service.exe
+uv run python build-tools/build.py --force
 ```
 
-### 4. Release-Bundle lokal erzeugen
+Standardmaessig werden die Artefakte mit Version gebaut:
 
-```powershell
-uv run python .\tools\assemble_release_bundle.py --version (uv run python -c "from src.version import __version__; print(__version__)") --exe .\dist\led_controller_service.exe --output-dir .\artifacts
-```
+- `dist/led_controller_service_<version>.exe`
+- `dist/release_bundle/led_controller_service_<version>_windows_x64.zip`
+
+Mit `--no-version` werden dieselben Artefakte ohne Versionssuffix erzeugt.
+
+Die Detail-Doku fuer Build-Skripte, Konfiguration, Cleanup und Bundle-Template steht in [build-tools/README.md](build-tools/README.md).
+
+## Release
+
+Die einzige Versionsquelle ist [build-tools/version.py](build-tools/version.py); lokale Builds lesen diese Datei nur, sie aendern sie nicht.
+
+Fuer einen GitHub-Release muss ein Tag `vX.Y.Z` erstellt werden, dessen Version exakt zu `build-tools/version.py` passt.
+
+Lokal entsteht das Release-Bundle als ZIP unter `dist/release_bundle/`; im Release-Workflow wird genau dieses ZIP als Release-Artefakt veroeffentlicht.
+
+Die Release-Regeln und der Tag-basierte Ablauf stehen in [build-tools/RELEASE.md](build-tools/RELEASE.md).
 
 ## Projektstruktur in kurz
 
-- `src/` enthaelt die fachlich gegliederte Paketstruktur fuer CLI, API, Service, Runtime, Renderer und Effect-Registry
-- `src/led_effects/effects/` enthaelt die dateibasierten Effektmodule des Service
-- `src/led_effects/preset_packs/` enthaelt optionale Preset-Erweiterungen fuer den Service
-- `runtime_state/background_state.json` speichert den persistierten Background-State des Service
-- `runtime_state/active_service.json` enthaelt Laufzeit-Metadaten der aktiven Instanz, insbesondere Host und Port
-- `logs/led_controller.log` enthaelt das einfache Release-1-Basislogging des Service
-- `src/python_control/` enthaelt den Low-Level-Hardwarezugriff
-- `docs/` enthaelt die verbleibende Nutzer-Doku
-- `docs/dev/` enthaelt die interne Architektur-Doku
-- `tests/` prueft den Service-Pfad, API, CLI und Runtime
+- `src/` enthaelt die fachlich gegliederte Paketstruktur fuer CLI, API, Service, Runtime, Renderer und Effect-Registry.
+- `build-tools/` enthaelt den kompletten normalen Build-Prozess, das PyInstaller-Spec-File, die Versionsquelle und das Release-Bundle-Template.
+- `tools/effect_building/` enthaelt das separate Effekt-Building und liefert die `.lefx`- und `.lefxset`-Artefakte, die ueber `build-tools/build_config.json` eingebunden werden.
+- zur Laufzeit schreibt der Service `background_state.json` und `active_service.json` in ein Temp-Verzeichnis unter `respeaker_led_controller_runtime_state/`.
+- `logs/led_controller.log` enthaelt das einfache Basislogging des Service.
+- `src/python_control/` enthaelt den Low-Level-Hardwarezugriff.
+- `docs/` enthaelt die verbleibende Nutzer-Doku.
+- `docs/dev/` enthaelt die interne Entwickler-Doku.
+- `tests/` prueft den Service-Pfad, API, CLI, Runtime und Build-Tooling.
 
 ## Wichtige Hinweise
 
@@ -103,11 +113,10 @@ uv run python .\tools\assemble_release_bundle.py --version (uv run python -c "fr
 - Ohne gespeicherten Background-State startet der Service mit einem gedimmten weissen Grundlicht als Online-Anzeige.
 - Beim Start prueft der Service die gewuenschte Portbelegung vorab; optional kann er auf einen Port aus `--port-pool` ausweichen.
 - Es ist nur eine aktive Instanz vorgesehen; eine neu gestartete Instanz versucht eine vorhandene alte Instanz zuerst zu beenden.
-- Der gewaehlt gestartete Host/Port wird fuer Host-Anwendungen in `runtime_state/active_service.json` abgelegt und beim Start zusaetzlich als JSON auf stdout ausgegeben.
+- Der gewaehlt gestartete Host/Port wird fuer Host-Anwendungen in `active_service.json` im Temp-Verzeichnis abgelegt und beim Start zusaetzlich als JSON auf stdout ausgegeben.
 - Start und Stop des Service werden durch drei schnelle Vollring-Blinks signalisiert: Gruen beim Start, Rot beim Stop.
-- Ohne Preset-Packs laeuft der Service trotzdem vollstaendig.
 - Fuer echte Fernsteuerung muessen Service und Steuer-Kommandos in getrennten Terminals laufen.
-- Optional kannst du statt `main.py` auch `python -m src ...` oder direkt `python .\src\cli.py ...` verwenden.
+- Optional kannst du statt `main.py` auch `python -m src ...` verwenden.
 
 ## Weiterfuehrende Doku
 

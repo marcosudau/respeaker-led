@@ -2,6 +2,12 @@
 
 Dieser Ordner sammelt die zentrale Planungs- und Zieldokumentation fuer die Neuausrichtung des `led_controller` hin zu einem dauerhaft laufenden Dienst mit einer einzigen Engine.
 
+Wichtig:
+
+- Die Dateien in diesem Ordner sind Planungs- und Historien-Dokumente, nicht die Fuehrungsdoku fuer den heutigen Ist-Zustand.
+- Historische Pfade, alte Build-Annahmen und fruehere Runtime-Persistenzorte koennen dort bewusst noch auftauchen.
+- Fuer den aktuellen Ist-Zustand sind `README.md`, `build-tools/README.md`, `docs/current_approach.md` und `docs/dev/build.md` massgeblich.
+
 ## Einstieg
 
 - [01_zielarchitektur.md](01_zielarchitektur.md)

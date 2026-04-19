@@ -1,0 +1,23 @@
+{
+  "artifacts": {
+    "build_dir": "build",
+    "dist_dir": "dist",
+    "release_bundle_dir": "dist/release_bundle",
+    "release_bundle_staging_dir": "dist/release_bundle/_staging"
+  },
+  "cleanup_after_build": {
+    "complete": [
+      "dist/*.exe",
+      "dist/release_bundle/*.zip"
+    ],
+    "default": [
+      "build",
+      ".pytest_tmp",
+      "dist/release_bundle/_staging",
+      "dist/*.log",
+      "dist/logs",
+      "dist/release_bundle/*.log",
+      "logs"
+    ]
+  }
+}

@@ -226,5 +226,5 @@ Kommandos:
 Hinweis:
 
 - Die Default-Effektbibliothek wird aus `default-effects.lefxset` geladen, nicht aus rohen Python-Quellen.
-- Der Service persistiert `BACKGROUND_STATE_LAYER` in `runtime_state/background_state.json` und restauriert ihn beim Start.
+- Der Service persistiert `BACKGROUND_STATE_LAYER` in `background_state.json` im Temp-Verzeichnis `respeaker_led_controller_runtime_state/` und restauriert ihn beim Start.
 - Bei fehlender Hardware faellt der Service sicher auf Console-Preview zurueck.

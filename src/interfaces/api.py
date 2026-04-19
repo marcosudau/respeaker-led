@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from ..infrastructure.logging_utils import get_logger
 from ..services.service import ControllerService
-from ..version import __version__
+from .. import __version__
 
 
 logger = get_logger("api")

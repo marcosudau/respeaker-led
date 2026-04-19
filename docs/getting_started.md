@@ -27,7 +27,7 @@ Wichtig:
 - der Prozess rendert jetzt laufend Frames
 - im `--no-device`-Modus werden die Frames in der Konsole als Preview ausgegeben
 - beim Start gibt der Prozess eine JSON-Zeile mit dem effektiv verwendeten Host und Port aus
-- dieselben Laufzeitdaten stehen auch in `runtime_state/active_service.json`
+- dieselben Laufzeitdaten stehen auch in `active_service.json` im Temp-Verzeichnis `respeaker_led_controller_runtime_state/`
 
 ## 2. Zweites Terminal oeffnen und pruefen, ob der Service erreichbar ist
 

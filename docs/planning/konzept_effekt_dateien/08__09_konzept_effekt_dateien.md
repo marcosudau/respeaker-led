@@ -3,6 +3,17 @@
 Stand: 2026-04-12
 Status: umgesetzt und verifiziert
 
+Hinweis:
+
+Dieses Dokument beschreibt den damaligen Ausbauzustand der Effekt-Authoring- und Build-Schicht.
+Historische Pfade wie fruehere `src/led_effects/...`-Referenzen sind in diesem Dokument als damaliger Stand zu lesen, nicht als heutiger Ist-Zustand.
+Fuer den aktuellen Runtime- und Build-Zuschnitt sind `docs/effects.md`, `docs/current_approach.md` und `build-tools/README.md` massgeblich.
+
+Historischer Hinweis:
+
+Die hier genannten damaligen Authoring- und Publikationspfade unter `src/led_effects/...` beschreiben einen frueheren Zwischenstand.
+Der heutige Ist-Zustand trennt Effekt-Building unter `tools/effect_building/` vom normalen Build unter `build-tools/`.
+
 ## 1. Ergebnis
 
 Die in `08__08_konzept_effekt_dateien.md` bevorzugte Ausbaustufe ist jetzt umgesetzt.

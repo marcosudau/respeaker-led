@@ -1,12 +1,23 @@
 # Restplan nach LEFX Build First
 
+Hinweis:
+
+Dieses Dokument ist ein historischer Zwischenplan vor der spaeteren Bereinigung der finalen Build- und Runtime-Pfade.
+Wenn hier alte Pfade oder noch offene Aufgaben genannt werden, sind sie nicht automatisch der heutige Ist-Zustand.
+Fuer den aktuellen Stand sind `docs/current_approach.md`, `docs/effects.md` und `build-tools/README.md` massgeblich.
+
 Diese Datei aktualisiert den Implementierungsplan nach dem abgeschlossenen Build-First-Meilenstein fuer die Standard-Effekte.
+
+Historischer Hinweis:
+
+Die hier genannten Publikationspfade unter `src/led_effects/...` beschreiben einen damaligen Zwischenstand.
+Der heutige Ist-Zustand trennt Effekt-Building unter `tools/effect_building/` vom normalen Build unter `build-tools/`.
 
 ## Aktueller Stand
 
 - Die Build-Strecke unter tools/effect_building erzeugt eigenstaendige .lefx-Pakete fuer alle Standard-Effekte.
 - Daraus wird erfolgreich eine default-effects.lefxset gebaut.
-- Das gebaute Set wird nach src/led_effects/effects/default-effects.lefxset publiziert.
+- Das gebaute Set wurde in dieser Zwischenstufe noch ueber alte Publish-Pfade betrachtet; heute liegt die Publish-Kopie unter `tools/effect_building/build/published/default-effects.lefxset`.
 - Der aktuelle Build-Stand umfasst 37 Effekte sowie jeweils 148 eingebettete Presets und Commands.
 
 ## Was damit bewusst noch nicht erledigt ist

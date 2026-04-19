@@ -16,7 +16,7 @@ Pruefe der Reihe nach:
 - stimmen `--host` und `--port` mit dem Startbefehl ueberein?
 - blockiert bereits ein anderer Prozess den Port?
 - wurde beim Start eventuell ein anderer Port aus `--port-pool` gewaehlt?
-- steht der effektiv verwendete Port in `runtime_state/active_service.json`?
+- steht der effektiv verwendete Port in `active_service.json` im Temp-Verzeichnis `respeaker_led_controller_runtime_state/`?
 
 ## Tests schlagen fehl
 
@@ -29,7 +29,7 @@ Pruefe der Reihe nach:
 - lasse das Startterminal offen
 - der Service previewt dann die gerenderten Frames direkt in der Konsole
 - zusaetzlich kannst du mit `python .\main.py status` den letzten Frame im JSON pruefen
-- ohne gespeicherte Datei startet der Background-State bewusst als gedimmtes Weiss in `runtime_state/background_state.json`
+- ohne gespeicherte Datei startet der Background-State bewusst als gedimmtes Weiss; die Persistenz liegt in `background_state.json` im Temp-Verzeichnis `respeaker_led_controller_runtime_state/`
 
 ## Mein Effekt ist nicht sichtbar
 
@@ -63,18 +63,18 @@ Pruefe der Reihe nach:
 ## Der neue Service startet, aber der alte lief noch
 
 - Release 1 ist auf genau eine aktive Instanz ausgelegt
-- eine neue Instanz versucht eine vorhandene alte aktive Instanz zuerst ueber deren Metadaten aus `runtime_state/active_service.json` zu beenden
-- wenn das nicht gelingt, pruefe `runtime_state/active_service.json` und `logs/led_controller.log`
+- eine neue Instanz versucht eine vorhandene alte aktive Instanz zuerst ueber deren Metadaten aus `active_service.json` zu beenden
+- wenn das nicht gelingt, pruefe `active_service.json` im Temp-Verzeichnis und `logs/led_controller.log`
 
 ## Ich weiss nicht, welchen Port der gestartete Unterprozess verwendet
 
-- lies `runtime_state/active_service.json`
+- lies `active_service.json` im Temp-Verzeichnis
 - dort stehen PID, Host, Port und Status der aktiven Instanz
 - beim Start gibt der Prozess dieselben Informationen zusaetzlich als JSON auf stdout aus
 
 ## Der Background-State wirkt nach einem Neustart anders als erwartet
 
-- pruefe den Inhalt von `runtime_state/background_state.json`
+- pruefe den Inhalt von `background_state.json` im Temp-Verzeichnis
 - der Service restauriert den letzten persistierbaren Background-State beim Start automatisch
 - wenn die Datei fehlt oder ungueltig ist, startet der Service mit `solid_color` in Weiss und `brightness=0.2`
 - transiente Service-Zustaende wie `service_stopping` werden absichtlich nicht als persistierter Background-State uebernommen

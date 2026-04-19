@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import hashlib
 import inspect
 import re
@@ -11,12 +12,19 @@ from ..core.effect_schema import BaseEffect, EffectCapabilities, EffectDefinitio
 from ..infrastructure.paths import (
     APP_DEFAULT_EFFECT_SET_PATH,
     APP_EFFECT_PACKAGES_ROOT,
-    DEFAULT_EFFECT_SET_PATH,
+    BUILD_CONFIG_PATH,
     DEFAULT_EFFECT_SOURCE_ID,
-    EFFECT_PACKAGES_ROOT,
+    DEFAULT_EFFECT_SET_FILENAME,
+    PROJECT_ROOT,
 )
 from .effect_command_registry import EffectCommandRegistry
-from .effect_package_loader import LoadedEffectPackage, LoadedEffectSet, load_effect_package, load_effect_set
+from .effect_package_loader import (
+    LoadedEffectPackage,
+    LoadedEffectSet,
+    inspect_effect_source,
+    load_effect_package,
+    load_effect_set,
+)
 from .effect_preset_registry import EffectPresetRegistry
 
 
@@ -24,10 +32,10 @@ _EFFECT_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
 def _default_effect_artifact_candidates() -> list[Path]:
-    candidates = [
-        APP_DEFAULT_EFFECT_SET_PATH,
-        DEFAULT_EFFECT_SET_PATH,
-    ]
+    candidates = [APP_DEFAULT_EFFECT_SET_PATH]
+    candidates.extend(
+        path for path in _configured_builtin_effect_paths() if path.name == DEFAULT_EFFECT_SET_FILENAME
+    )
     deduplicated: list[Path] = []
     seen: set[str] = set()
     for candidate in candidates:
@@ -37,6 +45,40 @@ def _default_effect_artifact_candidates() -> list[Path]:
         deduplicated.append(candidate)
         seen.add(key)
     return deduplicated
+
+
+def _configured_builtin_effect_paths() -> list[Path]:
+    if not BUILD_CONFIG_PATH.is_file():
+        return []
+
+    payload = json.loads(BUILD_CONFIG_PATH.read_text(encoding="utf-8"))
+    entries = payload.get("builtin-effects-discovery", [])
+    if not isinstance(entries, list):
+        raise ValueError("build_config.json key 'builtin-effects-discovery' must be a list")
+
+    resolved: list[Path] = []
+    seen: set[str] = set()
+    for entry in entries:
+        if not isinstance(entry, str) or not entry.strip():
+            raise ValueError("build_config.json builtin-effects-discovery entries must be non-empty strings")
+        candidate = Path(entry)
+        if not candidate.is_absolute():
+            candidate = (PROJECT_ROOT / candidate).resolve()
+        if candidate.is_dir():
+            matches = sorted(
+                path.resolve()
+                for path in candidate.rglob("*")
+                if path.is_file() and path.suffix.lower() in {".lefx", ".lefxset"}
+            )
+        else:
+            matches = [candidate.resolve()]
+        for match in matches:
+            key = str(match)
+            if key in seen:
+                continue
+            seen.add(key)
+            resolved.append(match)
+    return resolved
 
 
 @dataclass(slots=True)
@@ -379,7 +421,7 @@ class EffectRegistry:
     def _discover_autodiscovered_sources(self) -> list[EffectLibrarySource]:
         sources: list[EffectLibrarySource] = []
         seen_paths: set[str] = set()
-        for root in (Path(APP_EFFECT_PACKAGES_ROOT), Path(EFFECT_PACKAGES_ROOT)):
+        for root in (Path(APP_EFFECT_PACKAGES_ROOT),):
             if not root.exists():
                 continue
             for path in sorted(root.rglob("*")):
@@ -518,21 +560,44 @@ class EffectRegistry:
 
 
 def build_default_effect_registry() -> EffectRegistry:
+    registry = EffectRegistry()
     errors: list[str] = []
+    default_artifact_path: Path | None = None
     for artifact_path in _default_effect_artifact_candidates():
         if not artifact_path.is_file():
             continue
-        registry = EffectRegistry()
         try:
             registry.register_effect_set(artifact_path, source_id=DEFAULT_EFFECT_SOURCE_ID)
-            return registry
+            default_artifact_path = artifact_path.resolve()
+            break
         except Exception as exc:
             errors.append(f"{artifact_path}: {exc}")
             continue
+    if default_artifact_path is None:
+        if errors:
+            raise RuntimeError(
+                "Failed to load the default effect set artifact. "
+                + " | ".join(errors)
+            )
+        candidates = ", ".join(str(path) for path in _default_effect_artifact_candidates())
+        raise FileNotFoundError(f"Default effect set artifact not found. Checked: {candidates}")
+
+    for builtin_path in _configured_builtin_effect_paths():
+        if not builtin_path.is_file():
+            continue
+        if builtin_path.resolve() == default_artifact_path:
+            continue
+        try:
+            metadata = inspect_effect_source(builtin_path)
+            if metadata.get("source_id") == DEFAULT_EFFECT_SOURCE_ID:
+                continue
+            registry.register_effect_source(builtin_path)
+        except Exception as exc:
+            errors.append(f"{builtin_path}: {exc}")
+
     if errors:
         raise RuntimeError(
-            "Failed to load the default effect set artifact. "
+            "Failed to load one or more configured built-in effect sources. "
             + " | ".join(errors)
         )
-    candidates = ", ".join(str(path) for path in _default_effect_artifact_candidates())
-    raise FileNotFoundError(f"Default effect set artifact not found. Checked: {candidates}")
+    return registry

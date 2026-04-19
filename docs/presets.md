@@ -26,8 +26,8 @@ Effekt-Presets und Commands entstehen beim Packaging aus Effektquellen und werde
 
 Typische Quellen sind:
 
-- `src/led_effects/effects/default-effects.lefxset` fuer die Default-Bibliothek
-- zusaetzliche `.lefx`- oder `.lefxset`-Dateien unter `src/led_effects/packages/`
+- das ueber `build-tools/build_config.json` eingebrachte Standard-Set `default-effects.lefxset`
+- zusaetzliche `.lefx`- oder `.lefxset`-Artefakte aus dem separaten Effekt-Building
 - Bundle-Dateien unter `effects/` und `packages/` neben der EXE
 
 ## Discovery

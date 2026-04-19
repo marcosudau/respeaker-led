@@ -81,7 +81,7 @@ Direkte manuelle Effektanwendung laeuft ebenfalls ueber denselben Mechanismus, z
 
 `BACKGROUND_STATE_LAYER` ist jetzt end-to-end an eine kleine Persistenzstrecke angeschlossen.
 
-Der aktuelle persistierbare Background-State wird in `runtime_state/background_state.json` geschrieben und beim naechsten Service-Start wiederhergestellt.
+Der aktuelle persistierbare Background-State wird in `background_state.json` im Temp-Verzeichnis `respeaker_led_controller_runtime_state/` geschrieben und beim naechsten Service-Start wiederhergestellt.
 
 Wichtig:
 

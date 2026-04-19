@@ -14,6 +14,7 @@ dependencies = [
     "pydantic>=2.12.5,<2.13",
     "PyYAML>=6.0.2,<7",
     "pyusb>=1.3.1,<2",
+    "tzdata>=2025.2; platform_system == 'Windows'",
     "uvicorn>=0.44.0,<0.45",
     "PySide6"
 ]
@@ -26,7 +27,7 @@ dev = [
 ]
 
 [tool.hatch.version]
-path = "src/version.py"
+path = "build-tools/version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
@@ -34,10 +35,9 @@ packages = ["src"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/README.md",
+    "/build-tools",
     "/docs",
-    "/led_controller_service.spec",
     "/main.py",
-    "/release",
     "/src",
     "/tests",
     "/tools",

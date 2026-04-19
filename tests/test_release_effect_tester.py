@@ -117,6 +117,23 @@ def _pick_free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def test_resolve_default_executable_prefers_dist_versioned_build(tmp_path):
+    module = load_module()
+    script_path = tmp_path / "tools" / "PySide6TestApp" / "pyside6_effect_tester.py"
+    script_path.parent.mkdir(parents=True)
+    script_path.write_text("# placeholder", encoding="utf-8")
+
+    build_tools = tmp_path / "build-tools"
+    build_tools.mkdir()
+    (build_tools / "version.py").write_text('__version__ = "9.9.9"\n', encoding="utf-8")
+
+    dist_exe = tmp_path / "dist" / "led_controller_service_9.9.9.exe"
+    dist_exe.parent.mkdir()
+    dist_exe.write_text("binary", encoding="utf-8")
+
+    assert module.resolve_default_executable(script_path) == dist_exe.resolve()
+
+
 def test_subprocess_backend_can_start_fake_service_and_list_effects(tmp_path):
     module = load_module()
     port = _pick_free_port()

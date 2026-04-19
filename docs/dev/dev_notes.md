@@ -10,19 +10,23 @@ Dafuer gelten folgende Leitlinien:
 - alle fachlichen Eingaben laufen zuerst durch `ControllerCommandNormalizer`
 - `ControllerRuntime` enthaelt Engine-Mutationen und Statuslogik
 - `ControllerService` kuemmert sich um Worker, API, Prozess-Lifecycle und Fallbacks
-- Standardeffekte werden in `src/led_effects/effects/` als Python-Buildquellen gepflegt und als `.lefx`- bzw. `.lefxset`-Artefakte ausgeliefert
 - `SceneComposer`, `SceneRenderer` und `FrameAdapter` bilden die feste Frame-Pipeline
 - Hardware-Ausgabe bleibt auf Vollring-Frames fuer den ReSpeaker ausgelegt
 
-## Aktueller Zuschnitt des Repos
+## Repo-Zuschnitt
 
-Der aktive Produktionspfad liegt vollstaendig in `src/`.
+Der aktive Produktionspfad liegt in `src/`.
 
-Er wird ergaenzt durch:
+Daneben gibt es heute zwei klar getrennte Hilfsbereiche:
 
-- `src/led_effects/effects/` fuer die Python-Buildquellen der Standardeffekte und das publizierte `default-effects.lefxset`
-- `src/led_effects/packages/` fuer optionale zusaetzliche Effektartefakte
-- `src/python_control/` fuer den Hardware-Zugriff
+- `build-tools/` fuer den normalen Build von EXE und Release-Bundle
+- `tools/effect_building/` fuer das separate Effekt-Building
+
+Wichtig:
+
+- `src/` enthaelt nicht mehr die rohen Builtin-Effektquellen
+- der normale Build bindet fertige Effekt-Artefakte ueber `build-tools/build_config.json` ein
+- `src/python_control/` bleibt der Bereich fuer den Hardware-Zugriff
 
 ## Effekt-Presets und Commands
 
@@ -71,7 +75,7 @@ Die Default-Registry laedt beim Start `default-effects.lefxset`. Ueber CLI und A
 
 ## Background-State-Persistenz
 
-- `BACKGROUND_STATE_LAYER` wird ueber `runtime_state/background_state.json` persistiert.
+- `BACKGROUND_STATE_LAYER` wird ueber `background_state.json` im Temp-Verzeichnis `respeaker_led_controller_runtime_state/` persistiert.
 - Beim Service-Start wird zuerst versucht, den letzten persistierbaren Background-State wiederherzustellen.
 - Wenn keine gueltige Persistenzdatei vorhanden ist, wird ein gedimmter weisser `solid_color`-Fallback gesetzt.
 - Transiente Servicezustandsanzeigen wie `offline` oder `service_stopping` werden nicht in diese Persistenz geschrieben.

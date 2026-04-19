@@ -6,6 +6,7 @@ Status: finaler Konzeptentwurf fuer experimentelle Umsetzung auf Branch `codex/e
 Hinweis zum heutigen Stand:
 
 Das Dokument bleibt als Konzeptstand erhalten. Die spaetere Implementierung hat jedoch die hier noch diskutierten Rohquellpfade verworfen und registriert Effektquellen heute ausschliesslich als `.lefx`- oder `.lefxset`-Artefakte.
+Auch die hier diskutierten Persistenzpfade unter `runtime_state/` sind deshalb als Konzeptstand zu lesen, nicht als aktuelle Laufzeitorte.
 
 ## 1. Zielbild
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import subprocess
 import sys
@@ -99,12 +100,43 @@ def clear_layout(layout: QGridLayout | QVBoxLayout | QHBoxLayout) -> None:
             widget.deleteLater()
 
 
+def load_project_version(project_root: Path) -> str | None:
+    version_path = project_root / "build-tools" / "version.py"
+    if not version_path.is_file():
+        return None
+
+    spec = importlib.util.spec_from_file_location("build_tools_version", version_path)
+    if spec is None or spec.loader is None:
+        return None
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    version = getattr(module, "__version__", None)
+    if not isinstance(version, str) or not version.strip():
+        return None
+    return version.strip().lstrip("v")
+
+
 def resolve_default_executable(script_path: Path) -> Path:
-    candidates = [
+    project_root = script_path.resolve().parents[2]
+    dist_root = project_root / "dist"
+    version = load_project_version(project_root)
+    versioned_name = f"led_controller_service_{version}.exe" if version else "led_controller_service.exe"
+
+    candidates: list[Path] = [
+        dist_root / versioned_name,
+        dist_root / "led_controller_service.exe",
+        *sorted(dist_root.glob("led_controller_service_*.exe"), reverse=True),
+        script_path.with_name(versioned_name),
         script_path.with_name("led_controller_service.exe"),
         script_path.parent / "led_controller_service.exe",
     ]
+    seen: set[Path] = set()
     for candidate in candidates:
+        candidate = candidate.resolve()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
         if candidate.exists():
             return candidate
     return candidates[0]
@@ -1303,7 +1335,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-SCRIPT_PATH = Path("P:\\CodexApp\\led_controller_respeaker\\dist\\led_controller_service.exe")
 

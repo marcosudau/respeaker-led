@@ -1,28 +1,22 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-
 import tempfile
-
-temp_dir = tempfile.gettempdir()
+from pathlib import Path
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 RESOURCE_ROOT = Path(getattr(sys, "_MEIPASS", PACKAGE_ROOT.parent)).resolve()
 PROJECT_ROOT = RESOURCE_ROOT
 APP_ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else PROJECT_ROOT
+BUILD_TOOLS_ROOT = RESOURCE_ROOT / "build-tools"
+BUILD_CONFIG_PATH = BUILD_TOOLS_ROOT / "build_config.json"
 APP_EFFECTS_ROOT = APP_ROOT / "effects"
 APP_EFFECT_PACKAGES_ROOT = APP_ROOT / "packages"
 SOURCE_ROOT = PROJECT_ROOT / "src"
-LED_EFFECTS_ROOT = SOURCE_ROOT / "led_effects"
-EFFECTS_LIBRARY_ROOT = LED_EFFECTS_ROOT / "effects"
-EFFECT_PACKAGES_ROOT = LED_EFFECTS_ROOT / "packages"
 DEFAULT_EFFECT_SOURCE_ID = "default-effects"
 DEFAULT_EFFECT_SET_FILENAME = "default-effects.lefxset"
 APP_DEFAULT_EFFECT_SET_PATH = APP_EFFECTS_ROOT / DEFAULT_EFFECT_SET_FILENAME
-DEFAULT_EFFECT_SET_PATH = EFFECTS_LIBRARY_ROOT / DEFAULT_EFFECT_SET_FILENAME
-PRESET_PACKS_ROOT = LED_EFFECTS_ROOT / "preset_packs"
 
 TEMP_DIR = Path(tempfile.gettempdir())
 RUNTIME_STATE_ROOT = TEMP_DIR / "respeaker_led_controller_runtime_state"

@@ -4,8 +4,9 @@ Stand: 2026-04-09
 
 Hinweis:
 
-Dieser Bericht beschreibt den Stand vor der spaeteren Auslagerung der konkreten Effektklassen in `src/led_effects/effects/`.
-Die hier genannten frueheren Dateipfade fuer Effektimplementierungen in `src/` sind deshalb heute nur noch historisch zu lesen.
+Dieser Bericht beschreibt einen frueheren Zwischenstand und ist nicht der aktuelle Ist-Zustand des Repos.
+Die hier genannten Pfade unter `src/led_effects/...` sowie spaetere Aussagen mit "heute" oder "aktuell" beziehen sich auf diesen damaligen Stand.
+Der heutige Ist-Zustand trennt Effekt-Building unter `tools/effect_building/` klar vom normalen Build unter `build-tools/`.
 Zusaetzlich gilt: Die im Bericht noch erwaehnten Zwischenstufen `legacy_visual` und `EffectRegistry.add_library_path(...)` wurden im finalen LEFX-Cleanup entfernt.
 
 ## Zweck dieses Berichts

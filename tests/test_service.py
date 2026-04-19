@@ -8,8 +8,8 @@ import pytest
 import src.engine.effect_registry as effect_registry_module
 from src.core.models import LED_COUNT
 from src.engine.effect_package_builder import build_effect_set
-from src.infrastructure.paths import DEFAULT_EFFECT_SET_PATH
 from src.services.service import ControllerService
+from tests.build_artifact_helpers import default_effect_set_path
 from tests.package_test_utils import write_effect_set_source
 
 
@@ -64,7 +64,8 @@ def test_service_applies_and_persists_default_background_fallback(tmp_path):
 
 
 def test_service_starts_with_published_default_effect_artifact():
-    assert DEFAULT_EFFECT_SET_PATH.is_file()
+    configured_default_effect_set = default_effect_set_path()
+    assert configured_default_effect_set.is_file()
 
     service = _startable_service()
     try:
@@ -73,7 +74,7 @@ def test_service_starts_with_published_default_effect_artifact():
 
         assert service.snapshot()["render_loop_running"] is True
         assert default_source["kind"] == "effect_set"
-        assert Path(default_source["path"]) == DEFAULT_EFFECT_SET_PATH.resolve()
+        assert Path(default_source["path"]) == configured_default_effect_set.resolve()
     finally:
         service.stop()
 

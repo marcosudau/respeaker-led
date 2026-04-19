@@ -3,6 +3,17 @@
 Stand: 2026-04-10
 Status: Planungsdokument, keine Implementierung in diesem Konzeptteil
 
+Hinweis:
+
+Dieses Dokument beschreibt einen Planungsstand vor der spaeteren Umstellung auf `build-tools/` und artefaktbasierte Builtin-Effekte.
+Historische Pfade in diesem Dokument sind deshalb nicht automatisch der heutige Ist-Zustand.
+Fuer die aktuelle Release-Strecke sind `README.md`, `build-tools/README.md` und `docs/dev/build.md` massgeblich.
+
+Historischer Hinweis:
+
+Genannte Pfade unter `src/led_effects/...`, `runtime_state/` im Repo oder fruehere Bundle-Annahmen sind als damalige Planung zu lesen und nicht als heutiger Ist-Zustand.
+Der aktuelle Build- und Release-Weg ist in `build-tools/` dokumentiert.
+
 ## Zielbild
 
 Fuer den LED-Controller gibt es zwei sinnvolle Betriebsarten, aber nicht beide haben denselben Reifegrad und dieselben Anforderungen.

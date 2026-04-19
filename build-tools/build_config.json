@@ -1,0 +1,12 @@
+{
+  "spec_file": "build-tools/led_controller_service.spec",
+  "build_effects": true,
+  "build_exe": true,
+  "build_release_bundle": true,
+  "cleanup": true,
+  "builtin-effects-discovery": [
+    "tools/effect_building/build/build_lefxset/default-effects.lefxset",
+    "tools/effect_building/build/build_lefx/default-effects",
+    "tools/effect_building/build/build_lefxset"
+  ]
+}

@@ -6,6 +6,7 @@ Status: finale Konzeptfassung fuer die experimentelle Umsetzung auf Branch `code
 Hinweis zum heutigen Stand:
 
 Das Dokument bleibt als Konzeptstand erhalten. Die spaetere Implementierung registriert Effektquellen ausschliesslich als `.lefx`- oder `.lefxset`-Artefakte; Rohquellpfade und `library_path` sind kein aktueller Runtime-Vertrag mehr.
+Auch die hier genannten Persistenzpfade unter `runtime_state/` sind als Konzeptstand zu lesen.
 
 ## 1. Einordnung und Ergebnis aus den letzten Anmerkungen
 

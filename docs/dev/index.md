@@ -8,6 +8,7 @@ Wenn du nur den Service starten und steuern willst, brauchst du diesen Bereich n
 
 - [Runtime Layer-Modell](runtime_layers.md)
 - [Development Notes](dev_notes.md)
+- [Build und Release](build.md)
 - [Public Entry Points](public_entry_points.md)
 - [Effekte verstehen und neue Effekte bauen](../effects.md)
 - [Planungs- und Architekturstand](../planning/index.md)
