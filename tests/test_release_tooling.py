@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import runpy
+import sys
 import tomllib
 from pathlib import Path
 
@@ -16,6 +17,20 @@ check_release_bundle_module = load_build_tool_module("check_release_bundle")
 create_release_bundle = create_release_bundle_module.create_release_bundle
 verify_release_bundle = check_release_bundle_module.verify_release_bundle
 discover_builtin_artifacts = create_release_bundle_module.discover_builtin_artifacts
+
+
+def load_build_pipeline_module():
+    build_tools_root = Path("build-tools").resolve()
+    sys.path.insert(0, str(build_tools_root))
+    try:
+        spec = importlib.util.spec_from_file_location("test_build_pipeline", build_tools_root / "build.py")
+        assert spec is not None
+        assert spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        sys.path.remove(str(build_tools_root))
 
 
 def test_create_release_bundle_copies_effect_artifacts_into_zip(tmp_path):
@@ -162,6 +177,34 @@ def test_discover_builtin_artifacts_deduplicates_and_ignores_bad_entries(tmp_pat
         "default-effects.lefxset",
         "custom.lefx",
     ]
+
+
+def test_build_pipeline_runs_effect_build_before_pyinstaller(monkeypatch, tmp_path):
+    build_module = load_build_pipeline_module()
+    commands: list[list[str]] = []
+
+    monkeypatch.setattr(
+        build_module,
+        "load_build_config",
+        lambda _config_path: {
+            "build_effects": True,
+            "build_exe": False,
+            "build_release_bundle": False,
+            "cleanup": False,
+        },
+    )
+    monkeypatch.setattr(build_module, "load_python_version", lambda: "1.2.3")
+    monkeypatch.setattr(build_module, "_run", lambda command, **_kwargs: commands.append(command))
+
+    result = build_module.run_build(
+        config_path=tmp_path / "build-tools" / "build_config.json",
+        include_version=True,
+        force=False,
+    )
+
+    assert len(commands) == 1
+    assert commands[0][1:] == ["tools/effect_building/build_lefxset.py", "--rebuild-packages"]
+    assert result["commands"] == commands
 
 
 def test_verify_release_bundle_reports_missing_required_files(tmp_path):

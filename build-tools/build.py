@@ -37,7 +37,9 @@ def run_build(*, config_path: Path, include_version: bool, force: bool) -> dict[
     commands: list[list[str]] = []
 
     if bool(config.get("build_effects", False)):
-        commands.append([sys.executable, "tools/effect_building/build_lefxset.py", "--rebuild-packages"])
+        build_effects_cmd = [sys.executable, "tools/effect_building/build_lefxset.py", "--rebuild-packages"]
+        _run(build_effects_cmd)
+        commands.append(build_effects_cmd)
 
     if bool(config.get("build_exe", False)):
         env = os.environ.copy()
