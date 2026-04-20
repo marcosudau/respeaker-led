@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
+from typing import Any
 
 
 ARTIFACT_SUFFIXES = {".lefx", ".lefxset"}
@@ -11,6 +13,7 @@ BUILD_CONFIG_PATH = BUILD_TOOLS_ROOT / "build_config.json"
 VERSION_PATH = BUILD_TOOLS_ROOT / "version.py"
 DEFAULT_TEMPLATE_ROOT = BUILD_TOOLS_ROOT / "template_release_bundle"
 DEFAULT_RELEASE_BUNDLE_DIR = PROJECT_ROOT / "dist" / "release_bundle"
+logger = logging.getLogger("build_tools")
 
 
 def load_python_version(version_path: Path = VERSION_PATH) -> str:
@@ -62,13 +65,15 @@ def discover_builtin_artifacts(config_path: Path = BUILD_CONFIG_PATH) -> list[di
     config = load_build_config(config_path)
     entries = config.get("builtin-effects-discovery", [])
     if not isinstance(entries, list):
-        raise ValueError("build_config.json key 'builtin-effects-discovery' must be a list")
+        logger.warning("Ignoring builtin-effects-discovery because it is not a list: %r", entries)
+        return []
 
     discovered: list[dict[str, object]] = []
     seen: set[str] = set()
     for entry in entries:
         if not isinstance(entry, str) or not entry.strip():
-            raise ValueError("builtin-effects-discovery entries must be non-empty strings")
+            logger.warning("Ignoring invalid builtin-effects-discovery entry: %r", entry)
+            continue
         root = resolve_project_path(entry)
         if root.is_dir():
             matches = sorted(
@@ -77,12 +82,15 @@ def discover_builtin_artifacts(config_path: Path = BUILD_CONFIG_PATH) -> list[di
             for match in matches:
                 _append_artifact(discovered, seen, source_path=match.resolve(), relative_path=match.relative_to(root))
             continue
+        if not root.is_file():
+            logger.warning("Ignoring missing builtin effect artifact path: %s", root)
+            continue
         _append_artifact(discovered, seen, source_path=root.resolve(), relative_path=Path(root.name))
     return discovered
 
 
 def _append_artifact(
-    target: list[dict[str, object]],
+    target: list[dict[str, Any]],
     seen: set[str],
     *,
     source_path: Path,

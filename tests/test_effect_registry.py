@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
-from src.engine.effect_package_builder import build_effect_set
+from src.engine.effect_package_builder import build_effect_package, build_effect_set
 import src.engine.effect_registry as effect_registry_module
 from src.engine.effect_registry import EffectRegistry, build_default_effect_registry
 from src.core.effect_schema import (
@@ -174,6 +175,38 @@ def test_default_registry_prefers_first_available_artifact_candidate(tmp_path, m
 
     assert registry.get("soft_pulse").definition.defaults["color"] == "#123456"
     assert Path(sources["default-effects"].path) == bundle_artifact.resolve()
+
+
+def test_configured_builtin_effect_paths_ignores_invalid_and_missing_entries(tmp_path, monkeypatch):
+    effects_root = tmp_path / "effects"
+    effects_root.mkdir()
+    effect_set = effects_root / "default-effects.lefxset"
+    effect_set.write_text("default", encoding="utf-8")
+    package_path = effects_root / "soft_pulse.lefx"
+    package_path.write_text("package", encoding="utf-8")
+    config_path = tmp_path / "build_config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "builtin-effects-discovery": [
+                    str(effect_set),
+                    str(effects_root),
+                    str(tmp_path / "missing.lefxset"),
+                    "",
+                    123,
+                ]
+            },
+            ensure_ascii=True,
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(effect_registry_module, "BUILD_CONFIG_PATH", config_path)
+    monkeypatch.setattr(effect_registry_module, "PROJECT_ROOT", tmp_path)
+
+    paths = effect_registry_module._configured_builtin_effect_paths()
+
+    assert paths == [effect_set.resolve(), package_path.resolve()]
 
 
 def test_default_registry_raises_when_default_artifact_is_missing(monkeypatch):
@@ -363,3 +396,37 @@ def test_registry_autodiscovers_effect_packages_from_package_root(tmp_path, monk
     assert len(sources) == 1
     assert sources[0].autodiscovered is True
     assert sources[0].source_id == "app.voice_assistant"
+
+
+def test_registry_skips_autodiscovered_duplicate_effect_packages(tmp_path, monkeypatch):
+    packages_root = tmp_path / "packages"
+    set_dir = tmp_path / "voice_assistant_src"
+    write_effect_set_source(
+        set_dir,
+        source_id="app.voice_assistant",
+        set_id="voice_assistant",
+        title="Voice Assistant",
+        effects=[
+            {
+                "dir_name": "listening",
+                "package_id": "voice.listening",
+                "class_name": "ListeningBlueEffect",
+                "effect_id": "listening_blue",
+                "layer_name": "MAIN_LAYER",
+            }
+        ],
+    )
+    packages_root.mkdir(parents=True, exist_ok=True)
+    set_path = packages_root / "voice_assistant.lefxset"
+    package_path = packages_root / "listening_blue.lefx"
+    build_effect_set(set_dir, set_path)
+    build_effect_package(set_dir / "effects" / "listening", package_path)
+
+    monkeypatch.setattr(effect_registry_module, "APP_EFFECT_PACKAGES_ROOT", packages_root)
+    registry = EffectRegistry()
+    registry.reload()
+
+    assert registry.list_effect_ids() == ["app.voice_assistant::listening_blue"]
+    sources = registry.list_effect_sources()
+    assert len(sources) == 1
+    assert Path(sources[0].path) == set_path.resolve()

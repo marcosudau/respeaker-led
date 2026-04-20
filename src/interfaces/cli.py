@@ -13,7 +13,8 @@ if __package__ in {None, ""}:
         sys.path.insert(0, _PROJECT_ROOT_STR)
     __package__ = "src.interfaces"
 
-import uvicorn
+from uvicorn.config import Config as UvicornConfig
+from uvicorn.server import Server as UvicornServer
 
 from .api import create_app
 from .client import LocalControllerClient
@@ -306,8 +307,17 @@ def main() -> int:
                 use_device=use_device,
                 lifecycle_callback=lambda phase: update_active_service_status(ACTIVE_SERVICE_FILE, instance_info.instance_id, "ready" if phase == "started" else "stopping"),
             )
-            config = uvicorn.Config(app, host=args.host, port=selected_port, log_level="info")
-            server = uvicorn.Server(config)
+            config = UvicornConfig(
+                app,
+                host=args.host,
+                port=selected_port,
+                log_level="info",
+                http="h11",
+                ws="none",
+                loop="asyncio",
+                lifespan="on",
+            )
+            server = UvicornServer(config)
             app.state.shutdown_server = lambda: setattr(server, "should_exit", True)
             server.run()
             return 0

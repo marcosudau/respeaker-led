@@ -60,11 +60,9 @@ def create_release_bundle(
     zip_path = output_dir / archive_name
 
     if zip_path.exists():
-        if not force:
-            raise FileExistsError(f"Release bundle zip already exists: {zip_path}")
         zip_path.unlink()
-    if bundle_root.exists():
-        shutil.rmtree(bundle_root)
+    if staging_root.exists():
+        shutil.rmtree(staging_root)
 
     shutil.copytree(template_root, bundle_root)
     shutil.copy2(exe_path, bundle_root / exe_path.name)

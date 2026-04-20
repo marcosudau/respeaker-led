@@ -15,6 +15,7 @@ create_release_bundle_module = load_build_tool_module("create_release_bundle")
 check_release_bundle_module = load_build_tool_module("check_release_bundle")
 create_release_bundle = create_release_bundle_module.create_release_bundle
 verify_release_bundle = check_release_bundle_module.verify_release_bundle
+discover_builtin_artifacts = create_release_bundle_module.discover_builtin_artifacts
 
 
 def test_create_release_bundle_copies_effect_artifacts_into_zip(tmp_path):
@@ -96,6 +97,73 @@ def test_create_release_bundle_requires_default_effect_set(tmp_path):
         )
 
 
+def test_create_release_bundle_replaces_existing_zip_without_force(tmp_path):
+    template_root = tmp_path / "template_release_bundle"
+    template_root.mkdir()
+    (template_root / "README.md").write_text("release template", encoding="utf-8")
+    effects_root = tmp_path / "built_effects"
+    effects_root.mkdir()
+    (effects_root / "default-effects.lefxset").write_text("default", encoding="utf-8")
+    config_path = tmp_path / "build_config.json"
+    config_path.write_text(
+        json.dumps({"builtin-effects-discovery": [str(effects_root)]}, ensure_ascii=True),
+        encoding="utf-8",
+    )
+    exe_path = tmp_path / "dist" / "led_controller_service_1.2.3.exe"
+    exe_path.parent.mkdir(parents=True)
+    exe_path.write_text("binary", encoding="utf-8")
+    output_dir = tmp_path / "dist" / "release_bundle"
+    output_dir.mkdir(parents=True)
+    existing_zip = output_dir / "led_controller_service_1.2.3_windows_x64.zip"
+    existing_zip.write_text("stale", encoding="utf-8")
+
+    manifest = create_release_bundle(
+        exe_path=exe_path,
+        output_dir=output_dir,
+        template_root=template_root,
+        config_path=config_path,
+        version="1.2.3",
+        include_version=True,
+        force=False,
+    )
+
+    archive_path = Path(str(manifest["archive_path"]))
+    assert archive_path == existing_zip
+    assert archive_path.read_bytes() != b"stale"
+
+
+def test_discover_builtin_artifacts_deduplicates_and_ignores_bad_entries(tmp_path):
+    effects_root = tmp_path / "built_effects"
+    effects_root.mkdir()
+    effect_set = effects_root / "default-effects.lefxset"
+    effect_set.write_text("default", encoding="utf-8")
+    package_path = effects_root / "custom.lefx"
+    package_path.write_text("custom", encoding="utf-8")
+    config_path = tmp_path / "build_config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "builtin-effects-discovery": [
+                    str(effect_set),
+                    str(effects_root),
+                    str(tmp_path / "missing.lefxset"),
+                    "",
+                    123,
+                ]
+            },
+            ensure_ascii=True,
+        ),
+        encoding="utf-8",
+    )
+
+    artifacts = discover_builtin_artifacts(config_path)
+
+    assert [Path(artifact["source_path"]).name for artifact in artifacts] == [
+        "default-effects.lefxset",
+        "custom.lefx",
+    ]
+
+
 def test_verify_release_bundle_reports_missing_required_files(tmp_path):
     bundle_root = tmp_path / "bundle"
     bundle_root.mkdir()
@@ -106,7 +174,10 @@ def test_verify_release_bundle_reports_missing_required_files(tmp_path):
 
 def test_spec_uses_local_build_hooks():
     spec_path = Path("build-tools/led_controller_service.spec")
-    assert "hookspath=[str(BUILD_TOOLS_ROOT / \"hooks\")]" in spec_path.read_text(encoding="utf-8")
+    text = spec_path.read_text(encoding="utf-8")
+    assert "from pyinstaller_support import build_datas, build_excludes, build_hiddenimports, exe_stem" in text
+    assert "hookspath=[str(BUILD_TOOLS_ROOT / \"hooks\")]" in text
+    assert "excludes=excludes" in text
 
 
 def test_custom_importlib_resources_hook_skips_missing_trees_module():

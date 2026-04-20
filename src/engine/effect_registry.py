@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import hashlib
 import inspect
+import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +30,7 @@ from .effect_preset_registry import EffectPresetRegistry
 
 
 _EFFECT_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+logger = logging.getLogger("led_controller.effect_registry")
 
 
 def _default_effect_artifact_candidates() -> list[Path]:
@@ -54,13 +56,15 @@ def _configured_builtin_effect_paths() -> list[Path]:
     payload = json.loads(BUILD_CONFIG_PATH.read_text(encoding="utf-8"))
     entries = payload.get("builtin-effects-discovery", [])
     if not isinstance(entries, list):
-        raise ValueError("build_config.json key 'builtin-effects-discovery' must be a list")
+        logger.warning("Ignoring non-list build_config.json builtin-effects-discovery section")
+        return []
 
     resolved: list[Path] = []
     seen: set[str] = set()
     for entry in entries:
         if not isinstance(entry, str) or not entry.strip():
-            raise ValueError("build_config.json builtin-effects-discovery entries must be non-empty strings")
+            logger.warning("Ignoring invalid build_config.json builtin-effects-discovery entry: %r", entry)
+            continue
         candidate = Path(entry)
         if not candidate.is_absolute():
             candidate = (PROJECT_ROOT / candidate).resolve()
@@ -71,6 +75,9 @@ def _configured_builtin_effect_paths() -> list[Path]:
                 if path.is_file() and path.suffix.lower() in {".lefx", ".lefxset"}
             )
         else:
+            if not candidate.exists():
+                logger.warning("Ignoring missing build_config.json builtin effect path: %s", candidate)
+                continue
             matches = [candidate.resolve()]
         for match in matches:
             key = str(match)
@@ -303,6 +310,8 @@ class EffectRegistry:
             path_key = self._path_key(source.path)
             if path_key in configured_paths or path_key in self._blocked_source_paths:
                 continue
+            if self._source_is_already_registered(source, rebuilt):
+                continue
             self._load_source_into_registry(
                 source,
                 rebuilt,
@@ -409,6 +418,30 @@ class EffectRegistry:
         preset_registry.register_many(loaded.manifest.source_id, list(loaded.presets))
         command_registry.register_many(loaded.manifest.source_id, list(loaded.commands))
 
+    def _source_is_already_registered(
+        self,
+        source: EffectLibrarySource,
+        target: dict[str, RegisteredEffectType],
+    ) -> bool:
+        try:
+            metadata = inspect_effect_source(source.path)
+        except Exception:
+            return False
+
+        if metadata.get("kind") == "effect_package":
+            effect_ids = {str(metadata.get("qualified_effect_id", "")).strip()}
+        else:
+            effect_ids = {str(item).strip() for item in metadata.get("effects", [])}
+        effect_ids.discard("")
+        if not effect_ids:
+            return False
+
+        registered = {effect.qualified_effect_id for effect in target.values()}
+        if effect_ids.issubset(registered):
+            logger.warning("Skipping duplicate built-in effect source %s", source.path)
+            return True
+        return False
+
     def _reconcile_source_identity(self, source: EffectLibrarySource, actual_source_id: str) -> None:
         if source.source_id.startswith("pending:"):
             source.source_id = actual_source_id
@@ -424,7 +457,11 @@ class EffectRegistry:
         for root in (Path(APP_EFFECT_PACKAGES_ROOT),):
             if not root.exists():
                 continue
-            for path in sorted(root.rglob("*")):
+            discovered_paths = sorted(
+                root.rglob("*"),
+                key=lambda item: (item.suffix.lower() != ".lefxset", str(item).lower()),
+            )
+            for path in discovered_paths:
                 if not path.is_file():
                     continue
                 if path.suffix.lower() not in {".lefx", ".lefxset"}:
