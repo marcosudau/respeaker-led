@@ -32,7 +32,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", default=str(BUILD_CONFIG_PATH))
     parser.add_argument("--version")
     parser.add_argument("--no-version", action="store_true")
-    parser.add_argument("--force", action="store_true")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing bundle ZIP and staging directory in the output directory.",
+    )
     return parser
 
 
@@ -60,8 +64,16 @@ def create_release_bundle(
     zip_path = output_dir / archive_name
 
     if zip_path.exists():
+        if not force:
+            raise FileExistsError(
+                f"Release bundle archive already exists: {zip_path}. Re-run with force=True / --force to overwrite it."
+            )
         zip_path.unlink()
     if staging_root.exists():
+        if not force:
+            raise FileExistsError(
+                f"Release bundle staging directory already exists: {staging_root}. Re-run with force=True / --force to overwrite it."
+            )
         shutil.rmtree(staging_root)
 
     shutil.copytree(template_root, bundle_root)
