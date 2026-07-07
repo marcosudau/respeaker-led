@@ -1,0 +1,86 @@
+presets:
+  state_yin_yang_spin_red:
+    title: Yin Yang Spin Red
+    description: Auto-generated state preset for yin_yang_spin (red).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color_a: "#FF4D5A"
+      color_b: "#FFC5CB"
+      background_color: "#120103"
+      brightness: 0.84
+      speed: 1.15
+      reverse: true
+    replace_existing: true
+    tags:
+      - state
+      - red
+      - yin_yang_spin
+  state_yin_yang_spin_yellow:
+    title: Yin Yang Spin Yellow
+    description: Auto-generated state preset for yin_yang_spin (yellow).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color_a: "#FFD84D"
+      color_b: "#FFF0AE"
+      background_color: "#131004"
+      brightness: 0.84
+      speed: 0.9
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - yellow
+      - yin_yang_spin
+  state_yin_yang_spin_green:
+    title: Yin Yang Spin Green
+    description: Auto-generated state preset for yin_yang_spin (green).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color_a: "#43D97A"
+      color_b: "#C7F7D6"
+      background_color: "#031109"
+      brightness: 0.74
+      speed: 0.84
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - green
+      - yin_yang_spin
+  state_yin_yang_spin_blue:
+    title: Yin Yang Spin Blue
+    description: Auto-generated state preset for yin_yang_spin (blue).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color_a: "#4F8CFF"
+      color_b: "#D2E2FF"
+      background_color: "#020913"
+      brightness: 0.72
+      speed: 0.82
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - blue
+      - yin_yang_spin
+  state_yin_yang_spin_pink:
+    title: Yin Yang Spin Pink
+    description: Auto-generated state preset for yin_yang_spin (pink).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color_a: "#FF6FCF"
+      color_b: "#FFD2F0"
+      background_color: "#11040F"
+      brightness: 0.86
+      speed: 1.24
+      reverse: true
+    replace_existing: true
+    tags:
+      - state
+      - pink
+      - yin_yang_spin

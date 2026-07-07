@@ -1,0 +1,5 @@
+package_id: state-color-presets.soft_pulse
+source_id: state-color-presets
+entry_file: effect.py
+entry_class: SoftPulseEffect
+min_service_version: 1.0.0

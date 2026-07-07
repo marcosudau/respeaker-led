@@ -1,0 +1,5 @@
+package_id: default-effects.triple_flash
+source_id: default-effects
+entry_file: effect.py
+entry_class: TripleFlashEffect
+min_service_version: 1.0.0

@@ -1,0 +1,5 @@
+package_id: state-color-presets.rotating_segment
+source_id: state-color-presets
+entry_file: effect.py
+entry_class: RotatingSegmentEffect
+min_service_version: 1.0.0

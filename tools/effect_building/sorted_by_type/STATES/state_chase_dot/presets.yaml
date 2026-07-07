@@ -1,0 +1,81 @@
+presets:
+  state_chase_dot_red:
+    title: Chase Dot Red
+    description: Auto-generated state preset for chase_dot (red).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF4D5A"
+      background_color: "#120103"
+      brightness: 0.92
+      speed: 1.07
+      reverse: true
+    replace_existing: true
+    tags:
+      - state
+      - red
+      - chase_dot
+  state_chase_dot_yellow:
+    title: Chase Dot Yellow
+    description: Auto-generated state preset for chase_dot (yellow).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FFD84D"
+      background_color: "#131004"
+      brightness: 0.8
+      speed: 0.82
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - yellow
+      - chase_dot
+  state_chase_dot_green:
+    title: Chase Dot Green
+    description: Auto-generated state preset for chase_dot (green).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#43D97A"
+      background_color: "#031109"
+      brightness: 0.7
+      speed: 1.16
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - green
+      - chase_dot
+  state_chase_dot_blue:
+    title: Chase Dot Blue
+    description: Auto-generated state preset for chase_dot (blue).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#4F8CFF"
+      background_color: "#020913"
+      brightness: 0.68
+      speed: 0.74
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - blue
+      - chase_dot
+  state_chase_dot_pink:
+    title: Chase Dot Pink
+    description: Auto-generated state preset for chase_dot (pink).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF6FCF"
+      background_color: "#11040F"
+      brightness: 0.82
+      speed: 1.16
+      reverse: true
+    replace_existing: true
+    tags:
+      - state
+      - pink
+      - chase_dot

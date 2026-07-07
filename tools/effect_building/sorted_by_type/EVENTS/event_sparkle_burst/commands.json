@@ -1,0 +1,28 @@
+{
+  "commands": {
+    "event_sparkle_burst_alert": {
+      "kind": "event",
+      "on": {
+        "preset": "event_sparkle_burst_alert"
+      }
+    },
+    "event_sparkle_burst_notice": {
+      "kind": "event",
+      "on": {
+        "preset": "event_sparkle_burst_notice"
+      }
+    },
+    "event_sparkle_burst_success": {
+      "kind": "event",
+      "on": {
+        "preset": "event_sparkle_burst_success"
+      }
+    },
+    "event_sparkle_burst_urgent": {
+      "kind": "event",
+      "on": {
+        "preset": "event_sparkle_burst_urgent"
+      }
+    }
+  }
+}

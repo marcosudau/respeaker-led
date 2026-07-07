@@ -1,0 +1,61 @@
+presets:
+  overlay_doa_activity_indicator_assist:
+    title: DoA Activity Indicator Assist
+    description: Auto-generated overlay preset for doa_activity_indicator (assist).
+    category: overlay
+    target_layer: ONGOING_OVERLAY_LAYER
+    params:
+      center_color: "#EAF8FF"
+      side_color: "#B8EBFF"
+      direction: 90.0
+      reverse: false
+    replace_existing: true
+    tags:
+      - overlay
+      - assist
+      - doa_activity_indicator
+  overlay_doa_activity_indicator_tracking:
+    title: DoA Activity Indicator Tracking
+    description: Auto-generated overlay preset for doa_activity_indicator (tracking).
+    category: overlay
+    target_layer: ONGOING_OVERLAY_LAYER
+    params:
+      center_color: "#D8FFF0"
+      side_color: "#7DFFE0"
+      direction: 150.0
+      reverse: true
+    replace_existing: true
+    tags:
+      - overlay
+      - tracking
+      - doa_activity_indicator
+  overlay_doa_activity_indicator_guide:
+    title: DoA Activity Indicator Guide
+    description: Auto-generated overlay preset for doa_activity_indicator (guide).
+    category: overlay
+    target_layer: ONGOING_OVERLAY_LAYER
+    params:
+      center_color: "#FFF0C2"
+      side_color: "#FFF3D1"
+      direction: 210.0
+      reverse: false
+    replace_existing: true
+    tags:
+      - overlay
+      - guide
+      - doa_activity_indicator
+  overlay_doa_activity_indicator_marker:
+    title: DoA Activity Indicator Marker
+    description: Auto-generated overlay preset for doa_activity_indicator (marker).
+    category: overlay
+    target_layer: ONGOING_OVERLAY_LAYER
+    params:
+      center_color: "#FFD3E0"
+      side_color: "#FFB7CB"
+      direction: 300.0
+      reverse: true
+    replace_existing: true
+    tags:
+      - overlay
+      - marker
+      - doa_activity_indicator

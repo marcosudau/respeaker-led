@@ -1,0 +1,54 @@
+{
+  "commands": {
+    "state_rotating_gap_blue": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_rotating_gap_blue"
+      }
+    },
+    "state_rotating_gap_green": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_rotating_gap_green"
+      }
+    },
+    "state_rotating_gap_pink": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_rotating_gap_pink"
+      }
+    },
+    "state_rotating_gap_red": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_rotating_gap_red"
+      }
+    },
+    "state_rotating_gap_yellow": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_rotating_gap_yellow"
+      }
+    }
+  }
+}

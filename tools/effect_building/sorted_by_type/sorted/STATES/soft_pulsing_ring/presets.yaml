@@ -1,0 +1,81 @@
+presets:
+  state_soft_pulsing_ring_red:
+    title: Soft Pulsing Ring Red
+    description: Auto-generated state preset for soft_pulsing_ring (red).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF4D5A"
+      background_color: "#120103"
+      brightness: 0.88
+      speed: 1.31
+      min_brightness: 0.26
+    replace_existing: true
+    tags:
+      - state
+      - red
+      - soft_pulsing_ring
+  state_soft_pulsing_ring_yellow:
+    title: Soft Pulsing Ring Yellow
+    description: Auto-generated state preset for soft_pulsing_ring (yellow).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FFD84D"
+      background_color: "#131004"
+      brightness: 0.76
+      speed: 1.06
+      min_brightness: 0.23
+    replace_existing: true
+    tags:
+      - state
+      - yellow
+      - soft_pulsing_ring
+  state_soft_pulsing_ring_green:
+    title: Soft Pulsing Ring Green
+    description: Auto-generated state preset for soft_pulsing_ring (green).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#43D97A"
+      background_color: "#031109"
+      brightness: 0.78
+      speed: 1.0
+      min_brightness: 0.23
+    replace_existing: true
+    tags:
+      - state
+      - green
+      - soft_pulsing_ring
+  state_soft_pulsing_ring_blue:
+    title: Soft Pulsing Ring Blue
+    description: Auto-generated state preset for soft_pulsing_ring (blue).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#4F8CFF"
+      background_color: "#020913"
+      brightness: 0.64
+      speed: 0.98
+      min_brightness: 0.19
+    replace_existing: true
+    tags:
+      - state
+      - blue
+      - soft_pulsing_ring
+  state_soft_pulsing_ring_pink:
+    title: Soft Pulsing Ring Pink
+    description: Auto-generated state preset for soft_pulsing_ring (pink).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF6FCF"
+      background_color: "#11040F"
+      brightness: 0.78
+      speed: 1.0
+      min_brightness: 0.23
+    replace_existing: true
+    tags:
+      - state
+      - pink
+      - soft_pulsing_ring

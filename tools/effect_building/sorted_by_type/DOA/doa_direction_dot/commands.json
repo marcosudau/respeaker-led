@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "effect_doa_direction_dot_accent": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_doa_direction_dot_accent"
+      }
+    },
+    "effect_doa_direction_dot_main": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "MAIN_LAYER"
+      },
+      "on": {
+        "preset": "effect_doa_direction_dot_main"
+      }
+    },
+    "overlay_doa_direction_dot_assist": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_doa_direction_dot_assist"
+      }
+    },
+    "overlay_doa_direction_dot_tracking": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_doa_direction_dot_tracking"
+      }
+    }
+  }
+}

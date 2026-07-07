@@ -1,0 +1,44 @@
+{
+  "commands": {
+    "overlay_doa_activity_indicator_assist": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_doa_activity_indicator_assist"
+      }
+    },
+    "overlay_doa_activity_indicator_guide": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_doa_activity_indicator_guide"
+      }
+    },
+    "overlay_doa_activity_indicator_marker": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_doa_activity_indicator_marker"
+      }
+    },
+    "overlay_doa_activity_indicator_tracking": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "ONGOING_OVERLAY_LAYER"
+      },
+      "on": {
+        "preset": "overlay_doa_activity_indicator_tracking"
+      }
+    }
+  }
+}

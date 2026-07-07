@@ -1,0 +1,54 @@
+{
+  "commands": {
+    "state_solid_color_blue": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_solid_color_blue"
+      }
+    },
+    "state_solid_color_green": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_solid_color_green"
+      }
+    },
+    "state_solid_color_pink": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_solid_color_pink"
+      }
+    },
+    "state_solid_color_red": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_solid_color_red"
+      }
+    },
+    "state_solid_color_yellow": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_solid_color_yellow"
+      }
+    }
+  }
+}

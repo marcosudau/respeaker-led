@@ -1,0 +1,54 @@
+{
+  "commands": {
+    "state_yin_yang_spin_blue": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_yin_yang_spin_blue"
+      }
+    },
+    "state_yin_yang_spin_green": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_yin_yang_spin_green"
+      }
+    },
+    "state_yin_yang_spin_pink": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_yin_yang_spin_pink"
+      }
+    },
+    "state_yin_yang_spin_red": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_yin_yang_spin_red"
+      }
+    },
+    "state_yin_yang_spin_yellow": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_yin_yang_spin_yellow"
+      }
+    }
+  }
+}

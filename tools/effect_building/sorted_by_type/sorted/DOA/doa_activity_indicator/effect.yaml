@@ -1,0 +1,5 @@
+package_id: default-effects.doa_activity_indicator
+source_id: default-effects
+entry_file: effect.py
+entry_class: DoaActivityIndicatorEffect
+min_service_version: 1.0.0

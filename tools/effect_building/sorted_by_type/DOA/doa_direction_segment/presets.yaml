@@ -1,0 +1,69 @@
+presets:
+  effect_doa_direction_segment_main:
+    title: DoA Direction Segment Main
+    description: Auto-generated effect preset for doa_direction_segment (main).
+    category: effect
+    target_layer: MAIN_LAYER
+    params:
+      color: "#55A8FF"
+      background_color: "#03070C"
+      brightness: 0.8
+      direction: 60.0
+      segment_length: 3
+      target_led: 0
+    replace_existing: true
+    tags:
+      - effect
+      - main
+      - doa_direction_segment
+  effect_doa_direction_segment_accent:
+    title: DoA Direction Segment Accent
+    description: Auto-generated effect preset for doa_direction_segment (accent).
+    category: effect
+    target_layer: MAIN_LAYER
+    params:
+      color: "#FFB347"
+      background_color: "#140804"
+      brightness: 0.9
+      direction: 240.0
+      segment_length: 4
+      target_led: 3
+    replace_existing: true
+    tags:
+      - effect
+      - accent
+      - doa_direction_segment
+  overlay_doa_direction_segment_assist:
+    title: DoA Direction Segment Assist
+    description: Auto-generated overlay preset for doa_direction_segment (assist).
+    category: overlay
+    target_layer: ONGOING_OVERLAY_LAYER
+    params:
+      color: "#7FC9FF"
+      background_color: "#000000"
+      brightness: 0.6
+      direction: 90.0
+      segment_length: 5
+      target_led: 0
+    replace_existing: true
+    tags:
+      - overlay
+      - assist
+      - doa_direction_segment
+  overlay_doa_direction_segment_tracking:
+    title: DoA Direction Segment Tracking
+    description: Auto-generated overlay preset for doa_direction_segment (tracking).
+    category: overlay
+    target_layer: ONGOING_OVERLAY_LAYER
+    params:
+      color: "#33FFAA"
+      background_color: "#000000"
+      brightness: 0.85
+      direction: 150.0
+      segment_length: 5
+      target_led: 1
+    replace_existing: true
+    tags:
+      - overlay
+      - tracking
+      - doa_direction_segment

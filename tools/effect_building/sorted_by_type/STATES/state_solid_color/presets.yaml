@@ -1,0 +1,66 @@
+presets:
+  state_solid_color_red:
+    title: Solid Color Red
+    description: Auto-generated state preset for solid_color (red).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF4D5A"
+      brightness: 0.84
+    replace_existing: true
+    tags:
+      - state
+      - red
+      - solid_color
+  state_solid_color_yellow:
+    title: Solid Color Yellow
+    description: Auto-generated state preset for solid_color (yellow).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FFD84D"
+      brightness: 0.84
+    replace_existing: true
+    tags:
+      - state
+      - yellow
+      - solid_color
+  state_solid_color_green:
+    title: Solid Color Green
+    description: Auto-generated state preset for solid_color (green).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#43D97A"
+      brightness: 0.74
+    replace_existing: true
+    tags:
+      - state
+      - green
+      - solid_color
+  state_solid_color_blue:
+    title: Solid Color Blue
+    description: Auto-generated state preset for solid_color (blue).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#4F8CFF"
+      brightness: 0.72
+    replace_existing: true
+    tags:
+      - state
+      - blue
+      - solid_color
+  state_solid_color_pink:
+    title: Solid Color Pink
+    description: Auto-generated state preset for solid_color (pink).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF6FCF"
+      brightness: 0.86
+    replace_existing: true
+    tags:
+      - state
+      - pink
+      - solid_color

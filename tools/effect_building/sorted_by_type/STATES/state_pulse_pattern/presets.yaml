@@ -1,0 +1,81 @@
+presets:
+  state_pulse_pattern_red:
+    title: Pulse Pattern Red
+    description: Auto-generated state preset for pulse_pattern (red).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF4D5A"
+      background_color: "#120103"
+      brightness: 0.84
+      speed: 1.15
+      pattern: single
+    replace_existing: true
+    tags:
+      - state
+      - red
+      - pulse_pattern
+  state_pulse_pattern_yellow:
+    title: Pulse Pattern Yellow
+    description: Auto-generated state preset for pulse_pattern (yellow).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FFD84D"
+      background_color: "#131004"
+      brightness: 0.84
+      speed: 0.9
+      pattern: double
+    replace_existing: true
+    tags:
+      - state
+      - yellow
+      - pulse_pattern
+  state_pulse_pattern_green:
+    title: Pulse Pattern Green
+    description: Auto-generated state preset for pulse_pattern (green).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#43D97A"
+      background_color: "#031109"
+      brightness: 0.74
+      speed: 0.84
+      pattern: continuous
+    replace_existing: true
+    tags:
+      - state
+      - green
+      - pulse_pattern
+  state_pulse_pattern_blue:
+    title: Pulse Pattern Blue
+    description: Auto-generated state preset for pulse_pattern (blue).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#4F8CFF"
+      background_color: "#020913"
+      brightness: 0.72
+      speed: 0.82
+      pattern: single
+    replace_existing: true
+    tags:
+      - state
+      - blue
+      - pulse_pattern
+  state_pulse_pattern_pink:
+    title: Pulse Pattern Pink
+    description: Auto-generated state preset for pulse_pattern (pink).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF6FCF"
+      background_color: "#11040F"
+      brightness: 0.86
+      speed: 1.24
+      pattern: triple
+    replace_existing: true
+    tags:
+      - state
+      - pink
+      - pulse_pattern

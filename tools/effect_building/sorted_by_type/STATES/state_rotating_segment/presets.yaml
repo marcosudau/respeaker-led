@@ -1,0 +1,86 @@
+presets:
+  state_rotating_segment_red:
+    title: Rotating Segment Red
+    description: Auto-generated state preset for rotating_segment (red).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF4D5A"
+      background_color: "#120103"
+      brightness: 0.88
+      speed: 0.99
+      segment_length: 5
+      reverse: true
+    replace_existing: true
+    tags:
+      - state
+      - red
+      - rotating_segment
+  state_rotating_segment_yellow:
+    title: Rotating Segment Yellow
+    description: Auto-generated state preset for rotating_segment (yellow).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FFD84D"
+      background_color: "#131004"
+      brightness: 0.76
+      speed: 0.74
+      segment_length: 2
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - yellow
+      - rotating_segment
+  state_rotating_segment_green:
+    title: Rotating Segment Green
+    description: Auto-generated state preset for rotating_segment (green).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#43D97A"
+      background_color: "#031109"
+      brightness: 0.78
+      speed: 1.08
+      segment_length: 3
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - green
+      - rotating_segment
+  state_rotating_segment_blue:
+    title: Rotating Segment Blue
+    description: Auto-generated state preset for rotating_segment (blue).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#4F8CFF"
+      background_color: "#020913"
+      brightness: 0.64
+      speed: 0.66
+      segment_length: 2
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - blue
+      - rotating_segment
+  state_rotating_segment_pink:
+    title: Rotating Segment Pink
+    description: Auto-generated state preset for rotating_segment (pink).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF6FCF"
+      background_color: "#11040F"
+      brightness: 0.78
+      speed: 1.08
+      segment_length: 4
+      reverse: true
+    replace_existing: true
+    tags:
+      - state
+      - pink
+      - rotating_segment

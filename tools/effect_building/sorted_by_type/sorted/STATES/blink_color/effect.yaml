@@ -1,0 +1,5 @@
+package_id: state-color-presets.blink_color
+source_id: state-color-presets
+entry_file: effect.py
+entry_class: BlinkColorEffect
+min_service_version: 1.0.0

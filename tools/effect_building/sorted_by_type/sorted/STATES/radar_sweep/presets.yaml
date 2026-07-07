@@ -1,0 +1,86 @@
+presets:
+  state_radar_sweep_red:
+    title: Radar Sweep Red
+    description: Auto-generated state preset for radar_sweep (red).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF4D5A"
+      background_color: "#120103"
+      brightness: 0.84
+      speed: 1.23
+      trail_length: 6
+      reverse: true
+    replace_existing: true
+    tags:
+      - state
+      - red
+      - radar_sweep
+  state_radar_sweep_yellow:
+    title: Radar Sweep Yellow
+    description: Auto-generated state preset for radar_sweep (yellow).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FFD84D"
+      background_color: "#131004"
+      brightness: 0.84
+      speed: 0.98
+      trail_length: 4
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - yellow
+      - radar_sweep
+  state_radar_sweep_green:
+    title: Radar Sweep Green
+    description: Auto-generated state preset for radar_sweep (green).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#43D97A"
+      background_color: "#031109"
+      brightness: 0.74
+      speed: 0.92
+      trail_length: 5
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - green
+      - radar_sweep
+  state_radar_sweep_blue:
+    title: Radar Sweep Blue
+    description: Auto-generated state preset for radar_sweep (blue).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#4F8CFF"
+      background_color: "#020913"
+      brightness: 0.72
+      speed: 0.9
+      trail_length: 5
+      reverse: false
+    replace_existing: true
+    tags:
+      - state
+      - blue
+      - radar_sweep
+  state_radar_sweep_pink:
+    title: Radar Sweep Pink
+    description: Auto-generated state preset for radar_sweep (pink).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+      color: "#FF6FCF"
+      background_color: "#11040F"
+      brightness: 0.86
+      speed: 0.92
+      trail_length: 5
+      reverse: true
+    replace_existing: true
+    tags:
+      - state
+      - pink
+      - radar_sweep

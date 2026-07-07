@@ -1,0 +1,54 @@
+{
+  "commands": {
+    "state_soft_pulse_blue": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_soft_pulse_blue"
+      }
+    },
+    "state_soft_pulse_green": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_soft_pulse_green"
+      }
+    },
+    "state_soft_pulse_pink": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_soft_pulse_pink"
+      }
+    },
+    "state_soft_pulse_red": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_soft_pulse_red"
+      }
+    },
+    "state_soft_pulse_yellow": {
+      "kind": "state_toggle",
+      "off": {
+        "action": "clear_layer",
+        "target_layer": "STATE_LAYER"
+      },
+      "on": {
+        "preset": "state_soft_pulse_yellow"
+      }
+    }
+  }
+}

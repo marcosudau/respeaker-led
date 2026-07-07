@@ -1,0 +1,56 @@
+presets:
+  state_off_red:
+    title: Off Red
+    description: Auto-generated state preset for off (red).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+    replace_existing: true
+    tags:
+      - state
+      - red
+      - off
+  state_off_yellow:
+    title: Off Yellow
+    description: Auto-generated state preset for off (yellow).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+    replace_existing: true
+    tags:
+      - state
+      - yellow
+      - off
+  state_off_green:
+    title: Off Green
+    description: Auto-generated state preset for off (green).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+    replace_existing: true
+    tags:
+      - state
+      - green
+      - off
+  state_off_blue:
+    title: Off Blue
+    description: Auto-generated state preset for off (blue).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+    replace_existing: true
+    tags:
+      - state
+      - blue
+      - off
+  state_off_pink:
+    title: Off Pink
+    description: Auto-generated state preset for off (pink).
+    category: state
+    target_layer: STATE_LAYER
+    params:
+    replace_existing: true
+    tags:
+      - state
+      - pink
+      - off

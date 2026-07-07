@@ -15,18 +15,16 @@ def configured_builtin_paths() -> list[Path]:
     payload = json.loads(BUILD_CONFIG_PATH.read_text(encoding="utf-8"))
     entries = payload.get("builtin-effects-discovery", [])
     if not isinstance(entries, list):
-        return []
+        raise ValueError("build_config.json key 'builtin-effects-discovery' must be a list")
 
     resolved: list[Path] = []
     seen: set[str] = set()
     for entry in entries:
         if not isinstance(entry, str) or not entry.strip():
-            continue
+            raise ValueError("builtin-effects-discovery entries must be non-empty strings")
         candidate = Path(entry)
         if not candidate.is_absolute():
             candidate = (PROJECT_ROOT / candidate).resolve()
-        if not candidate.exists():
-            continue
         matches = (
             sorted(path.resolve() for path in candidate.rglob("*") if path.is_file() and path.suffix.lower() in {".lefx", ".lefxset"})
             if candidate.is_dir()
