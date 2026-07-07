@@ -14,6 +14,7 @@ build/
 dist/
 artifacts/
 logs/
+*.kate-swp
 runtime_state/*.json
 runtime_state/effect_package_cache/
 tools/PySide6TestApp/led_controller_service.exe
@@ -22,5 +23,6 @@ tools/effect_building/build_lefx/
 tools/effect_building/build_lefxset/
 tools/effect_building/sources/default-effects/
 tools/effect_building/_generated/default-effects_set/
+tools/effect_building/sorted_by_type/
 release/**/led_controller_service.exe
 release/**/*.zip

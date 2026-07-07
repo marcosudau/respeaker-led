@@ -230,7 +230,7 @@ def infer_numeric_presentation(effect: dict[str, Any], name: str, meta: dict[str
     if name == "speed":
         return NumericPresentation(
             minimum=0.0,
-            maximum=1000.0,
+            maximum=3000.0,
             step=10.0,
             decimals=0,
             ui_to_api=lambda value: round(value / 100.0, 4),
@@ -297,7 +297,7 @@ def infer_numeric_presentation(effect: dict[str, Any], name: str, meta: dict[str
         derived_max = 5000.0 if event_duration else 30000.0
         derived_step = 100.0 if event_duration else 1000.0
         if name in {"period_ms", "pause_ms"}:
-            derived_max = 5000.0
+            derived_max = 15000.0
             derived_step = 100.0
         if name in {"total_ms", "remaining_ms"}:
             derived_max = 30000.0
