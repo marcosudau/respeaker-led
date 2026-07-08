@@ -19,6 +19,16 @@ Das Git-/Projektchaos wird bereinigt, damit `main` wieder der eindeutige weitere
 
 - Backup-Branch: `codex/backup-before-main-cleanup`
 - Backup-Tag: `backup-before-main-cleanup-2026-07-08`
+- Alter verschmutzter `P:\CodexApp\led_controller_respeaker`-Worktree wurde auf den Backup-Branch `codex/main-worktree-dirty-backup-2026-07-08` umgeschaltet.
+- Zusaetzlicher Stash fuer diesen alten Main-Worktree: `pre-main-fast-forward dirty main worktree 2026-07-08`
+
+## Git-Konsolidierung
+
+- Sanierungscommit wurde zuerst auf `codex/develop-branch` erstellt.
+- `main` wurde danach lokal auf denselben Commit gebracht.
+- Der aktive Arbeitsordner `C:\Users\marco\OneDrive\Desktop\Respeaker_MaterialCheck\led_controller_respeaker` ist danach auf `main`.
+- `codex/develop-branch` bleibt vorerst als Sicherungs-/Vergleichsbranch erhalten.
+- Alte Branches und Worktrees werden nicht aggressiv geloescht, solange der neue `main` nicht einige Zeit als stabiler Hauptstand bestaetigt ist.
 
 ## Validierung
 
