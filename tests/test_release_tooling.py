@@ -112,7 +112,39 @@ def test_create_release_bundle_requires_default_effect_set(tmp_path):
         )
 
 
-def test_create_release_bundle_replaces_existing_zip_without_force(tmp_path):
+def test_create_release_bundle_requires_force_for_existing_zip(tmp_path):
+    template_root = tmp_path / "template_release_bundle"
+    template_root.mkdir()
+    (template_root / "README.md").write_text("release template", encoding="utf-8")
+    effects_root = tmp_path / "built_effects"
+    effects_root.mkdir()
+    (effects_root / "default-effects.lefxset").write_text("default", encoding="utf-8")
+    config_path = tmp_path / "build_config.json"
+    config_path.write_text(
+        json.dumps({"builtin-effects-discovery": [str(effects_root)]}, ensure_ascii=True),
+        encoding="utf-8",
+    )
+    exe_path = tmp_path / "dist" / "led_controller_service_1.2.3.exe"
+    exe_path.parent.mkdir(parents=True)
+    exe_path.write_text("binary", encoding="utf-8")
+    output_dir = tmp_path / "dist" / "release_bundle"
+    output_dir.mkdir(parents=True)
+    existing_zip = output_dir / "led_controller_service_1.2.3_windows_x64.zip"
+    existing_zip.write_text("stale", encoding="utf-8")
+
+    with pytest.raises(FileExistsError, match="already exists"):
+        create_release_bundle(
+            exe_path=exe_path,
+            output_dir=output_dir,
+            template_root=template_root,
+            config_path=config_path,
+            version="1.2.3",
+            include_version=True,
+            force=False,
+        )
+
+
+def test_create_release_bundle_replaces_existing_zip_with_force(tmp_path):
     template_root = tmp_path / "template_release_bundle"
     template_root.mkdir()
     (template_root / "README.md").write_text("release template", encoding="utf-8")
@@ -139,7 +171,7 @@ def test_create_release_bundle_replaces_existing_zip_without_force(tmp_path):
         config_path=config_path,
         version="1.2.3",
         include_version=True,
-        force=False,
+        force=True,
     )
 
     archive_path = Path(str(manifest["archive_path"]))
