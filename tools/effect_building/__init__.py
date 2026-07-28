@@ -1,4 +1,6 @@
 from .standard_effects import (
+	DEFAULT_BUILD_CACHE_ROOT,
+	DEFAULT_BUILD_ROOT,
 	DEFAULT_LEFX_ROOT,
 	DEFAULT_LEFXSET_ROOT,
 	DEFAULT_PUBLISH_COPY,
@@ -7,11 +9,14 @@ from .standard_effects import (
 	build_default_effects,
 	build_standard_effect_packages,
 	build_standard_effect_set,
+	cleanup_standard_build_cache,
 	discover_standard_effects,
 	generate_standard_effect_sources,
 )
 
 __all__ = [
+	"DEFAULT_BUILD_CACHE_ROOT",
+	"DEFAULT_BUILD_ROOT",
 	"DEFAULT_LEFX_ROOT",
 	"DEFAULT_LEFXSET_ROOT",
 	"DEFAULT_PUBLISH_COPY",
@@ -20,6 +25,7 @@ __all__ = [
 	"build_default_effects",
 	"build_standard_effect_packages",
 	"build_standard_effect_set",
+	"cleanup_standard_build_cache",
 	"discover_standard_effects",
 	"generate_standard_effect_sources",
 ]

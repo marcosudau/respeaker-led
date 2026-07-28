@@ -177,6 +177,16 @@ def test_default_registry_prefers_first_available_artifact_candidate(tmp_path, m
     assert Path(sources["default-effects"].path) == bundle_artifact.resolve()
 
 
+def test_default_artifact_candidates_prefer_environment_override(tmp_path, monkeypatch):
+    override = tmp_path / "default-effects.lefxset"
+    monkeypatch.setenv("LED_CONTROLLER_DEFAULT_EFFECT_SET", str(override))
+    monkeypatch.setattr(effect_registry_module, "_configured_builtin_effect_paths", lambda: [])
+
+    candidates = effect_registry_module._default_effect_artifact_candidates()
+
+    assert candidates[0] == override
+
+
 def test_configured_builtin_effect_paths_ignores_invalid_and_missing_entries(tmp_path, monkeypatch):
     effects_root = tmp_path / "effects"
     effects_root.mkdir()

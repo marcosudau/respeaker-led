@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -42,6 +43,11 @@ def configured_builtin_paths() -> list[Path]:
 
 
 def default_effect_set_path() -> Path:
+    override = os.environ.get("LED_CONTROLLER_DEFAULT_EFFECT_SET")
+    if override:
+        path = Path(override).expanduser().resolve()
+        if path.is_file():
+            return path
     for path in configured_builtin_paths():
         if path.name == "default-effects.lefxset":
             return path

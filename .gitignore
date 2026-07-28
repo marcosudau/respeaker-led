@@ -3,7 +3,8 @@ __pycache__/
 .legacy_flat_backup/
 .venv/
 .pytest_cache/
-.pytest_tmp/
+.pytest_tmp*/
+tests/.cache/
 .coverage
 coverage.xml
 htmlcov/
@@ -24,5 +25,6 @@ tools/effect_building/build_lefxset/
 tools/effect_building/sources/default-effects/
 tools/effect_building/_generated/default-effects_set/
 tools/effect_building/sorted_by_type/
+tools/effect_building/build/
 release/**/led_controller_service.exe
 release/**/*.zip

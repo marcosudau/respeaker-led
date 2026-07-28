@@ -19,8 +19,8 @@ python tools/effect_building/build_lefx.py
 
 Ergebnis:
 
-- Effektquellen werden unter `tools/effect_building/build/sources/default-effects` neu erzeugt.
-- Fertige `.lefx`-Dateien landen unter `tools/effect_building/build/build_lefx/default-effects`.
+- Effektquellen werden unter `tools/effect_building/build/.cache/sources/default-effects` neu erzeugt.
+- Fertige `.lefx`-Dateien landen unter `tools/effect_building/build/.cache/build_lefx/default-effects`.
 - Jeder Build fuehrt direkt einen Import- und Render-Smoke-Test ueber das gebaute Paket aus.
 
 ## 2. LEFXSET erzeugen
@@ -31,8 +31,9 @@ python tools/effect_building/build_lefxset.py
 
 Ergebnis:
 
-- Die `.lefx`-Dateien aus `tools/effect_building/build/build_lefx/default-effects` werden zu `tools/effect_building/build/build_lefxset/default-effects.lefxset` gebuendelt.
+- Die `.lefx`-Dateien aus `tools/effect_building/build/.cache/build_lefx/default-effects` werden zu `tools/effect_building/build/output/default-effects.lefxset` gebuendelt.
 - Nach erfolgreichem Build wird die Datei zusaetzlich nach `tools/effect_building/build/published/default-effects.lefxset` kopiert.
+- Der Zwischenstand unter `tools/effect_building/build/.cache` wird nach einem erfolgreichen Standard-Build automatisch entfernt. Mit `--keep-cache` kann er fuer die Fehlersuche erhalten bleiben.
 
 Der normale Build konsumiert dieses Effektset nicht ueber einen harten `src/`-Pfad, sondern ueber die in `build-tools/build_config.json` konfigurierte Builtin-Discovery.
 
@@ -65,7 +66,7 @@ Damit ist jedes gebaute .lefx in sich geschlossen und enthaelt die Effektlogik l
 
 ## Wichtige Ausgabeorte
 
-- Quellen: `tools/effect_building/build/sources/default-effects`
-- Einzelpakete: `tools/effect_building/build/build_lefx/default-effects`
-- Set: `tools/effect_building/build/build_lefxset/default-effects.lefxset`
+- Quellen: `tools/effect_building/build/.cache/sources/default-effects` (temporaer)
+- Einzelpakete: `tools/effect_building/build/.cache/build_lefx/default-effects` (temporaer)
+- Set: `tools/effect_building/build/output/default-effects.lefxset`
 - Publish-Kopie: `tools/effect_building/build/published/default-effects.lefxset`

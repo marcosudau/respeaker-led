@@ -6,7 +6,7 @@ from pathlib import Path
 from src.engine.effect_package_loader import load_effect_package, load_effect_set
 from tools.effect_building.build_lefx import main as build_lefx_main
 from tools.effect_building.build_lefxset import main as build_lefxset_main
-from tools.effect_building.standard_effects import discover_standard_effects
+from tools.effect_building.standard_effects import cleanup_standard_build_cache, discover_standard_effects
 
 
 def test_standard_effect_build_scripts_generate_self_contained_packages_and_default_set(tmp_path, capsys):
@@ -47,6 +47,7 @@ def test_standard_effect_build_scripts_generate_self_contained_packages_and_defa
     set_payload = json.loads(capsys.readouterr().out)
 
     effect_set_path = Path(set_payload["effect_set"])
+    assert set_payload["cache_cleaned"] is False
     assert effect_set_path.exists()
     assert publish_copy.exists()
 
@@ -54,3 +55,17 @@ def test_standard_effect_build_scripts_generate_self_contained_packages_and_defa
     assert len(loaded_set.effects) == len(expected_effects)
     assert len(loaded_set.presets) >= len(expected_effects) * 4
     assert {effect.manifest.effect_id for effect in loaded_set.effects} == {spec.effect_id for spec in expected_effects}
+
+
+def test_standard_effect_cache_cleanup_preserves_finished_outputs(tmp_path):
+    cache_root = tmp_path / "build" / ".cache"
+    output_path = tmp_path / "build" / "output" / "default-effects.lefxset"
+    (cache_root / "sources").mkdir(parents=True)
+    (cache_root / "sources" / "effect.py").write_text("generated", encoding="utf-8")
+    output_path.parent.mkdir(parents=True)
+    output_path.write_text("finished", encoding="utf-8")
+
+    cleanup_standard_build_cache(cache_root)
+
+    assert not cache_root.exists()
+    assert output_path.read_text(encoding="utf-8") == "finished"

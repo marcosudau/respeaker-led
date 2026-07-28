@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import json
+import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,11 +17,15 @@ from src.engine.effect_package_loader import LoadedEffectPackage, load_effect_pa
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_ROOT = PROJECT_ROOT / "tools" / "effect_building"
 DEFAULT_SOURCE_ID = "default-effects"
-DEFAULT_SOURCES_ROOT = TOOLS_ROOT / "build" / "sources" / DEFAULT_SOURCE_ID
-DEFAULT_LEFX_ROOT = TOOLS_ROOT  / "build" / "build_lefx" / DEFAULT_SOURCE_ID
-DEFAULT_LEFXSET_ROOT = TOOLS_ROOT / "build" /  "build_lefxset"
-DEFAULT_PUBLISH_COPY = TOOLS_ROOT / "build" / "published" / f"{DEFAULT_SOURCE_ID}.lefxset"
-DEFAULT_SET_WORK_ROOT = TOOLS_ROOT / "build" /  "_generated" / f"{DEFAULT_SOURCE_ID}_set"
+DEFAULT_BUILD_ROOT = Path(
+    os.environ.get("LED_CONTROLLER_EFFECT_BUILD_ROOT", TOOLS_ROOT / "build")
+).expanduser().resolve()
+DEFAULT_BUILD_CACHE_ROOT = DEFAULT_BUILD_ROOT / ".cache"
+DEFAULT_SOURCES_ROOT = DEFAULT_BUILD_CACHE_ROOT / "sources" / DEFAULT_SOURCE_ID
+DEFAULT_LEFX_ROOT = DEFAULT_BUILD_CACHE_ROOT / "build_lefx" / DEFAULT_SOURCE_ID
+DEFAULT_LEFXSET_ROOT = DEFAULT_BUILD_ROOT / "output"
+DEFAULT_PUBLISH_COPY = DEFAULT_BUILD_ROOT / "published" / f"{DEFAULT_SOURCE_ID}.lefxset"
+DEFAULT_SET_WORK_ROOT = DEFAULT_BUILD_CACHE_ROOT / "generated" / f"{DEFAULT_SOURCE_ID}_set"
 
 _MODULE_BUNDLES = (
     (
@@ -166,35 +171,44 @@ def build_standard_effect_set(
 
     if work_root.exists():
         shutil.rmtree(work_root)
-    effects_root = work_root / "effects"
-    effects_root.mkdir(parents=True, exist_ok=True)
-    for package_path in package_paths:
-        shutil.copy2(package_path, effects_root / package_path.name)
+    try:
+        effects_root = work_root / "effects"
+        effects_root.mkdir(parents=True, exist_ok=True)
+        for package_path in package_paths:
+            shutil.copy2(package_path, effects_root / package_path.name)
 
-    (work_root / "set.yaml").write_text(
-        _dump_yaml(
-            {
-                "set_id": DEFAULT_SOURCE_ID,
-                "source_id": DEFAULT_SOURCE_ID,
-                "title": "Default Effects",
-                "version": 1,
-                "min_service_version": "1.0.0",
-                "effects": [package_path.name for package_path in package_paths],
-            }
-        ),
-        encoding="utf-8",
-    )
+        (work_root / "set.yaml").write_text(
+            _dump_yaml(
+                {
+                    "set_id": DEFAULT_SOURCE_ID,
+                    "source_id": DEFAULT_SOURCE_ID,
+                    "title": "Default Effects",
+                    "version": 1,
+                    "min_service_version": "1.0.0",
+                    "effects": [package_path.name for package_path in package_paths],
+                }
+            ),
+            encoding="utf-8",
+        )
 
-    output_root.mkdir(parents=True, exist_ok=True)
-    artifact = build_effect_set(work_root, output_root / f"{DEFAULT_SOURCE_ID}.lefxset")
-    loaded = load_effect_set(artifact.output_path)
-    if len(loaded.effects) != len(package_paths):
-        raise ValueError("Built effect set does not contain every packaged standard effect")
+        output_root.mkdir(parents=True, exist_ok=True)
+        artifact = build_effect_set(work_root, output_root / f"{DEFAULT_SOURCE_ID}.lefxset")
+        loaded = load_effect_set(artifact.output_path)
+        if len(loaded.effects) != len(package_paths):
+            raise ValueError("Built effect set does not contain every packaged standard effect")
 
-    if publish_copy is not None:
-        publish_copy.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(artifact.output_path, publish_copy)
-    return artifact.output_path
+        if publish_copy is not None:
+            publish_copy.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(artifact.output_path, publish_copy)
+        return artifact.output_path
+    finally:
+        if work_root.exists():
+            shutil.rmtree(work_root)
+
+
+def cleanup_standard_build_cache(cache_root: Path = DEFAULT_BUILD_CACHE_ROOT) -> None:
+    if cache_root.exists():
+        shutil.rmtree(cache_root)
 
 
 def build_default_effects() -> dict[str, Any]:
@@ -502,12 +516,15 @@ def _yaml_scalar(value: Any) -> str:
 __all__ = [
     "DEFAULT_LEFX_ROOT",
     "DEFAULT_LEFXSET_ROOT",
+    "DEFAULT_BUILD_CACHE_ROOT",
+    "DEFAULT_BUILD_ROOT",
     "DEFAULT_PUBLISH_COPY",
     "DEFAULT_SOURCE_ID",
     "DEFAULT_SOURCES_ROOT",
     "build_default_effects",
     "build_standard_effect_packages",
     "build_standard_effect_set",
+    "cleanup_standard_build_cache",
     "discover_standard_effects",
     "generate_standard_effect_sources",
 ]

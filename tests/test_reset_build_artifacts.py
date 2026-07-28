@@ -17,6 +17,11 @@ def test_cleanup_after_build_creates_missing_config_and_preserves_deliverables(t
     _write(tmp_path / "dist" / "release_bundle" / "_staging" / "bundle" / "bundle_manifest.json", "{}")
     _write(tmp_path / "logs" / "led_controller.log", "log")
     _write(tmp_path / ".pytest_tmp" / "state", "tmp")
+    _write(tmp_path / ".pytest_tmp_full" / "state", "tmp")
+    _write(tmp_path / "tests" / ".cache" / "pytest_cache" / "state", "tmp")
+    _write(tmp_path / "tools" / "effect_building" / "build" / ".cache" / "sources" / "effect.py", "tmp")
+    _write(tmp_path / "src" / "__pycache__" / "module.pyc", "tmp")
+    _write(tmp_path / "tools" / "effect_building" / "build" / "output" / "default-effects.lefxset", "finished")
 
     config_path = tmp_path / "build-tools" / "scripts" / "cleanup_paths.json"
     result = cleanup_after_build(config_path=config_path, complete=False, dry_run=False, project_root=tmp_path)
@@ -26,6 +31,11 @@ def test_cleanup_after_build_creates_missing_config_and_preserves_deliverables(t
     assert not (tmp_path / "build").exists()
     assert not (tmp_path / "logs").exists()
     assert not (tmp_path / ".pytest_tmp").exists()
+    assert not (tmp_path / ".pytest_tmp_full").exists()
+    assert not (tmp_path / "tests" / ".cache").exists()
+    assert not (tmp_path / "tools" / "effect_building" / "build" / ".cache").exists()
+    assert not (tmp_path / "src" / "__pycache__").exists()
+    assert (tmp_path / "tools" / "effect_building" / "build" / "output" / "default-effects.lefxset").is_file()
     assert not (tmp_path / "dist" / "release_bundle" / "_staging").exists()
     assert (tmp_path / "dist" / "led_controller_service_1.2.3.exe").is_file()
     assert (tmp_path / "dist" / "release_bundle" / "led_controller_service_1.2.3_windows_x64.zip").is_file()

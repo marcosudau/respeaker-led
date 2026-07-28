@@ -65,8 +65,12 @@ uv sync --all-groups
 ### 2. Tests ausfuehren
 
 ```powershell
-uv run pytest -q --basetemp=.pytest_tmp
+uv run pytest -q
 ```
+
+Pytest buendelt temporaere Dateien, den Pytest-Cache, Python-Bytecode und die nur fuer
+Tests gebauten Effektartefakte unter `tests/.cache/`. Der Ordner wird nach jeder
+Testsitzung automatisch entfernt.
 
 ## Building
 

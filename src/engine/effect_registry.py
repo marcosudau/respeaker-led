@@ -4,6 +4,7 @@ import json
 import hashlib
 import inspect
 import logging
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,7 +35,11 @@ logger = logging.getLogger("led_controller.effect_registry")
 
 
 def _default_effect_artifact_candidates() -> list[Path]:
-    candidates = [APP_DEFAULT_EFFECT_SET_PATH]
+    candidates: list[Path] = []
+    override = os.environ.get("LED_CONTROLLER_DEFAULT_EFFECT_SET")
+    if override:
+        candidates.append(Path(override).expanduser())
+    candidates.append(APP_DEFAULT_EFFECT_SET_PATH)
     candidates.extend(
         path for path in _configured_builtin_effect_paths() if path.name == DEFAULT_EFFECT_SET_FILENAME
     )

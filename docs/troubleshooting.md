@@ -20,7 +20,7 @@ Pruefe der Reihe nach:
 
 ## Tests schlagen fehl
 
-- zuerst `pytest -q --basetemp=.pytest_tmp` aus dem Projekt-Root laufen lassen
+- zuerst `pytest -q` aus dem Projekt-Root laufen lassen; Test-Caches werden unter `tests/.cache` gebuendelt und am Ende automatisch entfernt
 - bei Importfehlern pruefen, ob du wirklich aus dem Projekt-Root startest
 
 ## Ich sehe ohne Hardware keine Ausgabe
