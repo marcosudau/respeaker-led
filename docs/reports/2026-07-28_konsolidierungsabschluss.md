@@ -93,8 +93,12 @@ Durchgefuehrte Pruefungen:
 - Service-Prozess: sauber mit Exitcode 0 beendet;
 - nach dem Testlauf: kein `tests/.cache` und kein Projekt-`__pycache__` vorhanden.
 
-## Noch bewusst nicht ausgefuehrt
+## Nachtraeglich freigegebene Bereinigung
 
-Es wurden keine alten Projektordner, Codex-Worktrees oder GitHub-Branches entfernt.
-Die dafuer vorgesehenen exakten Ziele stehen in
-`2026-07-28_entfernungskandidaten.md` und warten auf eine ausdrueckliche Freigabe.
+Die unabhaengigen Altprojektpfade und Archive wurden nach einer gesonderten Freigabe
+entfernt. Die Codex-Worktrees und ihre zentrale Git-Datenbank unter
+`P:\CodexApp\led_controller_respeaker` wurden ausdruecklich behalten, weil die
+Worktrees ohne diese Datenbank nicht mehr funktionieren wuerden.
+
+Auf GitHub wurden die drei Altbranches entfernt; dort ist nur noch `main` vorhanden.
+Der genaue Endzustand steht in `2026-07-28_entfernungsprotokoll.md`.

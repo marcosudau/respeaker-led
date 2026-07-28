@@ -1,5 +1,11 @@
 # Entfernungskandidaten vom 2026-07-28
 
+> **Status nach Freigabe:** Diese Kandidatenliste dokumentiert den Stand vor der
+> Ausfuehrung. Die tatsaechlich entfernten und bewusst behaltenen Pfade stehen im
+> verbindlichen Abschlussprotokoll `2026-07-28_entfernungsprotokoll.md`.
+> Die Codex-Worktrees und ihre zentrale Git-Datenbank auf `P:` wurden auf
+> nachtraeglichen Wunsch ausdruecklich nicht entfernt.
+
 ## Status und Regel
 
 Diese Liste ist eine Freigabeliste, kein Protokoll bereits erfolgter Loeschungen.

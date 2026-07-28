@@ -1,5 +1,9 @@
 # Pfadbestand und Rollen vom 2026-07-28
 
+> **Historischer Inventurstand:** Diese Datei zeigt die vor der freigegebenen
+> Bereinigung gefundenen Pfade. Der danach verifizierte Endzustand steht in
+> `2026-07-28_entfernungsprotokoll.md`.
+
 ## Kanonischer Bestand
 
 - Arbeitsrepository: `C:\Users\marco\source\repos\led_controller_respeaker`
