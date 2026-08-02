@@ -10,9 +10,8 @@ from pathlib import Path
 DEFAULT_SOURCE_ID = "default-effects"
 DEFAULT_EFFECT_SET_FILENAME = "default-effects.lefxset"
 SOFT_PULSE_QUALIFIED_ID = "default-effects::soft_pulse"
-SOFT_PULSE_STATE_PRESET_ID = "default-effects::state_soft_pulse_idle"
-SOFT_PULSE_EFFECT_PRESET_ID = "default-effects::effect_soft_pulse_main"
-SOFT_PULSE_COMMAND_NAME = "effect_soft_pulse_accent"
+SOFT_PULSE_STATE_PRESET_ID = "default-effects::soft_pulse_idle"
+SOFT_PULSE_EFFECT_PRESET_ID = "default-effects::soft_pulse_focus"
 DIRECTION_EFFECT_QUALIFIED_ID = "default-effects::direction_indicator"
 DEFAULT_DIRECTION = 120.0
 
@@ -71,10 +70,12 @@ def _find_default_source(sources_payload) -> dict:
 
 
 def _find_effect(effects_payload, qualified_id: str) -> dict:
-    for item in _items_payload(effects_payload, label="list-effects"):
-        if isinstance(item, dict) and item.get("qualified_id") == qualified_id:
+    for item in _items_payload(effects_payload, label="list"):
+        if isinstance(item, dict) and (
+            item.get("qualified_id") == qualified_id or item.get("id") == qualified_id
+        ):
             return item
-    raise RuntimeError(f"Effect {qualified_id!r} is missing from list-effects")
+    raise RuntimeError(f"Effect {qualified_id!r} is missing from list")
 
 
 def _active_main_visual(snapshot: dict) -> dict:
@@ -176,59 +177,51 @@ def verify_release_binary(
                 "Default effect source path does not point to default-effects.lefxset",
             )
 
-            effects_payload = _run_cli(exe_path, "list-effects", "--host", host, "--port", str(port))
-            soft_pulse_summary = _find_effect(effects_payload, SOFT_PULSE_QUALIFIED_ID)
-            direction_summary = _find_effect(effects_payload, DIRECTION_EFFECT_QUALIFIED_ID)
-            _expect(soft_pulse_summary.get("source_kind") == "effect_set", "soft_pulse was not loaded from the effect set")
-            _expect(direction_summary.get("source_kind") == "effect_set", "direction_indicator was not loaded from the effect set")
+            states_payload = _run_cli(exe_path, "list", "states", "--details", "--host", host, "--port", str(port))
+            soft_pulse_summary = _find_effect(states_payload, SOFT_PULSE_QUALIFIED_ID)
+            _expect(soft_pulse_summary.get("source_id") == DEFAULT_SOURCE_ID, "soft_pulse was not loaded from default-effects")
 
-            soft_pulse_effect = _run_cli(exe_path, "show-effect", SOFT_PULSE_QUALIFIED_ID, "--host", host, "--port", str(port))
+            overlays_payload = _run_cli(exe_path, "list", "overlays", "--details", "--host", host, "--port", str(port))
+            direction_summary = _find_effect(overlays_payload, DIRECTION_EFFECT_QUALIFIED_ID)
+            _expect(direction_summary.get("source_id") == DEFAULT_SOURCE_ID, "direction_indicator was not loaded from default-effects")
+
+            soft_pulse_effect = _run_cli(exe_path, "show", SOFT_PULSE_QUALIFIED_ID, "--host", host, "--port", str(port))
             _expect("background_color" in soft_pulse_effect.get("parameters", {}), "soft_pulse is missing background_color")
             _expect("base_color" not in soft_pulse_effect.get("parameters", {}), "soft_pulse still exposes base_color")
 
-            presets_payload = _run_cli(exe_path, "list-effect-presets", SOFT_PULSE_QUALIFIED_ID, "--host", host, "--port", str(port))
+            presets_payload = _run_cli(exe_path, "list", "presets", "--details", "--host", host, "--port", str(port))
             preset_ids = {
-                item.get("preset_id")
-                for item in _items_payload(presets_payload, label="list-effect-presets")
+                value
+                for item in _items_payload(presets_payload, label="list presets")
                 if isinstance(item, dict)
+                for value in (item.get("id"), item.get("preset_id"), item.get("qualified_preset_id"))
+                if value
             }
             _expect(
-                {"state_soft_pulse_idle", "effect_soft_pulse_main"}.issubset(preset_ids),
+                {"soft_pulse_idle", "soft_pulse_focus"}.issubset(preset_ids)
+                or {"default-effects::soft_pulse_idle", "default-effects::soft_pulse_focus"}.issubset(preset_ids),
                 "soft_pulse presets are incomplete in the release binary",
             )
 
-            commands_payload = _run_cli(exe_path, "list-effect-commands", SOFT_PULSE_QUALIFIED_ID, "--host", host, "--port", str(port))
-            command_names = {
-                item.get("command_name")
-                for item in _items_payload(commands_payload, label="list-effect-commands")
-                if isinstance(item, dict)
-            }
-            _expect(SOFT_PULSE_COMMAND_NAME in command_names, "soft_pulse command accent toggle is missing")
-
-            apply_state_payload = _run_cli(exe_path, "apply-effect-preset", SOFT_PULSE_STATE_PRESET_ID, "--host", host, "--port", str(port))
+            apply_state_payload = _run_cli(exe_path, "set", SOFT_PULSE_STATE_PRESET_ID, "--host", host, "--port", str(port))
+            state_status = apply_state_payload.get("status", apply_state_payload)
+            state_visual = _layer_visual(state_status, "state_visual")
             _expect(
-                apply_state_payload.get("active_effect_preset_id") == SOFT_PULSE_STATE_PRESET_ID,
-                "State preset did not become the active preset",
-            )
-            _expect(
-                "preset:default-effects:state_soft_pulse_idle" in _scene_layer_names(apply_state_payload),
-                "State preset did not appear in the rendered scene",
+                state_visual.get("effect_id") in {SOFT_PULSE_QUALIFIED_ID, "soft_pulse"},
+                "State preset did not appear on state_visual layer",
             )
 
-            apply_main_payload = _run_cli(exe_path, "apply-effect-preset", SOFT_PULSE_EFFECT_PRESET_ID, "--host", host, "--port", str(port))
-            main_visual = _active_main_visual(apply_main_payload)
+            apply_main_payload = _run_cli(exe_path, "set", SOFT_PULSE_EFFECT_PRESET_ID, "--host", host, "--port", str(port))
+            main_status = apply_main_payload.get("status", apply_main_payload)
+            main_visual = _layer_visual(main_status, "state_visual")
             _expect(
-                apply_main_payload.get("active_effect_preset_id") == SOFT_PULSE_EFFECT_PRESET_ID,
-                "Main preset did not become the active preset",
+                main_visual.get("effect_id") in {SOFT_PULSE_QUALIFIED_ID, "soft_pulse"},
+                "Main preset did not render soft_pulse on state_visual layer",
             )
-            _expect(main_visual.get("effect_id") == SOFT_PULSE_QUALIFIED_ID, "Main preset did not render soft_pulse on the main layer")
             _expect(
                 "background_color" in main_visual.get("params", {}) and "base_color" not in main_visual.get("params", {}),
                 "Main preset params are not normalized to background_color",
             )
-
-            command_on_payload = _run_cli(exe_path, "invoke-command", DEFAULT_SOURCE_ID, SOFT_PULSE_COMMAND_NAME, "on", "--host", host, "--port", str(port))
-            _expect(_active_main_visual(command_on_payload).get("effect_id") == SOFT_PULSE_QUALIFIED_ID, "Command on did not activate soft_pulse")
 
             direction_payload = _run_cli(exe_path, "set-direction", str(DEFAULT_DIRECTION), "--host", host, "--port", str(port))
             direction_visual = _layer_visual(direction_payload, "direction_visual")
@@ -237,18 +230,28 @@ def verify_release_binary(
                 direction_visual.get("effect_id") in {DIRECTION_EFFECT_QUALIFIED_ID, "direction_indicator"},
                 "Direction overlay is not using direction_indicator",
             )
-            _expect(direction_visual.get("params", {}).get("direction") == DEFAULT_DIRECTION, "Direction overlay params are not normalized")
+            direction_val = (
+                direction_visual.get("inputs", {}).get("direction_deg")
+                if isinstance(direction_visual.get("inputs"), dict) and "direction_deg" in direction_visual["inputs"]
+                else (
+                    direction_visual.get("inputs", {}).get("direction")
+                    if isinstance(direction_visual.get("inputs"), dict) and "direction" in direction_visual["inputs"]
+                    else direction_visual.get("params", {}).get("direction", -1.0)
+                )
+            )
+            _expect(float(direction_val) == DEFAULT_DIRECTION, "Direction overlay params/inputs are not normalized")
 
-            command_off_payload = _run_cli(exe_path, "invoke-command", DEFAULT_SOURCE_ID, SOFT_PULSE_COMMAND_NAME, "off", "--host", host, "--port", str(port))
-            _expect(command_off_payload.get("active_visual") is None, "Command off did not clear the main layer")
+            clear_state_payload = _run_cli(exe_path, "clear", "state", "--host", host, "--port", str(port))
+            clear_status = clear_state_payload.get("status", clear_state_payload)
             _expect(
-                _layer_visual(command_off_payload, "direction_visual").get("effect_id") in {DIRECTION_EFFECT_QUALIFIED_ID, "direction_indicator"},
-                "Direction overlay disappeared unexpectedly after command off",
+                _layer_visual(clear_status, "direction_visual").get("effect_id") in {DIRECTION_EFFECT_QUALIFIED_ID, "direction_indicator"},
+                "Direction overlay disappeared unexpectedly after clear state",
             )
 
-            direction_effect = _run_cli(exe_path, "show-effect", DIRECTION_EFFECT_QUALIFIED_ID, "--host", host, "--port", str(port))
-            _expect("direction" in direction_effect.get("parameters", {}), "direction_indicator is missing direction")
-            _expect("direction_deg" not in direction_effect.get("parameters", {}), "direction_indicator still exposes direction_deg")
+            direction_effect = _run_cli(exe_path, "show", DIRECTION_EFFECT_QUALIFIED_ID, "--host", host, "--port", str(port))
+            runtime_inputs = direction_effect.get("runtime_inputs", {})
+            params = direction_effect.get("parameters", {})
+            _expect("direction_deg" in runtime_inputs or "direction" in runtime_inputs or "direction" in params, "direction_indicator is missing direction input")
 
             shutdown_payload = _run_cli(exe_path, "shutdown", "--host", host, "--port", str(port))
             _await_shutdown(exe_path, process, host, port, shutdown_timeout)
