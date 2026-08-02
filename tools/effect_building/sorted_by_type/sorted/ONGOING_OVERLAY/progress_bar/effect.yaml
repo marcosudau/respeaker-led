@@ -1,5 +1,0 @@
-package_id: default-effects.progress_bar
-source_id: default-effects
-entry_file: effect.py
-entry_class: ProgressBarEffect
-min_service_version: 1.0.0

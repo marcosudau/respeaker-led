@@ -1,0 +1,53 @@
+presets:
+  triple_flash_alert:
+    title: Triple Flash Alert
+    description: Auto-generated event preset for triple_flash (alert).
+    params:
+      color: "#FF5A5A"
+      background_color: "#120102"
+      brightness: 1.0
+      duration_ms: 900
+      pause_ms: 120
+    tags:
+      - event
+      - alert
+      - triple_flash
+  triple_flash_notice:
+    title: Triple Flash Notice
+    description: Auto-generated event preset for triple_flash (notice).
+    params:
+      color: "#FFD166"
+      background_color: "#120A02"
+      brightness: 0.9
+      duration_ms: 1000
+      pause_ms: 120
+    tags:
+      - event
+      - notice
+      - triple_flash
+  triple_flash_success:
+    title: Triple Flash Success
+    description: Auto-generated event preset for triple_flash (success).
+    params:
+      color: "#42D392"
+      background_color: "#02110A"
+      brightness: 0.88
+      duration_ms: 950
+      pause_ms: 120
+    tags:
+      - event
+      - success
+      - triple_flash
+  triple_flash_urgent:
+    title: Triple Flash Urgent
+    description: Auto-generated event preset for triple_flash (urgent).
+    params:
+      color: "#FF3B30"
+      background_color: "#170102"
+      brightness: 1.0
+      duration_ms: 700
+      pause_ms: 120
+    tags:
+      - event
+      - urgent
+      - triple_flash

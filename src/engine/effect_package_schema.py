@@ -4,7 +4,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..core.effect_schema import EffectCapabilities, EffectDefinition, EffectParamDefinition, LayerId, LayerRule, PlaybackMode, QueueMode
+from ..core.effect_schema import (
+    ColorModel,
+    CompositionMode,
+    DefinitionType,
+    EffectCapabilities,
+    EffectDefinition,
+    EffectParamDefinition,
+    LayerId,
+    LayerRule,
+    OverlayMode,
+    PlaybackMode,
+    QueueMode,
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -22,12 +34,17 @@ class EffectPackageManifest:
     qualified_effect_id: str
     title: str
     description: str
+    definition_type: DefinitionType
+    overlay_mode: OverlayMode | None
     version: int
     runtime: str
     entry_module: str
     entry_class: str
     defaults: dict[str, Any]
     parameter_schema: dict[str, dict[str, Any]]
+    runtime_input_schema: dict[str, dict[str, Any]]
+    visual: dict[str, Any]
+    input_sampling: dict[str, Any] | None
     layer_rules: dict[str, dict[str, Any]]
     capabilities: dict[str, Any]
     min_service_version: str
@@ -48,12 +65,17 @@ class EffectPackageManifest:
             "qualified_effect_id": self.qualified_effect_id,
             "title": self.title,
             "description": self.description,
+            "definition_type": self.definition_type.value,
+            "overlay_mode": None if self.overlay_mode is None else self.overlay_mode.value,
             "version": self.version,
             "runtime": self.runtime,
             "entry_module": self.entry_module,
             "entry_class": self.entry_class,
             "defaults": _json_normalize(self.defaults),
             "parameter_schema": _json_normalize(self.parameter_schema),
+            "runtime_input_schema": _json_normalize(self.runtime_input_schema),
+            "visual": _json_normalize(self.visual),
+            "input_sampling": _json_normalize(self.input_sampling),
             "layer_rules": _json_normalize(self.layer_rules),
             "capabilities": _json_normalize(self.capabilities),
             "min_service_version": self.min_service_version,
@@ -87,7 +109,6 @@ class EffectSetManifest:
     tags: tuple[str, ...] = ()
     author: str | None = None
     vendor: str | None = None
-    command_namespace: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
@@ -106,8 +127,6 @@ class EffectSetManifest:
             payload["author"] = self.author
         if self.vendor is not None:
             payload["vendor"] = self.vendor
-        if self.command_namespace is not None:
-            payload["command_namespace"] = self.command_namespace
         return payload
 
 
@@ -158,17 +177,37 @@ def parse_effect_package_manifest(payload: dict[str, Any]) -> EffectPackageManif
         "qualified_effect_id",
         "title",
         "description",
+        "definition_type",
+        "overlay_mode",
         "version",
         "runtime",
         "entry_module",
         "entry_class",
         "defaults",
         "parameter_schema",
+        "runtime_input_schema",
+        "visual",
+        "input_sampling",
         "layer_rules",
         "capabilities",
         "min_service_version",
     ]
     _require_keys(payload, required, "manifest.json")
+    optional = {
+        "tags",
+        "author",
+        "vendor",
+        "build_meta",
+        "created_at",
+        "compatible_hardware",
+        "license",
+    }
+    _reject_unknown_keys(payload, set(required) | optional, "manifest.json")
+    if payload["format"] != "lefx/2":
+        raise ValueError(f"Unsupported LEFX format: {payload['format']!r}")
+    definition_type = DefinitionType(str(payload["definition_type"]))
+    raw_overlay_mode = payload["overlay_mode"]
+    overlay_mode = None if raw_overlay_mode is None else OverlayMode(str(raw_overlay_mode))
     return EffectPackageManifest(
         format=str(payload["format"]),
         package_id=str(payload["package_id"]),
@@ -177,12 +216,24 @@ def parse_effect_package_manifest(payload: dict[str, Any]) -> EffectPackageManif
         qualified_effect_id=str(payload["qualified_effect_id"]),
         title=str(payload["title"]),
         description=str(payload["description"]),
+        definition_type=definition_type,
+        overlay_mode=overlay_mode,
         version=int(payload["version"]),
         runtime=str(payload["runtime"]),
         entry_module=str(payload["entry_module"]),
         entry_class=str(payload["entry_class"]),
         defaults=_copy_dict(payload["defaults"], "manifest.json.defaults"),
         parameter_schema=_copy_mapping_of_dicts(payload["parameter_schema"], "manifest.json.parameter_schema"),
+        runtime_input_schema=_copy_mapping_of_dicts(
+            payload["runtime_input_schema"],
+            "manifest.json.runtime_input_schema",
+        ),
+        visual=_copy_dict(payload["visual"], "manifest.json.visual"),
+        input_sampling=(
+            None
+            if payload["input_sampling"] is None
+            else _copy_dict(payload["input_sampling"], "manifest.json.input_sampling")
+        ),
         layer_rules=_copy_mapping_of_dicts(payload["layer_rules"], "manifest.json.layer_rules"),
         capabilities=_copy_dict(payload["capabilities"], "manifest.json.capabilities"),
         min_service_version=str(payload["min_service_version"]),
@@ -209,6 +260,10 @@ def parse_effect_set_manifest(payload: dict[str, Any]) -> EffectSetManifest:
         "effects",
     ]
     _require_keys(payload, required, "set-manifest.json")
+    optional = {"description", "tags", "author", "vendor"}
+    _reject_unknown_keys(payload, set(required) | optional, "set-manifest.json")
+    if payload["format"] != "lefxset/2":
+        raise ValueError(f"Unsupported LEFX Set format: {payload['format']!r}")
     raw_effects = payload["effects"]
     if not isinstance(raw_effects, list) or not raw_effects:
         raise ValueError("set-manifest.json field 'effects' must be a non-empty list")
@@ -229,17 +284,29 @@ def parse_effect_set_manifest(payload: dict[str, Any]) -> EffectSetManifest:
         tags=_copy_string_tuple(payload.get("tags", ())),
         author=None if payload.get("author") is None else str(payload.get("author")),
         vendor=None if payload.get("vendor") is None else str(payload.get("vendor")),
-        command_namespace=None if payload.get("command_namespace") is None else str(payload.get("command_namespace")),
     )
 
 
 def serialize_effect_definition(definition: EffectDefinition) -> dict[str, Any]:
     return {
+        "definition_type": definition.definition_type.value if definition.definition_type is not None else None,
+        "overlay_mode": None if definition.overlay_mode is None else definition.overlay_mode.value,
         "defaults": _json_normalize(definition.defaults),
         "parameter_schema": {
             name: serialize_param_definition(param)
             for name, param in definition.parameter_schema.items()
         },
+        "runtime_input_schema": {
+            name: serialize_param_definition(param)
+            for name, param in definition.runtime_input_schema.items()
+        },
+        "visual": {
+            "color_model": definition.color_model.value,
+            "composition": definition.composition.value,
+            "animated": definition.animated,
+            "directional": definition.directional,
+        },
+        "input_sampling": serialize_input_sampling(definition.input_sampling),
         "layer_rules": {
             layer_id.value: serialize_layer_rule(rule)
             for layer_id, rule in definition.layer_rules.items()
@@ -263,6 +330,8 @@ def serialize_param_definition(param: EffectParamDefinition) -> dict[str, Any]:
         "maximum": _json_normalize(param.maximum),
         "enum_values": list(param.enum_values),
         "unit": param.unit,
+        "nullable": param.nullable,
+        "aliases": list(param.aliases),
     }
 
 
@@ -290,6 +359,18 @@ def serialize_effect_capabilities(capabilities: EffectCapabilities) -> dict[str,
     }
 
 
+def serialize_input_sampling(policy: InputSamplingPolicy | None) -> dict[str, Any] | None:
+    if policy is None:
+        return None
+    return {
+        "mode": policy.mode.value,
+        "provider_id": policy.provider_id,
+        "interval_ms": policy.interval_ms,
+        "heartbeat_interval_ms": policy.heartbeat_interval_ms,
+        "max_missed_heartbeats": policy.max_missed_heartbeats,
+    }
+
+
 def _json_normalize(value: Any) -> Any:
     if isinstance(value, dict):
         return {str(key): _json_normalize(item) for key, item in value.items()}
@@ -306,6 +387,12 @@ def validate_manifest_matches_definition(manifest: EffectPackageManifest, defini
         )
     if manifest.qualified_effect_id != f"{manifest.source_id}::{manifest.effect_id}":
         raise ValueError("Manifest qualified_effect_id does not match source_id::effect_id")
+    if manifest.definition_type.value != serialized["definition_type"]:
+        raise ValueError("Manifest definition_type does not match class definition")
+    if (
+        None if manifest.overlay_mode is None else manifest.overlay_mode.value
+    ) != serialized["overlay_mode"]:
+        raise ValueError("Manifest overlay_mode does not match class definition")
     if manifest.title != serialized["title"]:
         raise ValueError("Manifest title does not match class definition")
     if manifest.description != serialized["description"]:
@@ -316,6 +403,12 @@ def validate_manifest_matches_definition(manifest: EffectPackageManifest, defini
         raise ValueError("Manifest defaults do not match class definition")
     if manifest.parameter_schema != serialized["parameter_schema"]:
         raise ValueError("Manifest parameter_schema does not match class definition")
+    if manifest.runtime_input_schema != serialized["runtime_input_schema"]:
+        raise ValueError("Manifest runtime_input_schema does not match class definition")
+    if manifest.visual != serialized["visual"]:
+        raise ValueError("Manifest visual contract does not match class definition")
+    if manifest.input_sampling != serialized["input_sampling"]:
+        raise ValueError("Manifest input_sampling does not match class definition")
     if manifest.layer_rules != serialized["layer_rules"]:
         raise ValueError("Manifest layer_rules do not match class definition")
     if manifest.capabilities != serialized["capabilities"]:
@@ -326,6 +419,12 @@ def _require_keys(payload: dict[str, Any], required: list[str], label: str) -> N
     missing = [key for key in required if key not in payload]
     if missing:
         raise ValueError(f"{label} is missing required keys: {', '.join(missing)}")
+
+
+def _reject_unknown_keys(payload: dict[str, Any], allowed: set[str], label: str) -> None:
+    unknown = sorted(set(payload) - allowed)
+    if unknown:
+        raise ValueError(f"{label} contains unknown keys: {', '.join(unknown)}")
 
 
 def _copy_dict(value: Any, label: str) -> dict[str, Any]:
@@ -359,3 +458,5 @@ def _copy_string_tuple(value: Any) -> tuple[str, ...]:
     if not isinstance(value, (list, tuple)):
         raise ValueError("Expected a list of strings")
     return tuple(str(item) for item in value)
+    InputMode,
+    InputSamplingPolicy,

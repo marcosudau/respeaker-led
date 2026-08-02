@@ -38,6 +38,89 @@ class LocalControllerClient:
     def get_status(self) -> ClientCallResult:
         return self._request_json("GET", "/api/v1/status")
 
+    def list_v2(self, kind: str, *, details: bool = False) -> ClientCallResult:
+        normalized = str(kind).strip().lower()
+        paths = {
+            "state": "states",
+            "states": "states",
+            "overlay": "overlays",
+            "overlays": "overlays",
+            "event": "events",
+            "events": "events",
+            "preset": "presets",
+            "presets": "presets",
+        }
+        if normalized not in paths:
+            raise ValueError("List kind must be state, overlay, event, or preset")
+        suffix = "?details=true" if details else ""
+        return self._request_json("GET", f"/api/v2/{paths[normalized]}{suffix}")
+
+    def show_target(self, target: str) -> ClientCallResult:
+        from urllib.parse import quote
+
+        return self._request_json("GET", f"/api/v2/show/{quote(target, safe='')}")
+
+    def set_state_target(
+        self,
+        target: str,
+        config: dict[str, Any] | None = None,
+        *,
+        slot: str = "primary",
+        action: str = "on",
+    ) -> ClientCallResult:
+        return self._request_json(
+            "POST",
+            "/api/v2/set/state",
+            {"target": target, "config": config or {}, "slot": slot, "action": action},
+        )
+
+    def clear_state_target(self, *, slot: str = "primary") -> ClientCallResult:
+        return self._request_json("POST", "/api/v2/clear/state", {"slot": slot})
+
+    def set_overlay_target(
+        self,
+        target: str,
+        channel: str | None = None,
+        config: dict[str, Any] | None = None,
+        inputs: dict[str, Any] | None = None,
+        *,
+        action: str = "on",
+    ) -> ClientCallResult:
+        return self._request_json(
+            "POST",
+            "/api/v2/set/overlay",
+            {
+                "target": target,
+                "channel": channel,
+                "config": config or {},
+                "inputs": inputs or {},
+                "action": action,
+            },
+        )
+
+    def update_overlay_target(self, channel: str, inputs: dict[str, Any]) -> ClientCallResult:
+        return self._request_json(
+            "POST",
+            "/api/v2/update/overlay",
+            {"channel": channel, "inputs": inputs},
+        )
+
+    def clear_overlay_target(self, channel: str) -> ClientCallResult:
+        return self._request_json("POST", "/api/v2/clear/overlay", {"channel": channel})
+
+    def emit_event_target(
+        self,
+        target: str,
+        config: dict[str, Any] | None = None,
+        *,
+        priority: int | None = None,
+    ) -> ClientCallResult:
+        return self._request_json(
+            "POST",
+            "/api/v2/emit/event",
+            {"target": target, "config": config or {}, "priority": priority},
+        )
+
     def list_effects(self) -> ClientCallResult:
         return self._request_json("GET", "/api/v1/effects")
 
@@ -50,39 +133,8 @@ class LocalControllerClient:
     def list_effect_presets(self, source_id: str, effect_id: str) -> ClientCallResult:
         return self._request_json("GET", f"/api/v1/effects/{source_id}/{effect_id}/presets")
 
-    def list_effect_commands_for_effect(self, source_id: str, effect_id: str) -> ClientCallResult:
-        return self._request_json("GET", f"/api/v1/effects/{source_id}/{effect_id}/commands")
-
-    def apply_effect_for_source(
-        self,
-        source_id: str,
-        effect_id: str,
-        target_layer: str,
-        params: dict[str, Any] | None = None,
-        *,
-        duration_ms: int | None = None,
-        priority: int | None = None,
-        enqueue: bool = False,
-        replace_existing: bool = True,
-    ) -> ClientCallResult:
-        return self._request_json(
-            "POST",
-            f"/api/v1/effects/{source_id}/{effect_id}/apply",
-            {
-                "target_layer": target_layer,
-                "params": params or {},
-                "duration_ms": duration_ms,
-                "priority": priority,
-                "enqueue": enqueue,
-                "replace_existing": replace_existing,
-            },
-        )
-
     def get_effect_preset(self, source_id: str, preset_id: str) -> ClientCallResult:
         return self._request_json("GET", f"/api/v1/effect-presets/{source_id}/{preset_id}")
-
-    def apply_effect_preset(self, source_id: str, preset_id: str) -> ClientCallResult:
-        return self._request_json("POST", f"/api/v1/effect-presets/{source_id}/{preset_id}/apply")
 
     def list_effect_sources(self) -> ClientCallResult:
         return self._request_json("GET", "/api/v1/effect-sources")
@@ -95,19 +147,6 @@ class LocalControllerClient:
 
     def remove_effect_source(self, source_id: str) -> ClientCallResult:
         return self._request_json("DELETE", f"/api/v1/effect-sources/{source_id}")
-
-    def list_commands(self, source_id: str | None = None) -> ClientCallResult:
-        path = "/api/v1/commands" if source_id is None else f"/api/v1/commands/{source_id}"
-        return self._request_json("GET", path)
-
-    def get_command(self, source_id: str, command_name: str) -> ClientCallResult:
-        return self._request_json("GET", f"/api/v1/commands/{source_id}/{command_name}")
-
-    def invoke_command(self, source_id: str, command_name: str, state: str | None = None) -> ClientCallResult:
-        path = f"/api/v1/commands/{source_id}/{command_name}"
-        if state is not None:
-            path = f"{path}/{state}"
-        return self._request_json("POST", path)
 
     def set_state(self, state_name: str, payload: dict[str, Any] | None = None) -> ClientCallResult:
         return self._request_json("POST", "/api/v1/commands/set_state", {"state_name": state_name, "payload": payload or {}})
@@ -160,34 +199,6 @@ class LocalControllerClient:
 
     def set_enabled(self, enabled: bool) -> ClientCallResult:
         return self._request_json("POST", "/api/v1/commands/set_enabled", {"enabled": enabled})
-
-    def apply_effect(
-        self,
-        effect_id: str,
-        target_layer: str,
-        params: dict[str, Any] | None = None,
-        *,
-        duration_ms: int | None = None,
-        priority: int | None = None,
-        enqueue: bool = False,
-        replace_existing: bool = True,
-    ) -> ClientCallResult:
-        return self._request_json(
-            "POST",
-            "/api/v1/commands/apply_effect",
-            {
-                "effect_id": effect_id,
-                "target_layer": target_layer,
-                "params": params or {},
-                "duration_ms": duration_ms,
-                "priority": priority,
-                "enqueue": enqueue,
-                "replace_existing": replace_existing,
-            },
-        )
-
-    def clear_layer(self, target_layer: str) -> ClientCallResult:
-        return self._request_json("POST", "/api/v1/commands/clear_layer", {"target_layer": target_layer})
 
     def _request_json(self, method: str, path: str, payload: dict[str, Any] | None = None) -> ClientCallResult:
         url = f"{self.base_url}{path}"

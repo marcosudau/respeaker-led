@@ -51,8 +51,12 @@ def test_packager_tool_can_scaffold_validate_build_and_verify_effect_set(tmp_pat
             {
                 "source_id": "app.voice_assistant",
                 "effects": [
-                    {"effect_id": "idle_blue", "layer": "STATE_LAYER"},
-                    {"effect_id": "listening_blue", "layer": "MAIN_LAYER"},
+                    {"effect_id": "idle_blue", "definition_type": "state"},
+                    {
+                        "effect_id": "listening_blue",
+                        "definition_type": "overlay",
+                        "overlay_mode": "controlled",
+                    },
                 ],
             },
             ensure_ascii=True,
@@ -87,22 +91,10 @@ def test_packager_tool_can_scaffold_validate_build_and_verify_effect_set(tmp_pat
                 "package_id": "voice.listening",
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
-                "layer_name": "MAIN_LAYER",
+                "layer_name": "STATE_LAYER",
                 "presets": {
-                    "effect_listening_default": {
-                        "category": "effect",
-                        "target_layer": "MAIN_LAYER",
+                    "listening_default": {
                         "params": {"color": "#224466"},
-                    }
-                },
-                "commands": {
-                    "effect_listening": {
-                        "kind": "state_toggle",
-                        "on": {"preset": "effect_listening_default"},
-                        "off": {
-                            "action": "clear_layer",
-                            "target_layer": "MAIN_LAYER",
-                        },
                     }
                 },
             }

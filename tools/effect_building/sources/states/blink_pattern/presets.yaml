@@ -1,0 +1,53 @@
+presets:
+  blink_pattern_idle:
+    title: Blink Pattern Idle
+    description: Auto-generated state preset for blink_pattern (idle).
+    params:
+      color: "#4A7BFF"
+      background_color: "#020814"
+      brightness: 0.45
+      speed: 0.7
+      pattern: single
+    tags:
+      - state
+      - idle
+      - blink_pattern
+  blink_pattern_focus:
+    title: Blink Pattern Focus
+    description: Auto-generated state preset for blink_pattern (focus).
+    params:
+      color: "#2ED3A8"
+      background_color: "#03110D"
+      brightness: 0.72
+      speed: 1.1
+      pattern: double
+    tags:
+      - state
+      - focus
+      - blink_pattern
+  blink_pattern_ready:
+    title: Blink Pattern Ready
+    description: Auto-generated state preset for blink_pattern (ready).
+    params:
+      color: "#5BC0FF"
+      background_color: "#041018"
+      brightness: 0.66
+      speed: 0.95
+      pattern: continuous
+    tags:
+      - state
+      - ready
+      - blink_pattern
+  blink_pattern_rest:
+    title: Blink Pattern Rest
+    description: Auto-generated state preset for blink_pattern (rest).
+    params:
+      color: "#7AA4FF"
+      background_color: "#05070C"
+      brightness: 0.38
+      speed: 0.55
+      pattern: single
+    tags:
+      - state
+      - rest
+      - blink_pattern

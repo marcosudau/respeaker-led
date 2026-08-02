@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from src.engine.effect_registry import build_default_effect_registry
 from src.core.effect_schema import CommandKind, LayerId, PlaybackMode
-from src.engine.normalization import ControllerCommandNormalizer, build_effect_invocation
+from src.integrations.application_commands import ControllerCommandNormalizer, build_effect_invocation
 
 
 def test_set_state_normalization_maps_recording_to_background_and_state_invocations():
@@ -19,10 +19,10 @@ def test_set_state_normalization_maps_recording_to_background_and_state_invocati
     invocation = build_effect_invocation(commands[1], registry, invocation_id="recording-1", created_at=1.5)
 
     assert invocation.playback_mode is PlaybackMode.PERSISTENT
-    assert invocation.params["period_ms"] == 1100
+    assert invocation.params["speed"] == 1800 / 1100
     assert invocation.params["background_color"] == 0x031108
     assert "base_color" not in invocation.params
-    assert invocation.params["__scene_name"] == "active_visual:base-state:recording"
+    assert invocation.params["__scene_name"] == "state:primary:recording"
 
 
 def test_clear_state_normalization_clears_state_layer_and_restores_idle_background():
@@ -65,4 +65,5 @@ def test_direction_normalization_targets_ongoing_overlay_layer():
     assert len(commands) == 1
     assert commands[0].target_layer is LayerId.ONGOING_OVERLAY_LAYER
     assert commands[0].effect_id == "direction_indicator"
-    assert commands[0].params["direction"] == 120.0
+    assert commands[0].inputs["direction_deg"] == 120.0
+    assert "direction_deg" not in commands[0].params

@@ -34,29 +34,19 @@ def test_render_once_produces_frame_and_stores_last_scene_and_frame():
     assert controller.adapter.last_frame is frame
     assert len(frame.leds) == LED_COUNT
     assert any(layer.name == "state_layer" for layer in scene.layers)
-    assert any(layer.name == "active_visual:base-state:recording" for layer in scene.layers)
+    assert any(layer.name == "state:primary:recording" for layer in scene.layers)
     assert any(color != 0 for color in frame.leds)
 
 
-def test_render_once_marks_invalid_active_visual_with_diagnostic_overlay():
+def test_runtime_rejects_removed_main_layer_name():
     controller = make_controller()
     controller.set_state("idle", timestamp=0.0)
-    controller.apply_effect(
-        "solid_color",
-        LayerId.MAIN_LAYER,
-        {"color": "0x020202"},
-        scene_name="active_visual:broken",
-        item_id="broken",
-        mode="manual",
-        payload={},
-        valid=False,
-        timestamp=0.0,
-    )
+    import pytest
 
-    scene, frame = controller.render_once(now=0.0)
+    from src.core.effect_schema import parse_layer_id
 
-    assert "active-visual-invalid" in scene.diagnostics
-    assert frame.leds[0] == 0xFFFFFF
+    with pytest.raises(ValueError, match="Unknown layer"):
+        parse_layer_id("main")
 
 
 def test_countdown_lifecycle_restores_state_and_applies_follow_up_state():
@@ -85,7 +75,7 @@ def test_direction_brightness_and_enabled_affect_output():
     scene, frame = controller.render_once(now=1.0)
 
     assert any(layer.name == "direction_overlay" for layer in scene.layers)
-    assert frame.leds[4] == scale_color(0xEAF8FF, 0.5)
+    assert frame.leds[4] == scale_color(0x00C066, 0.5)
 
     controller.set_enabled(False)
     _, off_frame = controller.render_once(now=1.1)
@@ -127,32 +117,89 @@ def test_runtime_applies_default_background_fallback_as_dim_white():
 
 def test_controller_can_apply_effect_and_clear_runtime_layer():
     controller = make_controller()
-    controller.apply_effect("solid_color", LayerId.MAIN_LAYER, {"color": "0x224466"}, timestamp=0.0)
+    controller.set_state_target("solid_color", {"color": "0x224466"}, timestamp=0.0)
 
     scene, frame = controller.render_once(now=0.0)
 
-    assert any(layer.name.startswith("active_visual:solid_color") for layer in scene.layers)
-    assert controller.get_status(now=0.0)["active_visual"]["visual"]["effect_id"] == "solid_color"
+    assert any(layer.name == "state:primary" for layer in scene.layers)
+    assert controller.get_status(now=0.0)["render_layers"]["state_visual"]["effect_id"] == "solid_color"
     assert frame.leds[0] == 0x224466
 
-    controller.clear_layer(LayerId.MAIN_LAYER)
+    controller.clear_state_target()
     controller.render_once(now=0.1)
 
-    assert controller.get_status(now=0.1)["active_visual"] is None
+    assert controller.get_status(now=0.1)["render_layers"]["state_visual"] is None
 
 
-def test_runtime_canonicalizes_legacy_effect_param_aliases_in_public_status():
+def test_runtime_separates_overlay_config_and_runtime_inputs():
     controller = make_controller()
-    controller.apply_effect(
+    controller.set_overlay(
         "progress_bar",
-        LayerId.MAIN_LAYER,
-        {"value": 50, "color": "#112233", "base_color": "#010101"},
+        "progress",
+        {"color": "#112233", "background_color": "#010101"},
+        {"value": "50%"},
         timestamp=0.0,
     )
 
     status = controller.get_status(now=0.0)
-    params = status["active_visual"]["visual"]["params"]
+    visual = status["render_layers"]["direction_visual"]
 
-    assert params["background_color"] == "#010101"
-    assert "base_color" not in params
+    assert visual["params"]["background_color"] == "#010101"
+    assert visual["inputs"]["progress"] == 50.0
+
+
+def test_push_overlay_heartbeat_keeps_last_value_for_three_windows():
+    controller = make_controller()
+    controller.set_overlay(
+        "progress_bar",
+        "progress",
+        {"color": "#112233", "background_color": "#010101"},
+        {"progress": 50},
+        timestamp=0.0,
+    )
+
+    _, healthy_frame = controller.render_once(now=2.999)
+    healthy = controller.get_status(now=2.999)["render_layers"]["direction_visual"]
+
+    assert healthy["input_health"]["status"] == "healthy"
+    assert healthy_frame.leds[:6] == [0x112233] * 6
+
+    _, failed_frame = controller.render_once(now=3.0)
+    failed = controller.get_status(now=3.0)["render_layers"]["direction_visual"]
+
+    assert failed["input_health"]["status"] == "failed"
+    assert failed["input_health"]["missed_heartbeats"] == 3
+    assert failed_frame.leds == [0x010101] * LED_COUNT
+
+    controller.update_overlay("progress", {}, timestamp=3.1)
+    _, recovered_frame = controller.render_once(now=3.1)
+    recovered = controller.get_status(now=3.1)["render_layers"]["direction_visual"]
+
+    assert recovered["input_health"]["status"] == "healthy"
+    assert recovered_frame.leds[:6] == [0x112233] * 6
+
+
+def test_off_is_idempotent_and_does_not_clear_a_different_target():
+    controller = make_controller()
+    controller.set_state_target("solid_color", {"color": "blau"})
+    controller.set_state_target("soft_pulse", action="off")
+    controller.set_overlay("progress_bar", "shared", inputs={"value": 25})
+    controller.set_overlay("direction_indicator", "shared", action="off")
+
+    status = controller.get_status()
+
+    assert status["render_layers"]["state_visual"]["effect_id"] == "solid_color"
+    assert status["render_layers"]["direction_visual"]["effect_id"] == "progress_bar"
+
+
+def test_timed_overlay_needs_no_channel_and_cannot_toggle():
+    import pytest
+
+    controller = make_controller()
+    invocation = controller.set_overlay("countdown_ring", config={"total_ms": "1s"})
+
+    assert invocation.target_layer is LayerId.TEMP_OVERLAY_LAYER
+    assert invocation.requested_duration_ms == 1000
+    with pytest.raises(ValueError, match="only action 'on'"):
+        controller.set_overlay("countdown_ring", action="toggle")
 

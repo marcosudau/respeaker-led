@@ -19,9 +19,8 @@ def test_api_root_health_ping_and_status_snapshot():
     with make_client() as client:
         root_response = client.get("/")
         assert root_response.status_code == 200
-        assert root_response.json()["api_base"] == "/api/v1"
-        assert "set_state" in root_response.json()["commands"]
-        assert "apply_effect" in root_response.json()["commands"]
+        assert root_response.json()["api_base"] == "/api/v2"
+        assert root_response.json()["commands"] == ["list", "show", "set", "clear", "update", "emit"]
         assert root_response.json()["output_mode"] == "console-preview"
 
         health_response = client.get("/health")
@@ -43,101 +42,93 @@ def test_api_root_health_ping_and_status_snapshot():
 
 def test_api_lists_builtin_effects_and_can_apply_and_clear_effects():
     with make_client() as client:
-        list_response = client.get("/api/v1/effects")
+        list_response = client.get("/api/v2/states")
         assert list_response.status_code == 200
-        effect_ids = {item["id"] for item in list_response.json()["items"]}
-        assert {"solid_color", "soft_pulse", "warning_flash"}.issubset(effect_ids)
+        assert "solid_color" in list_response.json()
 
         apply_response = client.post(
-            "/api/v1/commands/apply_effect",
+            "/api/v2/set/state",
             json={
-                "effect_id": "solid_color",
-                "target_layer": "main",
-                "params": {"color": "0x224466"},
+                "target": "solid_color",
+                "config": {"color": "blau"},
             },
         )
         assert apply_response.status_code == 200
-        assert apply_response.json()["active_visual"]["visual"]["effect_id"] == "solid_color"
-        assert apply_response.json()["active_visual"]["payload"]["color"] == "0x224466"
+        state_visual = apply_response.json()["status"]["render_layers"]["state_visual"]
+        assert state_visual["effect_id"] == "solid_color"
+        assert state_visual["params"]["color"] == "#0000FF"
 
         clear_response = client.post(
-            "/api/v1/commands/clear_layer",
-            json={"target_layer": "main_layer"},
+            "/api/v2/clear/state",
+            json={"slot": "primary"},
         )
         assert clear_response.status_code == 200
-        assert clear_response.json()["active_visual"] is None
+        assert clear_response.json()["status"]["render_layers"]["state_visual"] is None
+
+        show_response = client.get("/api/v2/show/progress_bar")
+        assert show_response.status_code == 200
+        detail = show_response.json()
+        assert detail["visual"]["color_model"] == "mono"
+        assert detail["visual"]["composition"] == "transparent"
+        assert detail["runtime_inputs"]["progress"]["aliases"] == ["value"]
+        assert detail["input_sampling"] == {
+            "mode": "push",
+            "provider_id": None,
+            "interval_ms": 0,
+            "heartbeat_interval_ms": 1000,
+            "max_missed_heartbeats": 3,
+            "failure_after_ms": 3000,
+        }
 
 
 def test_api_generic_command_flow():
     with make_client() as client:
         state_response = client.post(
-            "/api/v1/commands/set_state",
-            json={"state_name": "recording", "payload": {"source": "manual"}},
+            "/api/v2/set/state",
+            json={"target": "soft_pulse", "config": {"color": "gruen"}},
         )
         assert state_response.status_code == 200
-        assert state_response.json()["base_state"]["name"] == "recording"
+        assert state_response.json()["status"]["render_layers"]["state_visual"]["effect_id"] == "soft_pulse"
 
         event_response = client.post(
-            "/api/v1/commands/emit_event",
-            json={"event_name": "trigger_received", "payload": {"event_id": "api-event", "duration_ms": 500}},
+            "/api/v2/emit/event",
+            json={"target": "warning_flash", "config": {"color": "rot"}},
         )
         assert event_response.status_code == 200
-        assert event_response.json()["event_overlay"]["current"]["id"] == "api-event"
+        assert event_response.json()["status"]["event_overlay"]["current"]["name"] == "warning_flash"
 
-        countdown_response = client.post(
-            "/api/v1/commands/start_timeout_countdown",
-            json={"total_ms": 5000, "remaining_ms": 1500, "follow_up_state": "transcribing"},
+        overlay_response = client.post(
+            "/api/v2/set/overlay",
+            json={"target": "progress_bar", "channel": "volume", "inputs": {"value": "25%"}},
         )
-        assert countdown_response.status_code == 200
-        assert countdown_response.json()["countdown"]["follow_up_state"] == "transcribing"
+        assert overlay_response.status_code == 200
 
-        direction_response = client.post(
-            "/api/v1/commands/set_direction",
-            json={"direction": 120.0},
+        update_response = client.post(
+            "/api/v2/update/overlay",
+            json={"channel": "volume", "inputs": {"value": 75}},
         )
-        assert direction_response.status_code == 200
-        assert direction_response.json()["direction"] == 120.0
+        assert update_response.status_code == 200
+        assert update_response.json()["status"]["render_layers"]["direction_visual"]["inputs"]["progress"] == 75.0
 
-        brightness_response = client.post(
-            "/api/v1/commands/set_brightness",
-            json={"level": 0.5},
+        clear_response = client.post(
+            "/api/v2/clear/overlay",
+            json={"channel": "volume"},
         )
-        assert brightness_response.status_code == 200
-        assert brightness_response.json()["brightness"] == 0.5
-
-        enabled_response = client.post(
-            "/api/v1/commands/set_enabled",
-            json={"enabled": False},
-        )
-        assert enabled_response.status_code == 200
-        assert enabled_response.json()["enabled"] is False
-        assert enabled_response.json()["last_frame"]["leds"] == [0] * 12
-
-        clear_direction_response = client.post("/api/v1/commands/clear_direction")
-        assert clear_direction_response.status_code == 200
-        assert clear_direction_response.json()["direction"] is None
-
-        cancel_countdown_response = client.post("/api/v1/commands/cancel_timeout_countdown")
-        assert cancel_countdown_response.status_code == 200
-        assert cancel_countdown_response.json()["countdown"] is None
-
-        reset_response = client.post("/api/v1/commands/reset")
-        assert reset_response.status_code == 200
-        assert reset_response.json()["base_state"]["name"] == "idle"
-        assert reset_response.json()["enabled"] is True
+        assert clear_response.status_code == 200
+        assert clear_response.json()["status"]["render_layers"]["direction_visual"] is None
 
 
 def test_api_apply_effect_returns_404_for_unknown_effect():
     with make_client() as client:
         response = client.post(
-            "/api/v1/commands/apply_effect",
-            json={"effect_id": "not_real", "target_layer": "main_layer", "params": {}},
+            "/api/v2/set/state",
+            json={"target": "not_real", "config": {}},
         )
 
         assert response.status_code == 404
 
 
-def test_api_can_register_list_and_invoke_packaged_commands(tmp_path):
+def test_api_can_register_list_and_set_packaged_preset(tmp_path):
     set_dir = tmp_path / "voice_assistant_src"
     write_effect_set_source(
         set_dir,
@@ -150,22 +141,10 @@ def test_api_can_register_list_and_invoke_packaged_commands(tmp_path):
                 "package_id": "voice.listening",
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
-                "layer_name": "MAIN_LAYER",
+                "layer_name": "STATE_LAYER",
                 "presets": {
-                    "effect_listening_default": {
-                        "category": "effect",
-                        "target_layer": "MAIN_LAYER",
+                    "listening_default": {
                         "params": {"color": "#224466"},
-                    }
-                },
-                "commands": {
-                    "listening": {
-                        "kind": "state_toggle",
-                        "on": {"preset": "effect_listening_default"},
-                        "off": {
-                            "action": "clear_layer",
-                            "target_layer": "MAIN_LAYER",
-                        },
                     }
                 },
             }
@@ -185,30 +164,24 @@ def test_api_can_register_list_and_invoke_packaged_commands(tmp_path):
         assert sources_response.status_code == 200
         assert any(item["source_id"] == "app.voice_assistant" for item in sources_response.json()["items"])
 
-        commands_response = client.get("/api/v1/commands/app.voice_assistant")
-        assert commands_response.status_code == 200
-        assert commands_response.json()["items"][0]["command_name"] == "listening"
-
         effect_response = client.get("/api/v1/effects/app.voice_assistant/listening_blue")
         assert effect_response.status_code == 200
         assert effect_response.json()["qualified_id"] == "app.voice_assistant::listening_blue"
 
         presets_response = client.get("/api/v1/effects/app.voice_assistant/listening_blue/presets")
         assert presets_response.status_code == 200
-        assert presets_response.json()["items"][0]["preset_id"] == "effect_listening_default"
+        assert presets_response.json()["items"][0]["preset_id"] == "listening_default"
 
-        effect_commands_response = client.get("/api/v1/effects/app.voice_assistant/listening_blue/commands")
-        assert effect_commands_response.status_code == 200
-        assert effect_commands_response.json()["items"][0]["command_name"] == "listening"
-
-        apply_preset_response = client.post("/api/v1/effect-presets/app.voice_assistant/effect_listening_default/apply")
-        assert apply_preset_response.status_code == 200
-        assert apply_preset_response.json()["active_effect_preset_id"] == "app.voice_assistant::effect_listening_default"
-
-        on_response = client.post("/api/v1/commands/app.voice_assistant/listening/on")
+        on_response = client.post(
+            "/api/v2/set/state",
+            json={"target": "app.voice_assistant::listening_default"},
+        )
         assert on_response.status_code == 200
-        assert on_response.json()["active_visual"]["visual"]["effect_id"] == "app.voice_assistant::listening_blue"
+        assert on_response.json()["status"]["render_layers"]["state_visual"]["effect_id"] == "app.voice_assistant::listening_blue"
 
-        off_response = client.post("/api/v1/commands/app.voice_assistant/listening/off")
+        off_response = client.post(
+            "/api/v2/set/state",
+            json={"target": "app.voice_assistant::listening_default", "action": "off"},
+        )
         assert off_response.status_code == 200
-        assert off_response.json()["active_visual"] is None
+        assert off_response.json()["status"]["render_layers"]["state_visual"] is None

@@ -37,7 +37,8 @@ def build_parser() -> argparse.ArgumentParser:
     init_effect.add_argument("--title")
     init_effect.add_argument("--package-id")
     init_effect.add_argument("--class-name")
-    init_effect.add_argument("--layer", default="MAIN_LAYER")
+    init_effect.add_argument("--type", dest="definition_type", choices=("state", "overlay", "event"), default="state")
+    init_effect.add_argument("--overlay-mode", choices=("controlled", "timed"))
     init_effect.add_argument("--format", choices=("yaml", "json"), default="yaml")
     init_effect.add_argument("--force", action="store_true")
     init_effect.set_defaults(command_kind="init_effect")
@@ -98,7 +99,8 @@ def main(argv: list[str] | None = None) -> int:
             title=args.title,
             package_id=args.package_id,
             class_name=args.class_name,
-            layer=args.layer,
+            definition_type=args.definition_type,
+            overlay_mode=args.overlay_mode,
             format_name=args.format,
             force=args.force,
         )
@@ -203,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
             "package_id": result.package_id,
             "set_id": result.set_id,
             "effect_ids": list(result.effect_ids),
-            "command_names": list(result.command_names),
+            "preset_ids": list(result.preset_ids),
         }, ensure_ascii=True, indent=2, sort_keys=True))
         return 0 if result.ok else 1
 

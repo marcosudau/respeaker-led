@@ -29,6 +29,8 @@ DEFAULT_CONFIG = {
             "build",
             ".pytest_tmp*",
             "tests/.cache",
+            "docs/examples/effects/.cache",
+            "tools/PySide6TestApp/.cache",
             "tools/effect_building/build/.cache",
             "tools/effect_building/build/_generated",
             "tools/effect_building/build/build_lefx",

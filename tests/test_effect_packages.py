@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-import textwrap
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from src.engine.effect_command_registry import parse_command_definitions
+from src.core.effect_schema import DefinitionType, OverlayMode
 from src.engine.effect_package_builder import (
     build_effect_package,
     build_effect_set,
@@ -15,515 +15,285 @@ from src.engine.effect_package_builder import (
     validate_effect_set_source,
     validate_effect_source,
 )
-from src.engine.effect_package_loader import inspect_effect_source, load_effect_package, load_effect_set, verify_effect_source
+from src.engine.effect_package_loader import (
+    inspect_effect_source,
+    load_effect_package,
+    load_effect_set,
+    verify_effect_source,
+)
+from tests.package_test_utils import write_effect_set_source, write_effect_source
 
 
-def _write_effect_source(
-    root,
-    *,
-    package_id: str,
-    source_id: str,
-    class_name: str,
-    effect_id: str,
-    color: str = "0x224466",
-    layer_name: str = "MAIN_LAYER",
-    presets: dict | None = None,
-    commands: dict | None = None,
-):
-    root.mkdir(parents=True, exist_ok=True)
-    (root / "effect.yaml").write_text(
-        "\n".join(
-            [
-                f"package_id: {package_id}",
-                f"source_id: {source_id}",
-                f"entry_class: {class_name}",
-                "min_service_version: 1.0.0",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    (root / "effect.py").write_text(
-        textwrap.dedent(
-            f"""
-            from src.core.effect_schema import BaseEffect, EffectDefinition, EffectParamDefinition, LayerId, LayerRule, PlaybackMode, EffectCapabilities, RenderContext
-
-
-            class {class_name}(BaseEffect):
-                definition = EffectDefinition(
-                    id="{effect_id}",
-                    title="{class_name}",
-                    description="Generated for tests",
-                    parameter_schema={{
-                        "color": EffectParamDefinition(name="color", type="color", default="{color}"),
-                    }},
-                    defaults={{"color": "{color}"}},
-                    capabilities=EffectCapabilities(
-                        playback_modes=(PlaybackMode.LOOP, PlaybackMode.PERSISTENT),
-                        restorable=True,
-                    ),
-                    layer_rules={{
-                        LayerId.{layer_name}: LayerRule(
-                            allowed=True,
-                            allowed_playback_modes=(PlaybackMode.LOOP, PlaybackMode.PERSISTENT),
-                        ),
-                    }},
-                )
-
-                def render(self, ctx: RenderContext) -> list[int | None]:
-                    return [int(str(ctx.params.get("color", "{color}")).replace("#", "0x"), 16)] * ctx.led_count
-            """
-        ),
-        encoding="utf-8",
-    )
-    if presets is not None:
-        (root / "presets.yaml").write_text(
-            _dump_simple_yaml({"presets": presets}),
-            encoding="utf-8",
-        )
-    if commands is not None:
-        (root / "commands.json").write_text(
-            json.dumps({"commands": commands}, ensure_ascii=True, indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
-
-
-def _dump_simple_yaml(payload: dict) -> str:
-    lines: list[str] = []
-
-    def _render(value, indent: int, key: str | None = None) -> None:
-        prefix = " " * indent
-        if isinstance(value, dict):
-            if key is not None:
-                lines.append(f"{prefix}{key}:")
-                indent += 2
-                prefix = " " * indent
-            for nested_key, nested_value in value.items():
-                _render(nested_value, indent, str(nested_key))
-            return
-        if isinstance(value, list):
-            lines.append(f"{prefix}{key}:")
-            for item in value:
-                lines.append(f"{prefix}  - {json.dumps(item) if isinstance(item, str) and '#' in item else item}")
-            return
-        rendered = json.dumps(value) if isinstance(value, str) and ("#" in value or ":" in value) else value
-        lines.append(f"{prefix}{key}: {rendered}")
-
-    for payload_key, payload_value in payload.items():
-        _render(payload_value, 0, str(payload_key))
-    return "\n".join(lines) + "\n"
-
-
-def test_parse_command_definitions_requires_commands_mapping():
-    with pytest.raises(ValueError, match="non-empty 'commands' object"):
-        parse_command_definitions("app.voice_assistant", {})
-
-
-def test_build_and_load_effect_package_roundtrip_with_embedded_presets_and_commands(tmp_path):
-    source_dir = tmp_path / "effect_src"
-    output_path = tmp_path / "listening.lefx"
-    _write_effect_source(
-        source_dir,
+def test_build_and_load_v2_effect_package_with_config_only_preset(tmp_path):
+    source = tmp_path / "source"
+    write_effect_source(
+        source,
         package_id="voice.listening",
-        source_id="app.voice_assistant",
-        class_name="ListeningBlueEffect",
-        effect_id="listening_blue",
+        source_id="app.voice",
+        class_name="ListeningEffect",
+        effect_id="listening",
+        layer_name="STATE_LAYER",
         presets={
-            "effect_listening_default": {
-                "category": "effect",
-                "target_layer": "MAIN_LAYER",
+            "listening_blue": {
                 "params": {"color": "#224466"},
-                "tags": ["effect"],
-            }
-        },
-        commands={
-            "effect_listening": {
-                "kind": "state_toggle",
-                "on": {"preset": "effect_listening_default"},
-                "off": {"action": "clear_layer", "target_layer": "MAIN_LAYER"},
+                "tags": ["blue"],
             }
         },
     )
 
-    built = build_effect_package(source_dir, output_path)
+    output = tmp_path / "listening.lefx"
+    build_effect_package(source, output)
+    loaded = load_effect_package(output)
+    inspected = inspect_effect_source(output)
+    verified = verify_effect_source(output)
 
-    assert built.kind == "effect_package"
-    loaded = load_effect_package(output_path)
-    inspected = inspect_effect_source(output_path)
-    verified = verify_effect_source(output_path)
-
-    assert loaded.manifest.qualified_effect_id == "app.voice_assistant::listening_blue"
-    assert loaded.effect_class.__name__ == "ListeningBlueEffect"
-    assert [preset.preset_id for preset in loaded.presets] == ["effect_listening_default"]
-    assert [command.command_name for command in loaded.commands] == ["effect_listening"]
-    assert inspected["kind"] == "effect_package"
-    assert inspected["presets"] == ["effect_listening_default"]
-    assert inspected["commands"] == ["effect_listening"]
-    assert verified.ok is True
-    assert verified.effect_ids == ("app.voice_assistant::listening_blue",)
-    assert verified.preset_ids == ("app.voice_assistant::effect_listening_default",)
-    assert verified.command_names == ("effect_listening",)
+    assert loaded.manifest.format == "lefx/2"
+    assert loaded.manifest.definition_type is DefinitionType.STATE
+    assert [preset.preset_id for preset in loaded.presets] == ["listening_blue"]
+    assert loaded.presets[0].serialize()["params"] == {"color": "#224466"}
+    assert inspected["presets"] == ["listening_blue"]
+    assert verified.preset_ids == ("app.voice::listening_blue",)
 
 
-def test_init_and_validate_effect_source_scaffold(tmp_path):
-    target_dir = tmp_path / "idle_blue"
+def test_v2_rejects_embedded_commands(tmp_path):
+    source = tmp_path / "source"
+    write_effect_source(
+        source,
+        package_id="voice.listening",
+        source_id="app.voice",
+        class_name="ListeningEffect",
+        effect_id="listening",
+        commands={"legacy": {"kind": "state_toggle"}},
+    )
 
-    scaffold = init_effect_source(
-        target_dir,
+    with pytest.raises(ValueError, match="does not support embedded commands"):
+        validate_effect_source(source)
+
+
+def test_v2_rejects_generic_common_modules_and_controller_imports(tmp_path):
+    source = tmp_path / "source"
+    write_effect_source(
+        source,
+        package_id="voice.listening",
+        source_id="app.voice",
+        class_name="ListeningEffect",
+        effect_id="listening",
+    )
+    (source / "common.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="common.py"):
+        validate_effect_source(source)
+
+    (source / "common.py").unlink()
+    effect_source = source / "effect.py"
+    effect_source.write_text(
+        "from src.engine.runtime import ControllerRuntime\n"
+        + effect_source.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unsupported module 'src.engine.runtime'"):
+        validate_effect_source(source)
+
+
+def test_init_and_validate_v2_scaffolds(tmp_path):
+    state_source = tmp_path / "state"
+    overlay_source = tmp_path / "overlay"
+    state = init_effect_source(
+        state_source,
         effect_id="idle_blue",
-        source_id="app.voice_assistant",
-        layer="STATE_LAYER",
+        source_id="app.voice",
+        definition_type="state",
+    )
+    overlay = init_effect_source(
+        overlay_source,
+        effect_id="volume",
+        source_id="app.voice",
+        definition_type="overlay",
+        overlay_mode="controlled",
     )
 
-    validation = validate_effect_source(target_dir)
-    output_path = tmp_path / "idle_blue.lefx"
-    built = build_effect_package(target_dir, output_path)
+    state_validation = validate_effect_source(state_source)
+    overlay_validation = validate_effect_source(overlay_source)
 
-    assert scaffold.kind == "effect_source"
-    assert (target_dir / "effect.yaml").exists()
-    assert (target_dir / "presets.yaml").exists()
-    assert (target_dir / "commands.json").exists()
-    assert (target_dir / "effect.py").exists()
-    assert (target_dir / "assets").is_dir()
-    assert (target_dir / "extra" / "__init__.py").exists()
-    assert validation.identifier == "app.voice_assistant::idle_blue"
-    assert validation.details["preset_count"] == 1
-    assert validation.details["command_count"] == 1
-    assert built.identifier == "app.voice_assistant::idle_blue"
+    assert state.kind == "effect_source"
+    assert overlay.kind == "effect_source"
+    assert not (state_source / "commands.json").exists()
+    assert state_validation.details["preset_count"] == 1
+    assert overlay_validation.details["preset_count"] == 1
+    assert load_effect_package(
+        build_effect_package(overlay_source, tmp_path / "overlay.lefx").output_path
+    ).manifest.overlay_mode is OverlayMode.CONTROLLED
 
 
-def test_init_effect_batch_creates_multiple_scaffolds(tmp_path):
-    batch_file = tmp_path / "batch.json"
-    batch_file.write_text(
+def test_init_effect_batch_uses_explicit_types(tmp_path):
+    batch = tmp_path / "batch.json"
+    batch.write_text(
         json.dumps(
             {
-                "source_id": "app.voice_assistant",
+                "source_id": "app.voice",
                 "effects": [
-                    {"effect_id": "idle_blue", "layer": "STATE_LAYER"},
-                    {"effect_id": "event_ping", "title": "Event Ping", "class_name": "EventPingEffect", "layer": "EVENT_LAYER"},
+                    {"effect_id": "idle", "definition_type": "state"},
+                    {"effect_id": "ping", "definition_type": "event"},
+                    {
+                        "effect_id": "volume",
+                        "definition_type": "overlay",
+                        "overlay_mode": "controlled",
+                    },
                 ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    results = init_effect_batch(batch, tmp_path / "generated")
+
+    assert [result.target_path.name for result in results] == ["idle", "ping", "volume"]
+    assert all(not (result.target_path / "commands.json").exists() for result in results)
+
+
+def test_init_effect_batch_rejects_legacy_layer_field(tmp_path):
+    batch = tmp_path / "batch.json"
+    batch.write_text(
+        json.dumps(
+            {
+                "source_id": "app.voice",
+                "effects": [{"effect_id": "idle", "layer": "STATE_LAYER"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unknown keys: layer"):
+        init_effect_batch(batch, tmp_path / "generated")
+
+
+def test_build_effect_set_aggregates_unique_definitions_and_presets(tmp_path):
+    source = tmp_path / "set"
+    write_effect_set_source(
+        source,
+        source_id="app.voice",
+        set_id="voice",
+        title="Voice",
+        effects=[
+            {
+                "dir_name": "idle",
+                "package_id": "voice.idle",
+                "class_name": "IdleEffect",
+                "effect_id": "idle",
+                "layer_name": "STATE_LAYER",
+                "presets": {"idle_blue": {"params": {"color": "#112233"}}},
             },
-            ensure_ascii=True,
-            indent=2,
-        ),
-        encoding="utf-8",
+            {
+                "dir_name": "ping",
+                "package_id": "voice.ping",
+                "class_name": "PingEffect",
+                "effect_id": "ping",
+                "layer_name": "EVENT_LAYER",
+                "presets": {"ping_red": {"params": {"color": "#FF0000"}}},
+            },
+        ],
     )
 
-    results = init_effect_batch(batch_file, tmp_path / "generated")
+    output = tmp_path / "voice.lefxset"
+    validation = validate_effect_set_source(source)
+    build_effect_set(source, output)
+    loaded = load_effect_set(output)
 
-    assert [result.target_path.name for result in results] == ["idle_blue", "event_ping"]
-    assert (tmp_path / "generated" / "idle_blue" / "presets.yaml").exists()
-    assert (tmp_path / "generated" / "event_ping" / "commands.json").exists()
+    assert validation.details == {"effect_count": 2, "preset_count": 2}
+    assert len(validation.warnings) == 2
+    assert loaded.manifest.format == "lefxset/2"
+    assert [effect.manifest.effect_id for effect in loaded.effects] == ["idle", "ping"]
+    assert [preset.preset_id for preset in loaded.presets] == ["idle_blue", "ping_red"]
 
 
-def test_build_and_load_effect_set_roundtrip_aggregates_embedded_presets_and_commands(tmp_path):
-    set_dir = tmp_path / "voice_assistant"
-    effects_root = set_dir / "effects"
-    _write_effect_source(
-        effects_root / "idle",
+def test_build_effect_set_from_prebuilt_packages_has_no_transition_warning(tmp_path):
+    source = tmp_path / "state"
+    write_effect_source(
+        source,
         package_id="voice.idle",
-        source_id="app.voice_assistant",
-        class_name="IdleBlueEffect",
-        effect_id="idle_blue",
-        color="0x112233",
-        layer_name="STATE_LAYER",
-        presets={
-            "state_idle_default": {
-                "category": "state",
-                "target_layer": "STATE_LAYER",
-                "params": {"color": "#112233"},
-                "tags": ["state", "idle"],
-            }
-        },
-        commands={
-            "state_idle": {
-                "kind": "state_toggle",
-                "on": {"preset": "state_idle_default"},
-                "off": {"action": "clear_layer", "target_layer": "STATE_LAYER"},
-            }
-        },
+        source_id="app.voice",
+        class_name="IdleEffect",
+        effect_id="idle",
     )
-    _write_effect_source(
-        effects_root / "error",
-        package_id="voice.error",
-        source_id="app.voice_assistant",
-        class_name="ErrorFlashEffect",
-        effect_id="error_flash",
-        color="0xFF0000",
-        layer_name="EVENT_LAYER",
-        presets={
-            "event_error_flash": {
-                "category": "event",
-                "target_layer": "EVENT_LAYER",
-                "params": {"color": "#FF0000"},
-                "duration_ms": 250,
-                "tags": ["event", "error"],
-            }
-        },
-        commands={
-            "event_error": {
-                "kind": "event",
-                "on": {"preset": "event_error_flash"},
-            }
-        },
-    )
-    set_dir.mkdir(parents=True, exist_ok=True)
-    (set_dir / "set.yaml").write_text(
+    package = build_effect_package(source, tmp_path / "idle.lefx").output_path
+    set_source = tmp_path / "set"
+    init_effect_set_source(set_source, set_id="voice", source_id="app.voice")
+    (set_source / "effects" / "idle.lefx").write_bytes(package.read_bytes())
+    (set_source / "set.yaml").write_text(
         "\n".join(
             [
-                "set_id: voice_assistant",
-                "source_id: app.voice_assistant",
-                "title: Voice Assistant",
+                "set_id: voice",
+                "source_id: app.voice",
+                "title: Voice",
                 "version: 1",
                 "min_service_version: 1.0.0",
                 "effects:",
-                "  - idle",
-                "  - error",
+                "  - idle.lefx",
             ]
         ),
         encoding="utf-8",
     )
 
-    output_path = tmp_path / "voice_assistant.lefxset"
-    built = build_effect_set(set_dir, output_path)
-    loaded = load_effect_set(output_path)
-    inspected = inspect_effect_source(output_path)
-    verified = verify_effect_source(output_path)
+    validation = validate_effect_set_source(set_source)
 
-    assert built.kind == "effect_set"
-    assert loaded.manifest.source_id == "app.voice_assistant"
-    assert [item.manifest.effect_id for item in loaded.effects] == ["idle_blue", "error_flash"]
-    assert [preset.preset_id for preset in loaded.presets] == ["state_idle_default", "event_error_flash"]
-    assert [command.command_name for command in loaded.commands] == ["state_idle", "event_error"]
-    assert inspected["kind"] == "effect_set"
-    assert inspected["presets"] == ["state_idle_default", "event_error_flash"]
-    assert inspected["commands"] == ["state_idle", "event_error"]
-    assert verified.ok is True
-    assert verified.command_names == ("state_idle", "event_error")
-
-
-def test_validate_effect_set_source_returns_transition_warning_for_source_directories(tmp_path):
-    set_dir = tmp_path / "voice_assistant"
-    effects_root = set_dir / "effects"
-    _write_effect_source(
-        effects_root / "idle",
-        package_id="voice.idle",
-        source_id="app.voice_assistant",
-        class_name="IdleBlueEffect",
-        effect_id="idle_blue",
-        color="0x112233",
-        layer_name="STATE_LAYER",
-        presets={
-            "state_idle_default": {
-                "category": "state",
-                "target_layer": "STATE_LAYER",
-                "params": {"color": "#112233"},
-            }
-        },
-        commands={
-            "state_idle": {
-                "kind": "state_toggle",
-                "on": {"preset": "state_idle_default"},
-                "off": {"action": "clear_layer", "target_layer": "STATE_LAYER"},
-            }
-        },
-    )
-    set_dir.mkdir(parents=True, exist_ok=True)
-    (set_dir / "set.yaml").write_text(
-        "\n".join(
-            [
-                "set_id: voice_assistant",
-                "source_id: app.voice_assistant",
-                "title: Voice Assistant",
-                "version: 1",
-                "min_service_version: 1.0.0",
-                "effects:",
-                "  - idle",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    validation = validate_effect_set_source(set_dir)
-
-    assert validation.identifier == "voice_assistant"
-    assert len(validation.warnings) == 1
-    assert "Prefer prebuilt .lefx files" in validation.warnings[0]
-    assert validation.details["preset_count"] == 1
-    assert validation.details["command_count"] == 1
-
-
-def test_build_effect_set_from_prebuilt_lefx_packages(tmp_path):
-    effects_build = tmp_path / "built_effects"
-    idle_src = tmp_path / "idle_src"
-    listening_src = tmp_path / "listening_src"
-    _write_effect_source(
-        idle_src,
-        package_id="voice.idle",
-        source_id="app.voice_assistant",
-        class_name="IdleBlueEffect",
-        effect_id="idle_blue",
-        color="0x112233",
-        layer_name="STATE_LAYER",
-        presets={
-            "state_idle_default": {
-                "category": "state",
-                "target_layer": "STATE_LAYER",
-                "params": {"color": "#112233"},
-            }
-        },
-        commands={
-            "state_idle": {
-                "kind": "state_toggle",
-                "on": {"preset": "state_idle_default"},
-                "off": {"action": "clear_layer", "target_layer": "STATE_LAYER"},
-            }
-        },
-    )
-    _write_effect_source(
-        listening_src,
-        package_id="voice.listening",
-        source_id="app.voice_assistant",
-        class_name="ListeningBlueEffect",
-        effect_id="listening_blue",
-        color="0x224466",
-        presets={
-            "effect_listening_default": {
-                "category": "effect",
-                "target_layer": "MAIN_LAYER",
-                "params": {"color": "#224466"},
-            }
-        },
-        commands={
-            "effect_listening": {
-                "kind": "state_toggle",
-                "on": {"preset": "effect_listening_default"},
-                "off": {"action": "clear_layer", "target_layer": "MAIN_LAYER"},
-            }
-        },
-    )
-    build_effect_package(idle_src, effects_build / "idle_blue.lefx")
-    build_effect_package(listening_src, effects_build / "listening_blue.lefx")
-
-    set_dir = tmp_path / "voice_assistant_set"
-    scaffold = init_effect_set_source(
-        set_dir,
-        set_id="voice_assistant",
-        source_id="app.voice_assistant",
-        title="Voice Assistant",
-    )
-    (set_dir / "effects" / "idle_blue.lefx").write_bytes((effects_build / "idle_blue.lefx").read_bytes())
-    (set_dir / "effects" / "listening_blue.lefx").write_bytes((effects_build / "listening_blue.lefx").read_bytes())
-    (set_dir / "set.yaml").write_text(
-        "\n".join(
-            [
-                "set_id: voice_assistant",
-                "source_id: app.voice_assistant",
-                "title: Voice Assistant",
-                "version: 1",
-                "min_service_version: 1.0.0",
-                "effects:",
-                "  - idle_blue.lefx",
-                "  - listening_blue.lefx",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    validation = validate_effect_set_source(set_dir)
-    built = build_effect_set(set_dir, tmp_path / "voice_assistant.lefxset")
-    loaded = load_effect_set(tmp_path / "voice_assistant.lefxset")
-
-    assert scaffold.kind == "effect_set_source"
     assert validation.warnings == ()
-    assert built.warnings == ()
-    assert [effect.manifest.qualified_effect_id for effect in loaded.effects] == [
-        "app.voice_assistant::idle_blue",
-        "app.voice_assistant::listening_blue",
-    ]
-    assert [preset.preset_id for preset in loaded.presets] == ["state_idle_default", "effect_listening_default"]
 
 
-def test_build_effect_set_rejects_mismatched_source_id_in_prebuilt_package(tmp_path):
-    idle_src = tmp_path / "idle_src"
-    foreign_src = tmp_path / "foreign_src"
-    _write_effect_source(
-        idle_src,
-        package_id="voice.idle",
-        source_id="app.voice_assistant",
-        class_name="IdleBlueEffect",
-        effect_id="idle_blue",
-    )
-    _write_effect_source(
-        foreign_src,
-        package_id="voice.foreign",
-        source_id="app.other_app",
+def test_build_effect_set_rejects_mismatched_source(tmp_path):
+    source = tmp_path / "foreign"
+    write_effect_source(
+        source,
+        package_id="foreign.idle",
+        source_id="app.foreign",
         class_name="ForeignEffect",
-        effect_id="foreign_blue",
+        effect_id="foreign",
     )
-    build_effect_package(idle_src, tmp_path / "idle_blue.lefx")
-    build_effect_package(foreign_src, tmp_path / "foreign_blue.lefx")
+    package = build_effect_package(source, tmp_path / "foreign.lefx").output_path
+    set_source = tmp_path / "set"
+    init_effect_set_source(set_source, set_id="voice", source_id="app.voice")
+    (set_source / "effects" / "foreign.lefx").write_bytes(package.read_bytes())
 
-    set_dir = tmp_path / "voice_assistant_set"
-    init_effect_set_source(set_dir, set_id="voice_assistant", source_id="app.voice_assistant")
-    (set_dir / "effects" / "idle_blue.lefx").write_bytes((tmp_path / "idle_blue.lefx").read_bytes())
-    (set_dir / "effects" / "foreign_blue.lefx").write_bytes((tmp_path / "foreign_blue.lefx").read_bytes())
-    (set_dir / "set.yaml").write_text(
-        "\n".join(
-            [
-                "set_id: voice_assistant",
-                "source_id: app.voice_assistant",
-                "title: Voice Assistant",
-                "version: 1",
-                "min_service_version: 1.0.0",
-                "effects:",
-                "  - idle_blue.lefx",
-                "  - foreign_blue.lefx",
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ValueError, match="expected 'app.voice_assistant'"):
-        build_effect_set(set_dir, tmp_path / "voice_assistant.lefxset")
+    with pytest.raises(ValueError, match="expected 'app.voice'"):
+        build_effect_set(set_source, tmp_path / "voice.lefxset")
 
 
-def test_build_effect_package_rejects_invalid_embedded_preset_category_prefix(tmp_path):
-    source_dir = tmp_path / "effect_src"
-    _write_effect_source(
-        source_dir,
-        package_id="voice.listening",
-        source_id="app.voice_assistant",
-        class_name="ListeningBlueEffect",
-        effect_id="listening_blue",
+def test_v2_rejects_preset_lifecycle_fields(tmp_path):
+    source = tmp_path / "source"
+    write_effect_source(
+        source,
+        package_id="voice.idle",
+        source_id="app.voice",
+        class_name="IdleEffect",
+        effect_id="idle",
         presets={
-            "idle_default": {
-                "category": "state",
+            "idle_blue": {
+                "params": {"color": "#112233"},
                 "target_layer": "STATE_LAYER",
-                "params": {"color": "#224466"},
             }
         },
     )
 
-    with pytest.raises(ValueError, match="must use the 'state_' prefix"):
-        validate_effect_source(source_dir)
+    with pytest.raises(ValueError, match="unknown keys: target_layer"):
+        validate_effect_source(source)
 
 
-def test_build_effect_package_rejects_command_referencing_unknown_preset(tmp_path):
-    source_dir = tmp_path / "effect_src"
-    _write_effect_source(
-        source_dir,
-        package_id="voice.listening",
-        source_id="app.voice_assistant",
-        class_name="ListeningBlueEffect",
-        effect_id="listening_blue",
-        commands={
-            "effect_listening": {
-                "kind": "state_toggle",
-                "on": {"preset": "effect_missing"},
-                "off": {"action": "clear_layer", "target_layer": "MAIN_LAYER"},
-            }
-        },
+def test_effect_set_can_be_loaded_concurrently_without_cache_collisions(tmp_path):
+    source = tmp_path / "state"
+    write_effect_source(
+        source,
+        package_id="voice.idle",
+        source_id="app.voice",
+        class_name="IdleEffect",
+        effect_id="idle",
     )
+    package = build_effect_package(source, tmp_path / "idle.lefx").output_path
+    set_source = tmp_path / "set"
+    init_effect_set_source(set_source, set_id="voice", source_id="app.voice")
+    (set_source / "effects" / "idle.lefx").write_bytes(package.read_bytes())
+    effect_set = build_effect_set(set_source, tmp_path / "voice.lefxset").output_path
 
-    with pytest.raises(ValueError, match="unknown preset"):
-        validate_effect_source(source_dir)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        loaded_sets = list(executor.map(load_effect_set, [effect_set] * 8))
+
+    assert [loaded.effects[0].manifest.effect_id for loaded in loaded_sets] == ["idle"] * 8

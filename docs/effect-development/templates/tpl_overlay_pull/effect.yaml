@@ -1,0 +1,8 @@
+# Primary metadata for this effect source.
+# Title hint: Template Pull Overlay
+# Definition type: overlay
+# Overlay mode: controlled
+package_id: tutorial-templates.template_overlay_pull
+source_id: tutorial-templates
+entry_class: TemplateOverlayPullEffect
+min_service_version: 1.0.0

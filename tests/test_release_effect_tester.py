@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import socket
+import subprocess
 import sys
+import time
 from pathlib import Path
+
+import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QLineEdit, QPushButton, QSlider, QSpinBox
 
 
@@ -43,14 +49,17 @@ class FakeBackend:
         self.closed = False
         self.applied_effects: list[tuple[str, str, str, dict[str, object]]] = []
         self.applied_presets: list[tuple[str, str]] = []
+        self.cleared_types: list[str] = []
+        self.reload_count = 0
         self.effects = [
             {
                 "id": "alpha_effect",
                 "qualified_id": "pkg::alpha_effect",
                 "title": "Alpha Effect",
                 "source_id": "pkg",
+                "type": "state",
                 "tags": ["state"],
-                "supported_layers": ["MAIN_LAYER", "STATE_LAYER"],
+                "supported_layers": ["STATE_LAYER"],
                 "parameters": {
                     "color": {"type": "color", "default": "#112233", "description": ""},
                     "brightness": {"type": "float", "default": 0.5, "minimum": 0.0, "maximum": 1.0, "description": ""},
@@ -72,6 +81,7 @@ class FakeBackend:
                 "qualified_id": "pkg::event_flash",
                 "title": "Event Flash",
                 "source_id": "pkg",
+                "type": "event",
                 "tags": ["event"],
                 "supported_layers": ["EVENT_LAYER"],
                 "parameters": {
@@ -99,6 +109,10 @@ class FakeBackend:
     def list_effects(self) -> list[dict[str, object]]:
         return list(self.effects)
 
+    def reload_effects(self) -> list[dict[str, object]]:
+        self.reload_count += 1
+        return list(self.effects)
+
     def list_effect_presets(self, source_id: str, effect_id: str) -> list[dict[str, object]]:
         return list(self.presets[(source_id, effect_id)])
 
@@ -108,6 +122,10 @@ class FakeBackend:
 
     def apply_effect_preset(self, source_id: str, preset_id: str) -> dict[str, object]:
         self.applied_presets.append((source_id, preset_id))
+        return {"ok": True}
+
+    def clear_effect(self, definition_type: str) -> dict[str, object]:
+        self.cleared_types.append(definition_type)
         return {"ok": True}
 
 
@@ -132,6 +150,100 @@ def test_resolve_default_executable_prefers_dist_versioned_build(tmp_path):
     dist_exe.write_text("binary", encoding="utf-8")
 
     assert module.resolve_default_executable(script_path) == dist_exe.resolve()
+
+
+def test_effect_studio_defaults_to_current_source_and_supports_schema_color_aliases():
+    module = load_module()
+    parser = module.build_arg_parser(MODULE_PATH)
+
+    args = parser.parse_args([])
+
+    assert args.service_exe is None
+    assert args.use_device is True
+    assert args.fps == 8.0
+    assert module.normalize_color_value("rot") == "#FF0000"
+    assert module.normalize_color_value("tuerkis") == "#00FFFF"
+
+
+def test_effect_studio_refuses_a_second_hardware_controller(monkeypatch):
+    module = load_module()
+    controller = module.ServiceProcessController(
+        sys.executable,
+        use_device=True,
+    )
+    monkeypatch.setattr(
+        module.ControllerHttpClient,
+        "request_json",
+        lambda self, method, path, payload=None: {
+            "render_loop_running": True,
+            "requested_output_mode": "device",
+        },
+    )
+
+    with pytest.raises(RuntimeError, match="Hardwarezugriff laeuft bereits"):
+        controller.start()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows job-object behavior")
+def test_effect_studio_terminates_service_tree_when_owner_exits(tmp_path):
+    marker = tmp_path / "service.pid"
+    port = _pick_free_port()
+    service_code = """
+import json
+import os
+from pathlib import Path
+import sys
+import time
+
+marker = Path(sys.argv[1])
+port_index = sys.argv.index("--port") + 1
+marker.write_text(str(os.getpid()), encoding="ascii")
+print(json.dumps({"event": "service_binding", "host": "127.0.0.1", "port": int(sys.argv[port_index])}), flush=True)
+time.sleep(60)
+"""
+    owner_code = f"""
+import os
+import runpy
+
+namespace = runpy.run_path({str(MODULE_PATH)!r})
+controller = namespace["ServiceProcessController"](
+    {sys.executable!r},
+    requested_port={port},
+    startup_timeout=5.0,
+    use_device=False,
+    service_arguments=["-c", {service_code!r}, {str(marker)!r}],
+    working_directory={str(tmp_path)!r},
+)
+controller.start()
+os._exit(0)
+"""
+
+    subprocess.run(
+        [sys.executable, "-c", owner_code],
+        check=True,
+        timeout=15.0,
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+    )
+    service_pid = int(marker.read_text(encoding="ascii"))
+
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        handle = kernel32.OpenProcess(0x1000, False, service_pid)
+        if not handle:
+            break
+        kernel32.CloseHandle(handle)
+        time.sleep(0.05)
+    else:
+        pytest.fail(f"Service process {service_pid} survived its owner process")
 
 
 def test_subprocess_backend_can_start_fake_service_and_list_effects(tmp_path):
@@ -170,8 +282,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/v1/ping":
             self._write({"ok": True})
             return
-        if self.path == "/api/v1/effects":
-            self._write({"items": [{"id": "demo", "qualified_id": "pkg::demo", "source_id": "pkg", "title": "Demo", "supported_layers": ["MAIN_LAYER"], "tags": [], "parameters": {}}]})
+        if self.path == "/api/v2/states?details=true":
+            self._write([{"id": "demo", "qualified_id": "pkg::demo", "source_id": "pkg", "type": "state", "overlay_mode": None, "title": "Demo", "tags": [], "parameters": {}, "runtime_inputs": {}}])
+            return
+        if self.path in {"/api/v2/overlays?details=true", "/api/v2/events?details=true"}:
+            self._write([])
             return
         self.send_response(404)
         self.end_headers()
@@ -196,6 +311,7 @@ httpd.serve_forever()
         requested_port=port,
         request_timeout=2.0,
         startup_timeout=5.0,
+        use_device=False,
         service_arguments=[str(service_script)],
         working_directory=tmp_path,
     )
@@ -208,17 +324,27 @@ httpd.serve_forever()
         backend.close()
 
 
-def test_effect_tester_window_builds_dynamic_ui_and_couples_widgets(monkeypatch):
+def test_effect_tester_window_builds_dynamic_ui_and_couples_widgets(monkeypatch, tmp_path):
     module = load_module()
     get_app()
     backend = FakeBackend()
     monkeypatch.setattr(module.QMessageBox, "critical", staticmethod(lambda *args, **kwargs: None))
 
-    window = module.EffectTesterWindow(backend)
+    window = module.EffectTesterWindow(
+        backend,
+        effect_collections=[
+            {
+                "collection_id": "example-selection",
+                "title": "Example Selection",
+                "source_id": "pkg",
+                "effect_ids": ["alpha_effect"],
+            }
+        ],
+    )
     process_events()
 
     assert backend.started is True
-    assert window.effect_combo.count() == 2
+    assert window.effect_list.count() == 2
     assert window.apply_button.text() == "State setzen"
 
     preset_positions = [window.preset_layout.getItemPosition(index)[:2] for index in range(window.preset_layout.count())]
@@ -227,10 +353,14 @@ def test_effect_tester_window_builds_dynamic_ui_and_couples_widgets(monkeypatch)
     preset_red = window.findChild(QPushButton, "preset-button-preset_red")
     assert preset_red is not None
     assert "#FF0000" in preset_red.styleSheet()
+    preset_red.click()
+    process_events()
+    assert backend.applied_presets == [("pkg", "preset_red")]
 
     color_line = window.findChild(QLineEdit, "param-color-text")
     color_button = window.findChild(QPushButton, "param-color-picker")
     assert color_line is not None and color_button is not None
+    assert color_line.text() == "#FF0000"
     color_line.setText("#ABCDEF")
     process_events()
     assert "#ABCDEF" in color_button.styleSheet()
@@ -281,17 +411,13 @@ def test_effect_tester_window_builds_dynamic_ui_and_couples_widgets(monkeypatch)
     custom_payload.setText('{"demo": true}')
     process_events()
 
-    preset_red.click()
-    process_events()
-    assert backend.applied_presets == [("pkg", "preset_red")]
-
     window.apply_button.click()
     process_events()
     assert backend.applied_effects == [
         (
             "pkg",
             "alpha_effect",
-            "MAIN_LAYER",
+            "STATE_LAYER",
             {
                 "color": "#ABCDEF",
                 "brightness": 0.75,
@@ -305,11 +431,133 @@ def test_effect_tester_window_builds_dynamic_ui_and_couples_widgets(monkeypatch)
         )
     ]
 
-    window.effect_combo.setCurrentIndex(1)
+    window.draft_title_edit.setText("Listening Calm")
+    window.draft_comment_edit.setPlainText("Kandidat fuer den ruhigen Listening-State")
+    window.copy_draft_button.click()
+    process_events()
+    copied_draft = json.loads(QApplication.clipboard().text())
+    assert copied_draft["format"] == "effect-preset-draft/1"
+    assert copied_draft["effect"]["id"] == "alpha_effect"
+    assert copied_draft["preset_draft"]["suggested_id"] == "listening_calm"
+    assert copied_draft["preset_draft"]["comment"] == "Kandidat fuer den ruhigen Listening-State"
+    assert copied_draft["preset_draft"]["params"]["brightness"] == 0.75
+
+    exported_draft_path = tmp_path / "effect_preset_draft.json"
+    monkeypatch.setattr(
+        module.QFileDialog,
+        "getSaveFileName",
+        staticmethod(lambda *_args, **_kwargs: (str(exported_draft_path), "JSON-Dateien (*.json)")),
+    )
+    try:
+        window.export_draft_button.click()
+        process_events()
+        exported_draft = json.loads(exported_draft_path.read_text(encoding="utf-8"))
+        assert exported_draft["preset_draft"]["params"] == copied_draft["preset_draft"]["params"]
+        assert exported_draft["preset_draft"]["comment"] == copied_draft["preset_draft"]["comment"]
+    finally:
+        exported_draft_path.unlink(missing_ok=True)
+
+    collection_index = window.package_filter.findData("collection:example-selection")
+    assert collection_index >= 0
+    window.package_filter.setCurrentIndex(collection_index)
+    process_events()
+    assert window.effect_list.count() == 1
+    window.package_filter.setCurrentIndex(0)
+    process_events()
+
+    window.clear_button.click()
+    process_events()
+    assert backend.cleared_types == ["state"]
+
+    window.search_edit.setText("event")
+    process_events()
+    assert window.effect_list.count() == 1
+    window.search_edit.clear()
+    process_events()
+    window.type_filter.setCurrentIndex(3)
+    process_events()
+    assert window.effect_list.count() == 1
+
+    window.effect_list.setCurrentRow(0)
     process_events()
     assert window.apply_button.text() == "Effekt einmalig abspielen"
     assert window.findChild(QSpinBox, "param-duration_ms-spin") is not None
+    assert window.live_preview_checkbox.isEnabled() is False
+
+    window.type_filter.setCurrentIndex(1)
+    process_events()
+    window.live_preview_checkbox.setChecked(True)
+    brightness_spin = window.parameter_bindings["brightness"].primary_widget
+    assert isinstance(brightness_spin, QSpinBox)
+    brightness_spin.setValue(40)
+    QTest.qWait(220)
+    process_events()
+    assert backend.applied_effects[-1][3]["brightness"] == 0.4
+
+    window.reload_button.click()
+    process_events()
+    assert backend.reload_count == 1
 
     window.close()
     process_events()
     assert backend.closed is True
+
+
+def test_effect_studio_loads_local_collection_and_builds_stable_draft(tmp_path):
+    module = load_module()
+
+    collection_path = tmp_path / "example-selection" / "set.json"
+    collection_path.parent.mkdir(parents=True)
+    collection_path.write_text(
+        json.dumps(
+            {
+                "format": "effect-curation/1",
+                "collection_id": "example-selection",
+                "title": "Example Selection",
+                "source_id": "default-effects",
+                "effects": [
+                    {"id": "direction_indicator"},
+                    {"id": "soft_pulse"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    collections = module.load_effect_collections(tmp_path)
+    assert len(collections) == 1
+    assert collections[0]["collection_id"] == "example-selection"
+    assert collections[0]["effect_ids"] == ["direction_indicator", "soft_pulse"]
+
+    draft = module.build_preset_draft(
+        {
+            "id": "soft_pulse",
+            "qualified_id": "default-effects::soft_pulse",
+            "title": "Soft Pulse",
+            "type": "state",
+            "source_id": "default-effects",
+            "package_id": "default-effects.soft_pulse",
+        },
+        {"color": "#123456", "speed": 0.8},
+        title="Listening Calm",
+        comment="Ruhiger Listening-State",
+        created_at="2026-08-01T12:00:00+02:00",
+    )
+    assert draft == {
+        "format": "effect-preset-draft/1",
+        "created_at": "2026-08-01T12:00:00+02:00",
+        "effect": {
+            "id": "soft_pulse",
+            "qualified_id": "default-effects::soft_pulse",
+            "title": "Soft Pulse",
+            "type": "state",
+            "source_id": "default-effects",
+            "package_id": "default-effects.soft_pulse",
+        },
+        "preset_draft": {
+            "suggested_id": "listening_calm",
+            "title": "Listening Calm",
+            "comment": "Ruhiger Listening-State",
+            "params": {"color": "#123456", "speed": 0.8},
+        },
+    }

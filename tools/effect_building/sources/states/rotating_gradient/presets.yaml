@@ -1,0 +1,77 @@
+presets:
+  rotating_gradient_idle:
+    title: Rotating Gradient Idle
+    description: Auto-generated state preset for rotating_gradient (idle).
+    params:
+      background_color: "#020814"
+      brightness: 0.45
+      speed: 0.7
+      reverse: false
+      gradient:
+        -
+          at: 0.0
+          color: "#4A7BFF"
+        -
+          at: 1.0
+          color: "#7FD1FF"
+    tags:
+      - state
+      - idle
+      - rotating_gradient
+  rotating_gradient_focus:
+    title: Rotating Gradient Focus
+    description: Auto-generated state preset for rotating_gradient (focus).
+    params:
+      background_color: "#03110D"
+      brightness: 0.72
+      speed: 1.1
+      reverse: false
+      gradient:
+        -
+          at: 0.0
+          color: "#2ED3A8"
+        -
+          at: 1.0
+          color: "#5DFFC8"
+    tags:
+      - state
+      - focus
+      - rotating_gradient
+  rotating_gradient_ready:
+    title: Rotating Gradient Ready
+    description: Auto-generated state preset for rotating_gradient (ready).
+    params:
+      background_color: "#041018"
+      brightness: 0.66
+      speed: 0.95
+      reverse: false
+      gradient:
+        -
+          at: 0.0
+          color: "#5BC0FF"
+        -
+          at: 1.0
+          color: "#89D6FF"
+    tags:
+      - state
+      - ready
+      - rotating_gradient
+  rotating_gradient_rest:
+    title: Rotating Gradient Rest
+    description: Auto-generated state preset for rotating_gradient (rest).
+    params:
+      background_color: "#05070C"
+      brightness: 0.38
+      speed: 0.55
+      reverse: false
+      gradient:
+        -
+          at: 0.0
+          color: "#7AA4FF"
+        -
+          at: 1.0
+          color: "#B7C7FF"
+    tags:
+      - state
+      - rest
+      - rotating_gradient

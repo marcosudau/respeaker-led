@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import importlib.util
 import json
@@ -11,8 +12,13 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
-from ..core.effect_schema import BaseEffect
-from .effect_command_registry import EffectCommandDefinition, parse_command_definitions
+from ..core.effect_schema import (
+    BaseEffect,
+    DefinitionType,
+    OverlayMode,
+    validate_definition_contract,
+)
+from ..core.parameter_validation import resolve_configuration
 from .effect_package_loader import load_effect_package
 from .effect_package_schema import (
     EffectPackageManifest,
@@ -22,6 +28,23 @@ from .effect_package_schema import (
     serialize_effect_definition,
 )
 from .effect_preset_registry import EffectPresetDefinition, parse_effect_preset_definitions
+
+
+_ALLOWED_EFFECT_IMPORTS = {
+    "__future__",
+    "collections",
+    "dataclasses",
+    "enum",
+    "functools",
+    "hashlib",
+    "itertools",
+    "math",
+    "random",
+    "statistics",
+    "typing",
+    "src.core.color_math",
+    "src.core.effect_schema",
+}
 
 
 @dataclass(slots=True, frozen=True)
@@ -87,7 +110,6 @@ def validate_effect_source(source_dir: str | Path) -> ValidationResult:
             "entry_module": manifest.entry_module,
             "entry_class": manifest.entry_class,
             "preset_count": len(built["presets"]),
-            "command_count": len(built["commands"]),
         },
     )
 
@@ -103,7 +125,6 @@ def validate_effect_set_source(source_dir: str | Path) -> ValidationResult:
         details={
             "effect_count": len(manifest.effects),
             "preset_count": built["preset_count"],
-            "command_count": built["command_count"],
         },
     )
 
@@ -116,7 +137,8 @@ def init_effect_source(
     title: str | None = None,
     package_id: str | None = None,
     class_name: str | None = None,
-    layer: str = "MAIN_LAYER",
+    definition_type: str = "state",
+    overlay_mode: str | None = None,
     format_name: str = "yaml",
     force: bool = False,
 ) -> ScaffoldResult:
@@ -136,21 +158,21 @@ def init_effect_source(
         source_id=source_id,
         class_name=normalized_class_name,
         title=normalized_title,
-        layer=layer,
+        definition_type=definition_type,
+        overlay_mode=overlay_mode,
     )
     effect_py = _render_effect_python(
         class_name=normalized_class_name,
         effect_id=effect_id,
         title=normalized_title,
-        layer=layer,
+        definition_type=definition_type,
+        overlay_mode=overlay_mode,
     )
-    preset_text = _render_effect_presets_template(title=normalized_title, layer=layer)
-    command_text = _render_commands_template(layer=layer)
+    preset_text = _render_effect_presets_template(title=normalized_title, effect_id=effect_id)
 
     created_files = [
         _write_text_file(metadata_path, metadata_text),
         _write_text_file(target / "presets.yaml", preset_text),
-        _write_text_file(target / "commands.json", command_text),
         _write_text_file(target / "effect.py", effect_py),
     ]
     (target / "assets").mkdir(exist_ok=True)
@@ -193,6 +215,7 @@ def init_effect_batch(batch_file: str | Path, output_root: str | Path, *, force:
     payload = json.loads(batch_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("Effect batch file must contain a JSON object")
+    _reject_unknown_source_keys(payload, {"source_id", "effects"}, "effect batch")
     source_id = str(payload.get("source_id", "")).strip()
     if not source_id:
         raise ValueError("Effect batch file must define source_id")
@@ -205,6 +228,19 @@ def init_effect_batch(batch_file: str | Path, output_root: str | Path, *, force:
     for item in raw_effects:
         if not isinstance(item, dict):
             raise ValueError("Each effect batch item must be a JSON object")
+        _reject_unknown_source_keys(
+            item,
+            {
+                "effect_id",
+                "title",
+                "package_id",
+                "class_name",
+                "definition_type",
+                "overlay_mode",
+                "format",
+            },
+            "effect batch item",
+        )
         effect_id = str(item.get("effect_id", "")).strip()
         if not effect_id:
             raise ValueError("Each effect batch item must define effect_id")
@@ -216,7 +252,8 @@ def init_effect_batch(batch_file: str | Path, output_root: str | Path, *, force:
                 title=None if item.get("title") is None else str(item.get("title")),
                 package_id=None if item.get("package_id") is None else str(item.get("package_id")),
                 class_name=None if item.get("class_name") is None else str(item.get("class_name")),
-                layer=str(item.get("layer", "MAIN_LAYER")),
+                definition_type=str(item.get("definition_type", "state")),
+                overlay_mode=None if item.get("overlay_mode") is None else str(item.get("overlay_mode")),
                 format_name=str(item.get("format", "yaml")),
                 force=force,
             )
@@ -227,12 +264,28 @@ def init_effect_batch(batch_file: str | Path, output_root: str | Path, *, force:
 def _build_effect_package_bytes(source_dir: Path) -> dict[str, Any]:
     source_dir = source_dir.resolve()
     metadata = load_source_manifest(source_dir, "effect")
+    _reject_unknown_source_keys(
+        metadata,
+        {
+            "package_id",
+            "source_id",
+            "entry_file",
+            "entry_class",
+            "min_service_version",
+            "author",
+            "vendor",
+        },
+        "effect source manifest",
+    )
     entry_file = source_dir / str(metadata.get("entry_file", "effect.py"))
     if not entry_file.exists():
         raise FileNotFoundError(f"Effect source is missing entry file: {entry_file}")
 
+    _validate_effect_source_layout(source_dir, entry_file)
     effect_class = _load_effect_class(source_dir, entry_file, metadata.get("entry_class"))
     definition = effect_class.get_definition()
+    validate_definition_contract(definition)
+    resolve_configuration(definition)
     serialized = serialize_effect_definition(definition)
     source_id = str(metadata.get("source_id", "")).strip()
     if not source_id:
@@ -241,19 +294,24 @@ def _build_effect_package_bytes(source_dir: Path) -> dict[str, Any]:
     min_service_version = str(metadata.get("min_service_version", "1.0.0")).strip()
     entry_module = f"payload.{entry_file.relative_to(source_dir).with_suffix('').as_posix().replace('/', '.')}"
     manifest = EffectPackageManifest(
-        format="lefx/1",
+        format="lefx/2",
         package_id=package_id,
         source_id=source_id,
         effect_id=definition.id,
         qualified_effect_id=f"{source_id}::{definition.id}",
         title=definition.title,
         description=definition.description,
+        definition_type=definition.definition_type,
+        overlay_mode=definition.overlay_mode,
         version=int(definition.version),
         runtime="python_base_effect/1",
         entry_module=entry_module,
         entry_class=effect_class.__name__,
         defaults=serialized["defaults"],
         parameter_schema=serialized["parameter_schema"],
+        runtime_input_schema=serialized["runtime_input_schema"],
+        visual=serialized["visual"],
+        input_sampling=serialized["input_sampling"],
         layer_rules=serialized["layer_rules"],
         capabilities=serialized["capabilities"],
         min_service_version=min_service_version,
@@ -269,26 +327,17 @@ def _build_effect_package_bytes(source_dir: Path) -> dict[str, Any]:
         else parse_effect_preset_definitions(source_id, definition, presets_payload)
     )
 
-    commands_payload = _load_optional_commands_payload(source_dir)
-    commands = (
-        []
-        if commands_payload is None
-        else parse_command_definitions(
-            source_id,
-            commands_payload,
-            presets=presets,
-            default_effect_id=definition.id,
-            source_effect_ids={manifest.qualified_effect_id},
+    if (source_dir / "commands.json").exists():
+        raise ValueError(
+            "LEFX V2 does not support embedded commands.json; use application aliases outside the package"
         )
-    )
 
     files = _collect_payload_files(source_dir)
-    archive_bytes = _build_effect_archive(manifest, files, presets=presets, commands_payload=commands_payload)
+    archive_bytes = _build_effect_archive(manifest, files, presets=presets)
     return {
         "bytes": archive_bytes,
         "manifest": manifest,
         "presets": presets,
-        "commands": commands,
         "warnings": [],
     }
 
@@ -296,6 +345,22 @@ def _build_effect_package_bytes(source_dir: Path) -> dict[str, Any]:
 def _build_effect_set_bytes(source_dir: Path) -> dict[str, Any]:
     source_dir = source_dir.resolve()
     metadata = load_source_manifest(source_dir, "set")
+    _reject_unknown_source_keys(
+        metadata,
+        {
+            "set_id",
+            "source_id",
+            "title",
+            "version",
+            "min_service_version",
+            "effects",
+            "description",
+            "tags",
+            "author",
+            "vendor",
+        },
+        "effect set source manifest",
+    )
     source_id = str(metadata.get("source_id", "")).strip()
     if not source_id:
         raise ValueError("Effect set source manifest must define source_id")
@@ -321,9 +386,7 @@ def _build_effect_set_bytes(source_dir: Path) -> dict[str, Any]:
     nested_packages: list[tuple[str, bytes, EffectPackageManifest]] = []
     warnings: list[str] = []
     preset_ids: set[str] = set()
-    command_names: set[str] = set()
     preset_count = 0
-    command_count = 0
 
     for item in effect_items:
         if item.is_dir():
@@ -339,7 +402,6 @@ def _build_effect_set_bytes(source_dir: Path) -> dict[str, Any]:
             )
             nested_packages.append((file_name, built["bytes"], manifest))
             preset_count += _track_preset_ids(preset_ids, built["presets"])
-            command_count += _track_command_names(command_names, built["commands"], source_id=source_id)
             continue
 
         loaded = load_effect_package(item)
@@ -349,7 +411,6 @@ def _build_effect_set_bytes(source_dir: Path) -> dict[str, Any]:
             )
         nested_packages.append((f"effects/{item.name}", item.read_bytes(), loaded.manifest))
         preset_count += _track_preset_ids(preset_ids, list(loaded.presets))
-        command_count += _track_command_names(command_names, list(loaded.commands), source_id=source_id)
 
     effect_entries = [
         {
@@ -362,7 +423,7 @@ def _build_effect_set_bytes(source_dir: Path) -> dict[str, Any]:
         for file_name, _, manifest in nested_packages
     ]
     manifest = EffectSetManifest(
-        format="lefxset/1",
+        format="lefxset/2",
         set_id=set_id,
         source_id=source_id,
         title=str(metadata.get("title", set_id)).strip(),
@@ -373,7 +434,6 @@ def _build_effect_set_bytes(source_dir: Path) -> dict[str, Any]:
         tags=tuple(str(item) for item in metadata.get("tags", [])) if isinstance(metadata.get("tags"), list) else (),
         author=None if metadata.get("author") is None else str(metadata.get("author")),
         vendor=None if metadata.get("vendor") is None else str(metadata.get("vendor")),
-        command_namespace=None,
     )
     archive_bytes = _build_effect_set_archive(manifest, nested_packages)
     return {
@@ -381,7 +441,6 @@ def _build_effect_set_bytes(source_dir: Path) -> dict[str, Any]:
         "manifest": manifest,
         "warnings": warnings,
         "preset_count": preset_count,
-        "command_count": command_count,
     }
 
 
@@ -393,16 +452,14 @@ def _track_preset_ids(seen: set[str], presets: list[EffectPresetDefinition]) -> 
     return len(presets)
 
 
-def _track_command_names(seen: set[str], commands: list[EffectCommandDefinition], *, source_id: str) -> int:
-    for command in commands:
-        if command.source_id != source_id:
-            raise ValueError(
-                f"Command {command.command_name!r} belongs to source {command.source_id!r}, expected {source_id!r}"
-            )
-        if command.command_name in seen:
-            raise ValueError(f"Duplicate command name detected within source: {command.command_name!r}")
-        seen.add(command.command_name)
-    return len(commands)
+def _reject_unknown_source_keys(
+    payload: dict[str, Any],
+    allowed: set[str],
+    label: str,
+) -> None:
+    unknown = sorted(set(payload) - allowed)
+    if unknown:
+        raise ValueError(f"{label} contains unknown keys: {', '.join(unknown)}")
 
 
 def _resolve_effect_set_member(effects_root: Path, raw_name: str) -> Path:
@@ -433,21 +490,72 @@ def _load_effect_class(source_dir: Path, entry_file: Path, configured_entry_clas
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
 
+    discovered = [
+        value for value in module.__dict__.values()
+        if (
+            isinstance(value, type)
+            and issubclass(value, BaseEffect)
+            and value is not BaseEffect
+            and value.__module__ == module.__name__
+        )
+    ]
+    if len(discovered) != 1:
+        raise ValueError(
+            f"Source effect module {entry_file} must contain exactly one local BaseEffect subclass"
+        )
+
     if configured_entry_class:
         effect_class = getattr(module, str(configured_entry_class), None)
         if not isinstance(effect_class, type) or not issubclass(effect_class, BaseEffect):
             raise ValueError(f"Configured entry_class {configured_entry_class!r} is not a BaseEffect subclass")
+        if effect_class is not discovered[0]:
+            raise ValueError(
+                f"Configured entry_class {configured_entry_class!r} is not the single local effect class"
+            )
         return effect_class
 
-    discovered = [
-        value for value in module.__dict__.values()
-        if isinstance(value, type) and issubclass(value, BaseEffect) and value is not BaseEffect
-    ]
-    if len(discovered) != 1:
-        raise ValueError(
-            f"Source effect module {entry_file} must contain exactly one BaseEffect subclass when entry_class is omitted"
-        )
     return discovered[0]
+
+
+def _validate_effect_source_layout(source_dir: Path, entry_file: Path) -> None:
+    try:
+        entry_file.relative_to(source_dir)
+    except ValueError as exc:
+        raise ValueError("Effect entry_file must stay inside its source directory") from exc
+
+    python_files = sorted(source_dir.rglob("*.py"))
+    common_files = [path for path in python_files if path.name.casefold() == "common.py"]
+    if common_files:
+        names = ", ".join(path.relative_to(source_dir).as_posix() for path in common_files)
+        raise ValueError(
+            f"LEFX V2 sources must not contain generic common.py modules: {names}"
+        )
+
+    for path in python_files:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                modules = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:
+                    continue
+                modules = [] if node.module is None else [node.module]
+            else:
+                continue
+            for module in modules:
+                if _effect_import_is_allowed(module):
+                    continue
+                raise ValueError(
+                    f"LEFX V2 source {path.relative_to(source_dir).as_posix()} "
+                    f"imports unsupported module {module!r}"
+                )
+
+
+def _effect_import_is_allowed(module: str) -> bool:
+    return any(
+        module == allowed or module.startswith(f"{allowed}.")
+        for allowed in _ALLOWED_EFFECT_IMPORTS
+    )
 
 
 def _collect_payload_files(source_dir: Path) -> dict[str, bytes]:
@@ -476,7 +584,6 @@ def _build_effect_archive(
     files: dict[str, bytes],
     *,
     presets: list[EffectPresetDefinition],
-    commands_payload: dict[str, Any] | None,
 ) -> bytes:
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -494,11 +601,6 @@ def _build_effect_archive(
             archive.writestr("effect-presets.json", preset_bytes)
             hashes["effect-presets.json"] = hashlib.sha256(preset_bytes).hexdigest()
 
-        if commands_payload is not None:
-            command_bytes = json.dumps(commands_payload, ensure_ascii=True, indent=2, sort_keys=True).encode("utf-8")
-            archive.writestr("commands.json", command_bytes)
-            hashes["commands.json"] = hashlib.sha256(command_bytes).hexdigest()
-
         for name, content in files.items():
             archive.writestr(name, content)
             hashes[name] = hashlib.sha256(content).hexdigest()
@@ -510,21 +612,13 @@ def _build_effect_archive(
 
 def _serialize_preset_payload(preset: EffectPresetDefinition) -> dict[str, Any]:
     payload = {
-        "category": preset.category,
-        "target_layer": preset.target_layer.value,
         "params": dict(preset.params),
-        "enqueue": preset.enqueue,
-        "replace_existing": preset.replace_existing,
         "tags": list(preset.tags),
     }
     if preset.title is not None:
         payload["title"] = preset.title
     if preset.description is not None:
         payload["description"] = preset.description
-    if preset.duration_ms is not None:
-        payload["duration_ms"] = preset.duration_ms
-    if preset.priority is not None:
-        payload["priority"] = preset.priority
     return payload
 
 
@@ -566,7 +660,8 @@ def _render_effect_metadata(
     source_id: str,
     class_name: str,
     title: str,
-    layer: str,
+    definition_type: str,
+    overlay_mode: str | None,
 ) -> str:
     normalized = format_name.strip().lower()
     if normalized == "json":
@@ -578,7 +673,8 @@ def _render_effect_metadata(
                 "min_service_version": "1.0.0",
                 "notes": {
                     "title_hint": title,
-                    "layer_hint": layer,
+                    "definition_type": definition_type,
+                    "overlay_mode": overlay_mode,
                 },
             },
             ensure_ascii=True,
@@ -589,7 +685,8 @@ def _render_effect_metadata(
         [
             "# Primary metadata for this effect source.",
             f"# Title hint: {title}",
-            f"# Suggested primary layer: {layer}",
+            f"# Definition type: {definition_type}",
+            f"# Overlay mode: {overlay_mode or 'not-applicable'}",
             f"package_id: {package_id}",
             f"source_id: {source_id}",
             f"entry_class: {class_name}",
@@ -630,77 +727,99 @@ def _render_set_metadata(*, format_name: str, set_id: str, source_id: str, title
     )
 
 
-def _render_effect_presets_template(*, title: str, layer: str) -> str:
-    category = _layer_to_preset_category(layer)
-    preset_id = f"{category}_example"
+def _render_effect_presets_template(*, title: str, effect_id: str) -> str:
+    preset_id = f"{effect_id}_example"
     return "\n".join(
         [
             "# Optional embedded presets for this effect.",
-            "# Preset ids must stay source-local and use the category prefix.",
+            "# Presets configure this definition and cannot change its type or lifecycle.",
             "presets:",
             f"  {preset_id}:",
             f"    title: {json.dumps(f'{title} Example', ensure_ascii=True)}",
             f"    description: {json.dumps('TODO: describe this preset.', ensure_ascii=True)}",
-            f"    category: {category}",
-            f"    target_layer: {layer}",
             "    params:",
             f"      color: {json.dumps('#33AAFF', ensure_ascii=True)}",
             "    tags:",
-            f"      - {category}",
+            "      - example",
             "",
         ]
     )
 
 
-def _render_commands_template(*, layer: str) -> str:
-    category = _layer_to_preset_category(layer)
-    preset_id = f"{category}_example"
-    target_layer = _category_to_default_layer(category)
-    example = {
-        "commands": {
-            f"{category}_example": {
-                "kind": "event" if category == "event" else "state_toggle",
-                "on": {
-                    "preset": preset_id,
-                },
-            }
-        }
-    }
-    if category != "event":
-        example["commands"][f"{category}_example"]["off"] = {
-            "action": "clear_layer",
-            "target_layer": target_layer,
-        }
-    return json.dumps(example, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
+def _render_effect_python(
+    *,
+    class_name: str,
+    effect_id: str,
+    title: str,
+    definition_type: str,
+    overlay_mode: str | None,
+) -> str:
+    normalized_type = DefinitionType(str(definition_type).strip().lower())
+    normalized_overlay_mode = None
+    if normalized_type is DefinitionType.OVERLAY:
+        if overlay_mode is None:
+            raise ValueError("Overlay scaffolds must define overlay_mode as controlled or timed")
+        normalized_overlay_mode = OverlayMode(str(overlay_mode).strip().lower())
+    elif overlay_mode is not None:
+        raise ValueError("overlay_mode is valid only for Overlay definitions")
 
-
-def _render_effect_python(*, class_name: str, effect_id: str, title: str, layer: str) -> str:
-    return "\n".join(
+    layer, playback_modes, duration_rule = _scaffold_lifecycle(
+        normalized_type,
+        normalized_overlay_mode,
+    )
+    import_names = (
+        "BaseEffect, ColorModel, DefinitionType, EffectCapabilities, EffectDefinition, "
+        "EffectParamDefinition, LayerId, LayerRule, OverlayMode, PlaybackMode, RenderContext"
+    )
+    finite_definition = normalized_type is DefinitionType.EVENT or (
+        normalized_type is DefinitionType.OVERLAY
+        and normalized_overlay_mode is OverlayMode.TIMED
+    )
+    lines = [
+        "from __future__ import annotations",
+        "",
+        f"from src.core.effect_schema import {import_names}",
+        "",
+        "",
+        f"class {class_name}(BaseEffect):",
+        "    definition = EffectDefinition(",
+        f'        id="{effect_id}",',
+        f'        title="{title}",',
+        '        description="TODO: describe this definition.",',
+        f"        definition_type=DefinitionType.{normalized_type.name},",
+    ]
+    if normalized_overlay_mode is not None:
+        lines.append(f"        overlay_mode=OverlayMode.{normalized_overlay_mode.name},")
+    lines.extend(
         [
-            "from __future__ import annotations",
-            "",
-            "from src.core.effect_schema import BaseEffect, EffectCapabilities, EffectDefinition, EffectParamDefinition, LayerId, LayerRule, PlaybackMode, RenderContext",
-            "",
-            "",
-            f"class {class_name}(BaseEffect):",
-            "    definition = EffectDefinition(",
-            f'        id="{effect_id}",',
-            f'        title="{title}",',
-            '        description="TODO: describe this effect.",',
             "        parameter_schema={",
             '            "color": EffectParamDefinition(name="color", type="color", default="#33AAFF"),',
+            '            "brightness": EffectParamDefinition(name="brightness", type="float", default=1.0, minimum=0.0, maximum=1.0, unit="ratio"),',
+            *(
+                [
+                    '            "duration_ms": EffectParamDefinition(name="duration_ms", type="duration_ms", default=1000, minimum=1, unit="ms"),',
+                ]
+                if finite_definition
+                else []
+            ),
             "        },",
-            '        defaults={"color": "#33AAFF"},',
+            (
+                '        defaults={"color": "#33AAFF", "brightness": 1.0, "duration_ms": 1000},'
+                if finite_definition
+                else '        defaults={"color": "#33AAFF", "brightness": 1.0},'
+            ),
             "        capabilities=EffectCapabilities(",
-            "            playback_modes=(PlaybackMode.LOOP, PlaybackMode.PERSISTENT),",
+            f"            playback_modes={playback_modes},",
             "            restorable=True,",
             "        ),",
             "        layer_rules={",
             f"            LayerId.{layer}: LayerRule(",
             "                allowed=True,",
-            "                allowed_playback_modes=(PlaybackMode.LOOP, PlaybackMode.PERSISTENT),",
+            f"                allowed_playback_modes={playback_modes},",
+            f"                {duration_rule}=True,",
             "            ),",
             "        },",
+            "        color_model=ColorModel.MONO,",
             "    )",
             "",
             "    def render(self, ctx: RenderContext) -> list[int | None]:",
@@ -710,32 +829,28 @@ def _render_effect_python(*, class_name: str, effect_id: str, title: str, layer:
             "",
         ]
     )
+    return "\n".join(lines)
 
 
-def _load_optional_commands_payload(source_dir: Path) -> dict[str, Any] | None:
-    commands_path = source_dir / "commands.json"
-    if not commands_path.exists():
-        return None
-    return json.loads(commands_path.read_text(encoding="utf-8"))
-
-
-def _layer_to_preset_category(layer: str) -> str:
-    normalized = str(layer).strip().upper()
-    if normalized in {"BACKGROUND_STATE_LAYER", "STATE_LAYER"}:
-        return "state"
-    if normalized in {"TEMP_OVERLAY_LAYER", "ONGOING_OVERLAY_LAYER"}:
-        return "overlay"
-    if normalized == "EVENT_LAYER":
-        return "event"
-    return "effect"
-def _category_to_default_layer(category: str) -> str:
-    if category == "state":
-        return "STATE_LAYER"
-    if category == "overlay":
-        return "ONGOING_OVERLAY_LAYER"
-    if category == "event":
-        return "EVENT_LAYER"
-    return "MAIN_LAYER"
+def _scaffold_lifecycle(
+    definition_type: DefinitionType,
+    overlay_mode: OverlayMode | None,
+) -> tuple[str, str, str]:
+    if definition_type is DefinitionType.STATE:
+        return (
+            "STATE_LAYER",
+            "(PlaybackMode.LOOP, PlaybackMode.PERSISTENT)",
+            "requires_indefinite_duration",
+        )
+    if definition_type is DefinitionType.EVENT:
+        return ("EVENT_LAYER", "(PlaybackMode.SINGLE_RUN,)", "requires_finite_duration")
+    if overlay_mode is OverlayMode.TIMED:
+        return ("TEMP_OVERLAY_LAYER", "(PlaybackMode.SINGLE_RUN,)", "requires_finite_duration")
+    return (
+        "ONGOING_OVERLAY_LAYER",
+        "(PlaybackMode.LOOP, PlaybackMode.PERSISTENT)",
+        "requires_indefinite_duration",
+    )
 
 
 def _write_text_file(path: Path, content: str) -> str:

@@ -1,0 +1,53 @@
+presets:
+  pulse_pattern_idle:
+    title: Pulse Pattern Idle
+    description: Auto-generated state preset for pulse_pattern (idle).
+    params:
+      color: "#4A7BFF"
+      background_color: "#020814"
+      brightness: 0.45
+      speed: 0.7
+      pattern: single
+    tags:
+      - state
+      - idle
+      - pulse_pattern
+  pulse_pattern_focus:
+    title: Pulse Pattern Focus
+    description: Auto-generated state preset for pulse_pattern (focus).
+    params:
+      color: "#2ED3A8"
+      background_color: "#03110D"
+      brightness: 0.72
+      speed: 1.1
+      pattern: double
+    tags:
+      - state
+      - focus
+      - pulse_pattern
+  pulse_pattern_ready:
+    title: Pulse Pattern Ready
+    description: Auto-generated state preset for pulse_pattern (ready).
+    params:
+      color: "#5BC0FF"
+      background_color: "#041018"
+      brightness: 0.66
+      speed: 0.95
+      pattern: continuous
+    tags:
+      - state
+      - ready
+      - pulse_pattern
+  pulse_pattern_rest:
+    title: Pulse Pattern Rest
+    description: Auto-generated state preset for pulse_pattern (rest).
+    params:
+      color: "#7AA4FF"
+      background_color: "#05070C"
+      brightness: 0.38
+      speed: 0.55
+      pattern: single
+    tags:
+      - state
+      - rest
+      - pulse_pattern

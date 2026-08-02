@@ -72,6 +72,19 @@ Pytest buendelt temporaere Dateien, den Pytest-Cache, Python-Bytecode und die nu
 Tests gebauten Effektartefakte unter `tests/.cache/`. Der Ordner wird nach jeder
 Testsitzung automatisch entfernt.
 
+### 3. Groessere Aenderungen isoliert erproben
+
+Hardwaretests, Architekturumbauten und Aenderungen am Effektemodell werden
+zuerst in separaten lokalen Versuchsklonen entwickelt:
+
+```powershell
+.\build-tools\scripts\new_experiment.ps1 -Name mein-experiment
+```
+
+Die Klone verwenden eine gemeinsame, nicht an einen Checkout gekoppelte Venv.
+Der vollstaendige Ablauf und die Kriterien fuer eine spaetere Uebernahme nach
+`main` stehen im [Experiment-Workflow](docs/dev/experiment_workflow.md).
+
 ## Building
 
 Der Standard-Build laeuft ueber [build-tools/build.py](build-tools/build.py) und liest seine Schalter und Effektquellen aus [build-tools/build_config.json](build-tools/build_config.json).
@@ -125,9 +138,10 @@ Die Release-Regeln und der Tag-basierte Ablauf stehen in [build-tools/RELEASE.md
 ## Weiterfuehrende Doku
 
 - [docs/getting_started.md](docs/getting_started.md)
+- [docs/cli_guide.md](docs/cli_guide.md)
 - [docs/api_guide.md](docs/api_guide.md)
 - [docs/effects.md](docs/effects.md)
-- [docs/current_approach.md](docs/current_approach.md)
-- [docs/presets.md](docs/presets.md)
+- [docs/dev/architecture.md](docs/dev/architecture.md)
+- [docs/effect-system/08_packages_ids_and_configuration.md](docs/effect-system/08_packages_ids_and_configuration.md)
 - [docs/troubleshooting.md](docs/troubleshooting.md)
 - [docs/dev/index.md](docs/dev/index.md)

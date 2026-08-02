@@ -1,5 +1,0 @@
-package_id: default-effects.progress_ring
-source_id: default-effects
-entry_file: effect.py
-entry_class: ProgressRingEffect
-min_service_version: 1.0.0

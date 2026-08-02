@@ -1,0 +1,53 @@
+presets:
+  soft_pulsing_ring_idle:
+    title: Soft Pulsing Ring Idle
+    description: Auto-generated state preset for soft_pulsing_ring (idle).
+    params:
+      color: "#4A7BFF"
+      background_color: "#020814"
+      brightness: 0.45
+      speed: 0.7
+      min_brightness: 0.11
+    tags:
+      - state
+      - idle
+      - soft_pulsing_ring
+  soft_pulsing_ring_focus:
+    title: Soft Pulsing Ring Focus
+    description: Auto-generated state preset for soft_pulsing_ring (focus).
+    params:
+      color: "#2ED3A8"
+      background_color: "#03110D"
+      brightness: 0.72
+      speed: 1.1
+      min_brightness: 0.18
+    tags:
+      - state
+      - focus
+      - soft_pulsing_ring
+  soft_pulsing_ring_ready:
+    title: Soft Pulsing Ring Ready
+    description: Auto-generated state preset for soft_pulsing_ring (ready).
+    params:
+      color: "#5BC0FF"
+      background_color: "#041018"
+      brightness: 0.66
+      speed: 0.95
+      min_brightness: 0.17
+    tags:
+      - state
+      - ready
+      - soft_pulsing_ring
+  soft_pulsing_ring_rest:
+    title: Soft Pulsing Ring Rest
+    description: Auto-generated state preset for soft_pulsing_ring (rest).
+    params:
+      color: "#7AA4FF"
+      background_color: "#05070C"
+      brightness: 0.38
+      speed: 0.55
+      min_brightness: 0.1
+    tags:
+      - state
+      - rest
+      - soft_pulsing_ring

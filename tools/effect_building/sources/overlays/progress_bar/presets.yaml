@@ -1,0 +1,45 @@
+presets:
+  progress_bar_assist:
+    title: Progress Bar Assist
+    description: Auto-generated overlay preset for progress_bar (assist).
+    params:
+      color: "#7FC9FF"
+      background_color: "#000000"
+      brightness: 0.6
+    tags:
+      - overlay
+      - assist
+      - progress_bar
+  progress_bar_tracking:
+    title: Progress Bar Tracking
+    description: Auto-generated overlay preset for progress_bar (tracking).
+    params:
+      color: "#33FFAA"
+      background_color: "#000000"
+      brightness: 0.85
+    tags:
+      - overlay
+      - tracking
+      - progress_bar
+  progress_bar_guide:
+    title: Progress Bar Guide
+    description: Auto-generated overlay preset for progress_bar (guide).
+    params:
+      color: "#FFD166"
+      background_color: "#090703"
+      brightness: 0.78
+    tags:
+      - overlay
+      - guide
+      - progress_bar
+  progress_bar_marker:
+    title: Progress Bar Marker
+    description: Auto-generated overlay preset for progress_bar (marker).
+    params:
+      color: "#FF8AAE"
+      background_color: "#090205"
+      brightness: 0.74
+    tags:
+      - overlay
+      - marker
+      - progress_bar

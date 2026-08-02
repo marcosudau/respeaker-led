@@ -54,14 +54,6 @@ def parse_bool_flag(value: str) -> bool:
     raise argparse.ArgumentTypeError(f"Invalid boolean value: {value}")
 
 
-def parse_qualified_identifier(value: str, *, label: str) -> tuple[str, str]:
-    text = str(value or "").strip()
-    source_id, separator, local_id = text.partition("::")
-    if not separator or not source_id or not local_id:
-        raise argparse.ArgumentTypeError(f"{label} must use the form <source_id>::<id>")
-    return source_id, local_id
-
-
 def use_real_device(args) -> bool:
     return not getattr(args, "no_device", False)
 
@@ -83,29 +75,57 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    effect_list_parser = subparsers.add_parser("list-effects", help="List built-in effects exposed by a running local service")
-    add_connection_options(effect_list_parser)
-    effect_list_parser.set_defaults(command_kind="list_effects")
+    list_parser = subparsers.add_parser("list", help="List states, overlays, events, or presets")
+    add_connection_options(list_parser)
+    list_parser.add_argument(
+        "kind",
+        choices=("state", "states", "overlay", "overlays", "event", "events", "preset", "presets"),
+    )
+    list_parser.add_argument("--details", action="store_true")
+    list_parser.add_argument("--json", action="store_true")
+    list_parser.set_defaults(command_kind="list_v2")
 
-    show_effect_parser = subparsers.add_parser("show-effect", help="Show structured metadata for a qualified effect")
-    add_connection_options(show_effect_parser)
-    show_effect_parser.add_argument("qualified_effect_id")
-    show_effect_parser.set_defaults(command_kind="show_effect")
+    show_parser = subparsers.add_parser("show", help="Show one state, overlay, event, or preset")
+    add_connection_options(show_parser)
+    show_parser.add_argument("target")
+    show_parser.add_argument("--json", action="store_true")
+    show_parser.set_defaults(command_kind="show_v2")
 
-    list_effect_presets_parser = subparsers.add_parser("list-effect-presets", help="List embedded presets for a qualified effect")
-    add_connection_options(list_effect_presets_parser)
-    list_effect_presets_parser.add_argument("qualified_effect_id")
-    list_effect_presets_parser.set_defaults(command_kind="list_effect_presets")
+    set_parser = subparsers.add_parser("set", help="Set a state or overlay")
+    add_connection_options(set_parser)
+    set_parser.add_argument("subject_or_target")
+    set_parser.add_argument("target", nargs="?")
+    set_parser.add_argument("--slot", choices=("background", "primary"), default="primary")
+    set_parser.add_argument("--channel")
+    set_parser.add_argument("--config", default="{}")
+    set_parser.add_argument("--inputs", default="{}")
+    set_action = set_parser.add_mutually_exclusive_group()
+    set_action.add_argument("--on", dest="action", action="store_const", const="on")
+    set_action.add_argument("--off", dest="action", action="store_const", const="off")
+    set_action.add_argument("--toggle", dest="action", action="store_const", const="toggle")
+    set_parser.set_defaults(command_kind="set_v2", action="on")
 
-    list_effect_commands_parser = subparsers.add_parser("list-effect-commands", help="List embedded commands for a qualified effect")
-    add_connection_options(list_effect_commands_parser)
-    list_effect_commands_parser.add_argument("qualified_effect_id")
-    list_effect_commands_parser.set_defaults(command_kind="list_effect_commands")
+    clear_parser = subparsers.add_parser("clear", help="Clear a state slot or overlay channel")
+    add_connection_options(clear_parser)
+    clear_parser.add_argument("subject")
+    clear_parser.add_argument("channel", nargs="?")
+    clear_parser.add_argument("--slot", choices=("background", "primary"), default="primary")
+    clear_parser.set_defaults(command_kind="clear_v2")
 
-    apply_effect_preset_parser = subparsers.add_parser("apply-effect-preset", help="Apply a qualified embedded effect preset")
-    add_connection_options(apply_effect_preset_parser)
-    apply_effect_preset_parser.add_argument("qualified_preset_id")
-    apply_effect_preset_parser.set_defaults(command_kind="apply_effect_preset")
+    update_parser = subparsers.add_parser("update", help="Update a controlled overlay")
+    add_connection_options(update_parser)
+    update_parser.add_argument("subject_or_channel")
+    update_parser.add_argument("channel", nargs="?")
+    update_parser.add_argument("--inputs", required=True)
+    update_parser.set_defaults(command_kind="update_v2")
+
+    emit_parser = subparsers.add_parser("emit", help="Emit an event")
+    add_connection_options(emit_parser)
+    emit_parser.add_argument("subject_or_target")
+    emit_parser.add_argument("target", nargs="?")
+    emit_parser.add_argument("--config", default="{}")
+    emit_parser.add_argument("--priority", type=int)
+    emit_parser.set_defaults(command_kind="emit_v2")
 
     effect_source_list_parser = subparsers.add_parser("list-effect-sources", help="List registered or autodiscovered effect sources")
     add_connection_options(effect_source_list_parser)
@@ -125,18 +145,6 @@ def build_parser() -> argparse.ArgumentParser:
     add_connection_options(remove_effect_source_parser)
     remove_effect_source_parser.add_argument("source_id")
     remove_effect_source_parser.set_defaults(command_kind="remove_effect_source")
-
-    list_commands_parser = subparsers.add_parser("list-commands", help="List registered packaged commands")
-    add_connection_options(list_commands_parser)
-    list_commands_parser.add_argument("--source")
-    list_commands_parser.set_defaults(command_kind="list_commands")
-
-    invoke_command_parser = subparsers.add_parser("invoke-command", help="Invoke a packaged command on a running service")
-    add_connection_options(invoke_command_parser)
-    invoke_command_parser.add_argument("source_id")
-    invoke_command_parser.add_argument("command_name")
-    invoke_command_parser.add_argument("state", nargs="?")
-    invoke_command_parser.set_defaults(command_kind="invoke_command")
 
     serve_parser = subparsers.add_parser("serve", help="Start the local controller process")
     serve_parser.add_argument("--host", default="127.0.0.1")
@@ -176,22 +184,6 @@ def build_parser() -> argparse.ArgumentParser:
     emit_event_parser.add_argument("--source")
     emit_event_parser.add_argument("--reason")
     emit_event_parser.set_defaults(command_kind="emit_event")
-
-    apply_effect_parser = subparsers.add_parser("apply-effect", help="Apply a built-in effect on a running service")
-    add_connection_options(apply_effect_parser)
-    apply_effect_parser.add_argument("effect_id")
-    apply_effect_parser.add_argument("target_layer")
-    apply_effect_parser.add_argument("--params", default="{}")
-    apply_effect_parser.add_argument("--duration-ms", type=int)
-    apply_effect_parser.add_argument("--priority", type=int)
-    apply_effect_parser.add_argument("--enqueue", action="store_true")
-    apply_effect_parser.add_argument("--replace-existing", type=parse_bool_flag, default=True)
-    apply_effect_parser.set_defaults(command_kind="apply_effect")
-
-    clear_layer_parser = subparsers.add_parser("clear-layer", help="Clear a specific runtime layer on a running service")
-    add_connection_options(clear_layer_parser)
-    clear_layer_parser.add_argument("target_layer")
-    clear_layer_parser.set_defaults(command_kind="clear_layer")
 
     reset_parser = subparsers.add_parser("reset", help="Reset a running controller service to idle")
     add_connection_options(reset_parser)
@@ -257,8 +249,27 @@ def emit_result(result) -> int:
     return 0 if getattr(result, "ok", False) else 1
 
 
+def emit_list_result(result, *, as_json: bool = False, details: bool = False) -> int:
+    if not getattr(result, "ok", False):
+        return emit_result(result)
+    data = getattr(result, "data", None)
+    if as_json or details or not isinstance(data, list):
+        print(json.dumps(data, ensure_ascii=True, indent=2, sort_keys=True))
+    else:
+        for item in data:
+            print(item)
+    return 0
+
+
 def _normalize_argv(argv: list[str]) -> list[str]:
-    normalized = list(argv)
+    slash_aliases = {
+        "/on": "--on",
+        "/off": "--off",
+        "/toggle": "--toggle",
+        "/json": "--json",
+        "/details": "--details",
+    }
+    normalized = [slash_aliases.get(value.lower(), value) for value in argv]
     if not normalized:
         return normalized
     if normalized[0] == "--":
@@ -329,24 +340,21 @@ def main() -> int:
             clear_active_service_info(ACTIVE_SERVICE_FILE, instance_id=instance_id)
 
     if args.command_kind in {
-        "list_effects",
-        "show_effect",
-        "list_effect_presets",
-        "list_effect_commands",
-        "apply_effect_preset",
+        "list_v2",
+        "show_v2",
+        "set_v2",
+        "clear_v2",
+        "update_v2",
+        "emit_v2",
         "list_effect_sources",
         "register_effect_source",
         "reload_effect_sources",
         "remove_effect_source",
-        "list_commands",
-        "invoke_command",
         "ping",
         "status",
         "set_state",
         "clear_state",
         "emit_event",
-        "apply_effect",
-        "clear_layer",
         "reset",
         "shutdown",
         "start_countdown",
@@ -360,20 +368,69 @@ def main() -> int:
         setup_logging(console=False)
         client = make_client(args, best_effort=False)
 
-        if args.command_kind == "list_effects":
-            return emit_result(client.list_effects())
-        if args.command_kind == "show_effect":
-            source_id, effect_id = parse_qualified_identifier(args.qualified_effect_id, label="qualified_effect_id")
-            return emit_result(client.get_effect(source_id, effect_id))
-        if args.command_kind == "list_effect_presets":
-            source_id, effect_id = parse_qualified_identifier(args.qualified_effect_id, label="qualified_effect_id")
-            return emit_result(client.list_effect_presets(source_id, effect_id))
-        if args.command_kind == "list_effect_commands":
-            source_id, effect_id = parse_qualified_identifier(args.qualified_effect_id, label="qualified_effect_id")
-            return emit_result(client.list_effect_commands_for_effect(source_id, effect_id))
-        if args.command_kind == "apply_effect_preset":
-            source_id, preset_id = parse_qualified_identifier(args.qualified_preset_id, label="qualified_preset_id")
-            return emit_result(client.apply_effect_preset(source_id, preset_id))
+        if args.command_kind == "list_v2":
+            result = client.list_v2(args.kind, details=args.details)
+            return emit_list_result(result, as_json=args.json, details=args.details)
+        if args.command_kind == "show_v2":
+            return emit_result(client.show_target(args.target))
+        if args.command_kind == "set_v2":
+            subject = args.subject_or_target
+            target = args.target
+            if subject not in {"state", "overlay"}:
+                target = subject
+                resolved = client.show_target(target)
+                if not resolved.ok:
+                    return emit_result(resolved)
+                subject = str(resolved.data.get("type", ""))
+            if not target:
+                parser.error("set requires a target id or preset")
+            if subject == "state":
+                return emit_result(
+                    client.set_state_target(
+                        target,
+                        parse_json_payload(args.config),
+                        slot=args.slot,
+                        action=args.action,
+                    )
+                )
+            if subject == "overlay":
+                return emit_result(
+                    client.set_overlay_target(
+                        target,
+                        args.channel,
+                        parse_json_payload(args.config),
+                        parse_json_payload(args.inputs),
+                        action=args.action,
+                    )
+                )
+            parser.error(f"{target!r} is a {subject or 'unknown type'}; set accepts only states and overlays")
+        if args.command_kind == "clear_v2":
+            if args.subject == "state":
+                return emit_result(client.clear_state_target(slot=args.slot))
+            channel = args.channel if args.subject == "overlay" else args.subject
+            if not channel:
+                parser.error("clear overlay requires a channel")
+            return emit_result(client.clear_overlay_target(channel))
+        if args.command_kind == "update_v2":
+            channel = args.channel if args.subject_or_channel == "overlay" else args.subject_or_channel
+            if not channel:
+                parser.error("update requires an overlay channel")
+            return emit_result(client.update_overlay_target(channel, parse_json_payload(args.inputs)))
+        if args.command_kind == "emit_v2":
+            target = (
+                args.target
+                if args.subject_or_target == "event"
+                else args.subject_or_target
+            )
+            if not target:
+                parser.error("emit requires an event id or preset")
+            return emit_result(
+                client.emit_event_target(
+                    target,
+                    parse_json_payload(args.config),
+                    priority=args.priority,
+                )
+            )
         if args.command_kind == "list_effect_sources":
             return emit_result(client.list_effect_sources())
         if args.command_kind == "register_effect_source":
@@ -382,10 +439,6 @@ def main() -> int:
             return emit_result(client.reload_effect_sources())
         if args.command_kind == "remove_effect_source":
             return emit_result(client.remove_effect_source(args.source_id))
-        if args.command_kind == "list_commands":
-            return emit_result(client.list_commands(args.source))
-        if args.command_kind == "invoke_command":
-            return emit_result(client.invoke_command(args.source_id, args.command_name, args.state))
         if args.command_kind == "ping":
             return emit_result(client.ping())
         if args.command_kind == "status":
@@ -405,20 +458,6 @@ def main() -> int:
             if args.reason:
                 payload["reason"] = args.reason
             return emit_result(client.emit_event(args.event_name, payload))
-        if args.command_kind == "apply_effect":
-            return emit_result(
-                client.apply_effect(
-                    args.effect_id,
-                    args.target_layer,
-                    parse_json_payload(args.params),
-                    duration_ms=args.duration_ms,
-                    priority=args.priority,
-                    enqueue=args.enqueue,
-                    replace_existing=args.replace_existing,
-                )
-            )
-        if args.command_kind == "clear_layer":
-            return emit_result(client.clear_layer(args.target_layer))
         if args.command_kind == "reset":
             return emit_result(client.reset())
         if args.command_kind == "shutdown":

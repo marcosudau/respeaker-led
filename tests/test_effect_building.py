@@ -23,16 +23,14 @@ def test_standard_effect_build_scripts_generate_self_contained_packages_and_defa
     package_paths = [Path(item) for item in build_payload["packages"]]
     assert len(package_paths) == len(expected_effects)
 
-    state_capable_packages = 0
+    definition_types = set()
     for package_path in package_paths:
         loaded = load_effect_package(package_path)
         assert len(loaded.presets) >= 4
-        assert len(loaded.commands) == len(loaded.presets)
-        if any(preset.category == "state" for preset in loaded.presets):
-            state_capable_packages += 1
-            assert sum(1 for preset in loaded.presets if preset.category == "state") >= 2
+        definition_types.add(loaded.manifest.definition_type.value)
+        assert all(set(preset.serialize()) >= {"params", "preset_id"} for preset in loaded.presets)
 
-    assert state_capable_packages > 0
+    assert definition_types == {"state", "overlay", "event"}
 
     assert build_lefxset_main(
         [

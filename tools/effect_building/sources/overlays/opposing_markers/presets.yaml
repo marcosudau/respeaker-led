@@ -1,0 +1,49 @@
+presets:
+  opposing_markers_assist:
+    title: Opposing Markers Assist
+    description: Auto-generated overlay preset for opposing_markers (assist).
+    params:
+      color: "#7FC9FF"
+      secondary_color: "#EAF8FF"
+      background_color: "#000000"
+      brightness: 0.6
+    tags:
+      - overlay
+      - assist
+      - opposing_markers
+  opposing_markers_tracking:
+    title: Opposing Markers Tracking
+    description: Auto-generated overlay preset for opposing_markers (tracking).
+    params:
+      color: "#33FFAA"
+      secondary_color: "#D8FFF0"
+      background_color: "#000000"
+      brightness: 0.85
+    tags:
+      - overlay
+      - tracking
+      - opposing_markers
+  opposing_markers_guide:
+    title: Opposing Markers Guide
+    description: Auto-generated overlay preset for opposing_markers (guide).
+    params:
+      color: "#FFD166"
+      secondary_color: "#FFF0C2"
+      background_color: "#090703"
+      brightness: 0.78
+    tags:
+      - overlay
+      - guide
+      - opposing_markers
+  opposing_markers_marker:
+    title: Opposing Markers Marker
+    description: Auto-generated overlay preset for opposing_markers (marker).
+    params:
+      color: "#FF8AAE"
+      secondary_color: "#FFD3E0"
+      background_color: "#090205"
+      brightness: 0.74
+    tags:
+      - overlay
+      - marker
+      - opposing_markers

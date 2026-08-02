@@ -3,6 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from tests.build_artifact_helpers import default_effect_set_path
+from tools.effect_building.standard_effects import (
+    DEFAULT_BUILD_ROOT,
+    DEFAULT_SOURCES_ROOT,
+    discover_standard_effects,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +29,11 @@ def test_core_source_has_no_legacy_widget_or_quick_action_imports():
         "push-event",
         "showcase_app",
         "standard_effect_library",
+        "MAIN_LAYER",
+        "effect_command_registry",
+        "src.engine.normalization",
+        "/api/v1/commands/apply_effect",
+        "/api/v1/commands/clear_layer",
     ]
 
     for path in SRC_ROOT.rglob("*.py"):
@@ -37,3 +47,30 @@ def test_builtin_effects_are_configured_outside_src():
     assert default_effect_set_path().is_file()
     assert not (SRC_ROOT / "led_effects" / "effects" / "default-effects.lefxset").exists()
     assert not (SRC_ROOT / "builtin_effects.py").exists()
+
+
+def test_standard_effect_sources_are_typed_autonomous_and_outside_build_output():
+    sources_root = DEFAULT_SOURCES_ROOT.resolve()
+    build_root = DEFAULT_BUILD_ROOT.resolve()
+
+    assert not sources_root.is_relative_to(build_root)
+    assert not (PROJECT_ROOT / "tools" / "effect_building" / "effect_definitions").exists()
+    assert not (PROJECT_ROOT / "tools" / "effect_building" / "sorted_by_type").exists()
+
+    specs = discover_standard_effects()
+    assert len(specs) == 34
+    for spec in specs:
+        definition = spec.effect_class.get_definition()
+        assert spec.source_dir.name == definition.id
+        assert spec.source_dir.parent.name == f"{definition.definition_type.value}s"
+        assert (spec.source_dir / "effect.py").is_file()
+        assert (spec.source_dir / "effect.yaml").is_file()
+        assert (spec.source_dir / "presets.yaml").is_file()
+        assert not list(spec.source_dir.rglob("common.py"))
+
+        source_text = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in spec.source_dir.rglob("*.py")
+        )
+        assert "effect_definitions" not in source_text
+        assert "sorted_by_type" not in source_text

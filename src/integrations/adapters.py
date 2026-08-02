@@ -1,15 +1,26 @@
 from __future__ import annotations
 
 import importlib.util
-from typing import Protocol
+import math
+import threading
+from typing import Protocol, runtime_checkable
 
 from ..core.models import Frame
+from ..infrastructure.logging_utils import get_logger
 from ..infrastructure.paths import XVF_HOST_PATH
+
+
+logger = get_logger(__name__)
 
 
 class FrameAdapter(Protocol):
     def apply_frame(self, frame: Frame) -> None: ...
     def close(self) -> None: ...
+
+
+@runtime_checkable
+class DoAInputAdapter(Protocol):
+    def read_doa_inputs(self) -> dict[str, object]: ...
 
 
 class ConsolePreviewAdapter:
@@ -60,12 +71,55 @@ class ReSpeakerAdapter:
         if not self._device:
             raise RuntimeError("No reSpeaker device found.")
         self._ring_mode = False
+        self._last_leds: tuple[int, ...] | None = None
+        self._io_lock = threading.RLock()
 
     def apply_frame(self, frame: Frame) -> None:
-        if not self._ring_mode:
-            self._device.write("LED_EFFECT", [5])
-            self._ring_mode = True
-        self._device.write("LED_RING_COLOR", frame.leds)
+        leds = tuple(frame.leds)
+        with self._io_lock:
+            if not self._ring_mode:
+                self._device.write("LED_EFFECT", [5])
+                self._ring_mode = True
+            if leds == self._last_leds:
+                return
+            self._device.write("LED_RING_COLOR", list(leds))
+            self._last_leds = leds
+
+    def read_doa_inputs(self) -> dict[str, object]:
+        with self._io_lock:
+            payload = self._device.read("DOA_VALUE")
+        if not isinstance(payload, tuple) or len(payload) != 2:
+            logger.warning("DOA DEBUG invalid payload=%r", payload)
+            raise RuntimeError(f"Unexpected DOA_VALUE payload: {payload!r}")
+
+        direction_raw = payload[0]
+        if isinstance(direction_raw, bool) or not isinstance(direction_raw, (int, float)):
+            logger.warning("DOA DEBUG invalid direction payload=%r", payload)
+            raise RuntimeError(f"Invalid DOA_VALUE direction: {direction_raw!r}")
+        direction = float(direction_raw)
+        if not math.isfinite(direction) or not 0.0 <= direction < 360.0:
+            logger.warning("DOA DEBUG direction out of range payload=%r", payload)
+            raise RuntimeError(f"DOA_VALUE direction is out of range: {direction_raw!r}")
+
+        vad_raw = payload[1]
+        if isinstance(vad_raw, bool):
+            vad_active = vad_raw
+        elif isinstance(vad_raw, int) and vad_raw in {0, 1}:
+            vad_active = bool(vad_raw)
+        else:
+            logger.warning("DOA DEBUG invalid VAD flag payload=%r", payload)
+            raise RuntimeError(f"Invalid DOA_VALUE VAD flag: {vad_raw!r}")
+        logger.debug(
+            "DOA sample payload=%r direction_deg=%.1f vad_active=%s",
+            payload,
+            direction,
+            vad_active,
+        )
+        return {
+            "direction_deg": direction,
+            "detection_state": "sound" if vad_active else "none",
+        }
 
     def close(self) -> None:
-        self._device.close()
+        with self._io_lock:
+            self._device.close()

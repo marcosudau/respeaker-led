@@ -1,0 +1,15 @@
+# Optional embedded presets for this effect.
+# Presets configure this definition and cannot change its type or lifecycle.
+presets:
+  example_rotation_state_example:
+    title: "Example Rotation State Example"
+    description: "Langsame blaue Rotation fuer den Tutorial-Test."
+    params:
+      color: "#33AAFF"
+      background_color: "#000000"
+      brightness: 0.8
+      speed: 0.7
+      reverse: false
+      segment_length: 3
+    tags:
+      - tutorial

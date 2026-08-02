@@ -1,72 +1,85 @@
-# LEFX Build Process
+# LEFX-V2-Buildprozess
 
-Diese Build-Strecke gehoert zum separaten Effekt-Building unter `tools/effect_building/`.
+Diese separate Buildstrecke unter `tools/effect_building/` erzeugt die
+Standard-Effektartefakte. Sie ist nicht der EXE-/Release-Build unter
+`build-tools/`.
 
-Sie ist nicht identisch mit dem normalen EXE-/Release-Build unter `build-tools/`.
+## Autoritative Quellen
 
-Die Build-Strecke erzeugt zuerst eigenstaendige `.lefx`-Artefakte fuer alle Standard-Effekte und baut daraus anschliessend die `default-effects.lefxset`.
+Die Quellen liegen ausserhalb von `build/`:
 
-## Voraussetzungen
+- `tools/effect_building/sources/states/<id>/`
+- `tools/effect_building/sources/overlays/<id>/`
+- `tools/effect_building/sources/events/<id>/`
+- `tools/effect_building/standard_effects.py`
 
-- Im Projektwurzelverzeichnis ausfuehren.
-- Die Build-Skripte benutzen nur Projektcode und die eingebaute einfache YAML-Verarbeitung.
+Der komplette Ordner `tools/effect_building/build/` ist generiert und darf
+beim Cleanup geloescht werden.
 
-## 1. LEFX-Pakete erzeugen
+Jeder ID-Ordner ist eine eigenstaendige Paketquelle. Es gibt weder eine
+typuebergreifende `common.py` noch Importe aus anderen Definitionen.
+
+## Einzelne LEFX-Pakete bauen
 
 ```powershell
 python tools/effect_building/build_lefx.py
 ```
 
-Ergebnis:
+Der Build:
 
-- Effektquellen werden unter `tools/effect_building/build/.cache/sources/default-effects` neu erzeugt.
-- Fertige `.lefx`-Dateien landen unter `tools/effect_building/build/.cache/build_lefx/default-effects`.
-- Jeder Build fuehrt direkt einen Import- und Render-Smoke-Test ueber das gebaute Paket aus.
+1. entdeckt die typisierten Quellen rekursiv
+2. validiert Quelllayout, Imports und den strikten LEFX-V2-Vertrag
+3. baut je Definition genau eine `.lefx`
+4. fuehrt je Paket einen Import- und Render-Smoke-Test aus
 
-## 2. LEFXSET erzeugen
+Eine Paketquelle enthaelt:
+
+- `effect.yaml`
+- `effect.py`
+- optional `presets.yaml`
+- lokale Python-Abhaengigkeiten
+- optional `assets/` und `extra/`
+
+`commands.json` ist in V2 nicht erlaubt. Presets enthalten ausschliesslich
+Konfigurationswerte und koennen Typ, Layer, Laufzeit oder Queue-Verhalten
+nicht ueberschreiben.
+
+## LEFXSET bauen
 
 ```powershell
 python tools/effect_building/build_lefxset.py
 ```
 
-Ergebnis:
-
-- Die `.lefx`-Dateien aus `tools/effect_building/build/.cache/build_lefx/default-effects` werden zu `tools/effect_building/build/output/default-effects.lefxset` gebuendelt.
-- Nach erfolgreichem Build wird die Datei zusaetzlich nach `tools/effect_building/build/published/default-effects.lefxset` kopiert.
-- Der Zwischenstand unter `tools/effect_building/build/.cache` wird nach einem erfolgreichen Standard-Build automatisch entfernt. Mit `--keep-cache` kann er fuer die Fehlersuche erhalten bleiben.
-
-Der normale Build konsumiert dieses Effektset nicht ueber einen harten `src/`-Pfad, sondern ueber die in `build-tools/build_config.json` konfigurierte Builtin-Discovery.
-
-Optional kann der zweite Schritt die .lefx-Dateien direkt vorher neu bauen:
+Oder einschliesslich Neubau der Einzelpakete:
 
 ```powershell
 python tools/effect_building/build_lefxset.py --rebuild-packages
 ```
 
-## Inhalt der generierten Effektquellen
+Ergebnisse:
 
-Jede erzeugte Effektquelle enthaelt:
+- `build/output/default-effects.lefxset`
+- `build/published/default-effects.lefxset`
 
-- effect.yaml
-- presets.yaml
-- commands.json
-- effect.py
-- ggf. weitere Python-Abhaengigkeiten wie common.py oder basic.py
-- assets/
-- extra/
+Der temporaere Zwischenstand unter `build/.cache` wird nach einem
+erfolgreichen Standard-Build automatisch entfernt. `--keep-cache` behaelt ihn
+gezielt fuer die Fehlersuche.
 
-Damit ist jedes gebaute .lefx in sich geschlossen und enthaelt die Effektlogik lokal im Paket.
+## V2-Vertragsregeln
 
-## Presets und Commands
+- Paketformat: `lefx/2`
+- Setformat: `lefxset/2`
+- genau eine State-, Overlay- oder Event-Definition pro `.lefx`
+- Quellordner und deklarierter Definitionstyp muessen uebereinstimmen
+- endliche Definitionen deklarieren ihre Dauer
+- Runtime-Eingaben sind nur bei kontrollierten Overlays erlaubt
+- kontrollierte Overlays deklarieren Push- oder Pull-Abtastung
+- Standard-Heartbeat: 1000 ms, Fehler nach drei verpassten Zeitfenstern
+- bis zum Fehler bleibt der letzte gueltige Wert aktiv; danach erhaelt die
+  Renderlogik fuer betroffene Eingaben `None`
+- Effektlogik und benoetigte Hilfsmodule befinden sich im Paket
+- kein `common.py`, kein Import aus Controller-, Service- oder Registry-Code
+- unbekannte Manifestfelder brechen den Build ab
 
-- Jeder Standard-Effekt bekommt mindestens vier eingebettete Presets.
-- State-faehige Effekte erhalten zwei state-Presets plus zwei weitere gueltige Presets.
-- Overlay- oder event-only Effekte erhalten vier gueltige Presets innerhalb ihrer erlaubten Kategorien.
-- Zu jedem Preset wird ein zugehoeriger Command erzeugt.
-
-## Wichtige Ausgabeorte
-
-- Quellen: `tools/effect_building/build/.cache/sources/default-effects` (temporaer)
-- Einzelpakete: `tools/effect_building/build/.cache/build_lefx/default-effects` (temporaer)
-- Set: `tools/effect_building/build/output/default-effects.lefxset`
-- Publish-Kopie: `tools/effect_building/build/published/default-effects.lefxset`
+Der normale Release-Build konsumiert nur fertige `.lefx`- und
+`.lefxset`-Artefakte ueber `build-tools/build_config.json`.

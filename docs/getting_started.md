@@ -1,127 +1,83 @@
-# Schnellstart: Service Starten Und Effekte Setzen
+# Schnellstart
 
-Diese Anleitung fuehrt dich in einzelnen Schritten durch den heute aktiven Betriebsweg.
-
-Voraussetzung:
-
-- du befindest dich im Projekt-Root
-- du verwendest eine Python-Umgebung, in der die Projektabhaengigkeiten bereits funktionieren
-
-## 1. Erstes Terminal oeffnen und den Service starten
-
-Empfohlen fuer den ersten Test ohne Hardware:
+## 1. Service ohne Hardware starten
 
 ```powershell
 python .\main.py --no-device serve --host 127.0.0.1 --port 8765
 ```
 
-Optional fuer einen Unterprozess-Betrieb mit Portpool:
+Das Terminal bleibt offen. Der Service gibt gerenderte Frames als
+Konsolenvorschau aus.
 
-```powershell
-python .\main.py --no-device serve --host 127.0.0.1 --port 8765 --port-pool 8765-8770
-```
+## 2. Verbindung pruefen
 
-Wichtig:
-
-- dieses Terminal bleibt offen
-- der Prozess rendert jetzt laufend Frames
-- im `--no-device`-Modus werden die Frames in der Konsole als Preview ausgegeben
-- beim Start gibt der Prozess eine JSON-Zeile mit dem effektiv verwendeten Host und Port aus
-- dieselben Laufzeitdaten stehen auch in `active_service.json` im Temp-Verzeichnis `respeaker_led_controller_runtime_state/`
-
-## 2. Zweites Terminal oeffnen und pruefen, ob der Service erreichbar ist
+In einem zweiten Terminal:
 
 ```powershell
 python .\main.py ping
 python .\main.py status
 ```
 
-Wenn alles laeuft, bekommst du JSON-Antworten zurueck.
-
-## 3. Verfuegbare Effekte anzeigen
+## 3. Verfuegbare Ziele entdecken
 
 ```powershell
-python .\main.py list-effects
+python .\main.py list states
+python .\main.py list overlays
+python .\main.py list events
+python .\main.py list presets
+python .\main.py show soft_pulse
 ```
 
-Du bekommst eine Liste aller eingebauten Effekte mit IDs, Parametern und unterstuetzten Layern.
+Die Listen sind standardmaessig kurz. `--details` zeigt Parameter,
+Lebenszyklus und Metadaten.
 
-Wenn du verstehen willst, wie diese Effekte intern aufgebaut sind oder selbst neue schreiben willst:
-
-- [Effekte verstehen und neue Effekte bauen](effects.md)
-
-## 4. Einen ersten Effekt auf den Haupt-Layer legen
+## 4. State setzen
 
 ```powershell
-python .\main.py apply-effect solid_color main --params '{"color":"0x224466"}'
-```
-
-Das setzt eine feste Farbe auf den Haupt-Layer.
-
-Zur Kontrolle kannst du direkt danach den Status lesen:
-
-```powershell
+python .\main.py set state soft_pulse --config '{"color":"blau","period_ms":1600}'
 python .\main.py status
 ```
 
-## 5. Einen animierten Effekt auf den State-Layer setzen
+Als persistenter Grundzustand:
 
 ```powershell
-python .\main.py apply-effect soft_pulse state --params '{"color":"0x33AAFF","background_color":"0x02060A","period_ms":1600}'
+python .\main.py set state solid_color --slot background --config '{"color":"#224466"}'
 ```
 
-Damit laeuft ein pulsierender Hintergrundzustand.
-
-## 6. Kurzlebiges Event ausloesen
+## 5. Overlay setzen und aktualisieren
 
 ```powershell
-python .\main.py emit-event trigger_received --duration-ms 900 --source manual
+python .\main.py set overlay direction_indicator --channel doa --inputs '{"direction":120}'
+python .\main.py update overlay doa --inputs '{"direction":240}'
+python .\main.py clear overlay doa
 ```
 
-Das Event landet im Event-Layer und verschwindet nach seiner Laufzeit wieder.
-
-## 7. Weitere typische Steuerbefehle testen
+## 6. Event ausloesen
 
 ```powershell
-python .\main.py set-state listening
-python .\main.py set-direction 120
-python .\main.py start-countdown 5000 --remaining-ms 2000 --follow-up-state transcribing
+python .\main.py emit event warning_flash --config '{"color":"rot","duration_ms":900}'
 ```
 
-## 8. Einen Layer wieder leeren
+## 7. State abschalten
 
 ```powershell
-python .\main.py clear-layer main
-python .\main.py clear-direction
-python .\main.py cancel-countdown
+python .\main.py set state soft_pulse --off
+python .\main.py clear state --slot background
 ```
 
-## 9. Optional Effekt-Presets oder Commands nutzen
+Ohne Aktionsflag bedeutet `set` immer `on`. Fuer Umschalten steht
+`--toggle` zur Verfuegung.
 
-Verfuegbare Effektquellen und Presets anzeigen:
-
-```powershell
-python .\main.py list-effect-sources
-python .\main.py list-effect-presets default-effects::soft_pulse
-python .\main.py list-commands --source default-effects
-```
-
-Ein eingebettetes Effekt-Preset oder einen Command ausloesen:
-
-```powershell
-python .\main.py apply-effect-preset default-effects::effect_soft_pulse_main
-python .\main.py invoke-command default-effects effect_soft_pulse_accent
-```
-
-## 10. Service sauber beenden
+## 8. Service beenden
 
 ```powershell
 python .\main.py shutdown
 ```
 
-## Wenn etwas nicht klappt
+## Weiter
 
-- [CLI und API im Detail](api_guide.md)
-- [Effekte verstehen und neue Effekte bauen](effects.md)
+- [CLI-Referenz](cli_guide.md)
+- [HTTP-API-Referenz](api_guide.md)
+- [Effekte und Artefakte](effects.md)
 - [Troubleshooting](troubleshooting.md)
-- [Aktueller Ansatz im Repo](current_approach.md)
+- [Aktuelle Architektur](dev/architecture.md)

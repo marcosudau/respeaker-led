@@ -1,5 +1,0 @@
-package_id: state-color-presets.yin_yang_spin
-source_id: state-color-presets
-entry_file: effect.py
-entry_class: YinYangSpinEffect
-min_service_version: 1.0.0

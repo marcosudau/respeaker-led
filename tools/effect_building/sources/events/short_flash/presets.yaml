@@ -1,0 +1,49 @@
+presets:
+  short_flash_alert:
+    title: Short Flash Alert
+    description: Auto-generated event preset for short_flash (alert).
+    params:
+      color: "#FF5A5A"
+      background_color: "#120102"
+      brightness: 1.0
+      duration_ms: 900
+    tags:
+      - event
+      - alert
+      - short_flash
+  short_flash_notice:
+    title: Short Flash Notice
+    description: Auto-generated event preset for short_flash (notice).
+    params:
+      color: "#FFD166"
+      background_color: "#120A02"
+      brightness: 0.9
+      duration_ms: 1000
+    tags:
+      - event
+      - notice
+      - short_flash
+  short_flash_success:
+    title: Short Flash Success
+    description: Auto-generated event preset for short_flash (success).
+    params:
+      color: "#42D392"
+      background_color: "#02110A"
+      brightness: 0.88
+      duration_ms: 950
+    tags:
+      - event
+      - success
+      - short_flash
+  short_flash_urgent:
+    title: Short Flash Urgent
+    description: Auto-generated event preset for short_flash (urgent).
+    params:
+      color: "#FF3B30"
+      background_color: "#170102"
+      brightness: 1.0
+      duration_ms: 700
+    tags:
+      - event
+      - urgent
+      - short_flash

@@ -1,5 +1,0 @@
-package_id: state-color-presets.pulse_pattern
-source_id: state-color-presets
-entry_file: effect.py
-entry_class: PulsePatternEffect
-min_service_version: 1.0.0

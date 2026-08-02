@@ -1,0 +1,49 @@
+presets:
+  countdown_ring_assist:
+    title: Countdown Ring Assist
+    description: Auto-generated overlay preset for countdown_ring (assist).
+    params:
+      color: "#7FC9FF"
+      secondary_color: "#EAF8FF"
+      brightness: 0.6
+      total_ms: 4000
+    tags:
+      - overlay
+      - assist
+      - countdown_ring
+  countdown_ring_tracking:
+    title: Countdown Ring Tracking
+    description: Auto-generated overlay preset for countdown_ring (tracking).
+    params:
+      color: "#33FFAA"
+      secondary_color: "#D8FFF0"
+      brightness: 0.85
+      total_ms: 4400
+    tags:
+      - overlay
+      - tracking
+      - countdown_ring
+  countdown_ring_guide:
+    title: Countdown Ring Guide
+    description: Auto-generated overlay preset for countdown_ring (guide).
+    params:
+      color: "#FFD166"
+      secondary_color: "#FFF0C2"
+      brightness: 0.78
+      total_ms: 4800
+    tags:
+      - overlay
+      - guide
+      - countdown_ring
+  countdown_ring_marker:
+    title: Countdown Ring Marker
+    description: Auto-generated overlay preset for countdown_ring (marker).
+    params:
+      color: "#FF8AAE"
+      secondary_color: "#FFD3E0"
+      brightness: 0.74
+      total_ms: 3600
+    tags:
+      - overlay
+      - marker
+      - countdown_ring

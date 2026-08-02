@@ -3,16 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..core.effect_schema import EffectDefinition, LayerId, parse_layer_id
-
-
-_PRESET_CATEGORIES = {"state", "effect", "overlay", "event"}
-_CATEGORY_LAYER_RULES: dict[str, set[LayerId]] = {
-    "state": {LayerId.BACKGROUND_STATE_LAYER, LayerId.STATE_LAYER},
-    "effect": {LayerId.MAIN_LAYER},
-    "overlay": {LayerId.TEMP_OVERLAY_LAYER, LayerId.ONGOING_OVERLAY_LAYER},
-    "event": {LayerId.EVENT_LAYER},
-}
+from ..core.effect_schema import EffectDefinition
+from ..core.parameter_validation import normalize_values
 
 
 @dataclass(slots=True, frozen=True)
@@ -20,15 +12,9 @@ class EffectPresetDefinition:
     source_id: str
     effect_id: str
     preset_id: str
-    category: str
-    target_layer: LayerId
     title: str | None = None
     description: str | None = None
     params: dict[str, Any] = field(default_factory=dict)
-    duration_ms: int | None = None
-    priority: int | None = None
-    enqueue: bool = False
-    replace_existing: bool = True
     tags: tuple[str, ...] = ()
 
     @property
@@ -46,21 +32,13 @@ class EffectPresetDefinition:
             "qualified_effect_id": self.qualified_effect_id,
             "preset_id": self.preset_id,
             "qualified_preset_id": self.qualified_preset_id,
-            "category": self.category,
-            "target_layer": self.target_layer.value,
             "params": dict(self.params),
-            "enqueue": self.enqueue,
-            "replace_existing": self.replace_existing,
             "tags": list(self.tags),
         }
         if self.title is not None:
             payload["title"] = self.title
         if self.description is not None:
             payload["description"] = self.description
-        if self.duration_ms is not None:
-            payload["duration_ms"] = self.duration_ms
-        if self.priority is not None:
-            payload["priority"] = self.priority
         return payload
 
 
@@ -100,6 +78,9 @@ def parse_effect_preset_definitions(
 ) -> list[EffectPresetDefinition]:
     if not isinstance(payload, dict):
         raise ValueError("effect-presets.json must contain a JSON object")
+    unknown_root = sorted(set(payload) - {"presets"})
+    if unknown_root:
+        raise ValueError(f"effect-presets.json contains unknown keys: {', '.join(unknown_root)}")
 
     raw_presets = payload.get("presets")
     if not isinstance(raw_presets, dict) or not raw_presets:
@@ -126,58 +107,22 @@ def parse_effect_preset_definition(
 ) -> EffectPresetDefinition:
     if not isinstance(raw_definition, dict):
         raise ValueError(f"Preset {preset_id!r} must be a JSON object")
-
-    category = str(raw_definition.get("category", "")).strip().lower()
-    if category not in _PRESET_CATEGORIES:
-        raise ValueError(f"Preset {preset_id!r} has unsupported category: {category!r}")
-    if not preset_id.startswith(f"{category}_"):
-        raise ValueError(
-            f"Preset {preset_id!r} must use the '{category}_' prefix to match its category"
-        )
-
-    if "target_layer" not in raw_definition:
-        raise ValueError(f"Preset {preset_id!r} must define 'target_layer'")
-    target_layer = parse_layer_id(raw_definition["target_layer"])
-    allowed_layers = _CATEGORY_LAYER_RULES[category]
-    if target_layer not in allowed_layers:
-        expected = ", ".join(layer.value for layer in sorted(allowed_layers, key=lambda item: item.value))
-        raise ValueError(
-            f"Preset {preset_id!r} with category {category!r} must target one of: {expected}"
-        )
-
-    layer_rule = effect_definition.layer_rules.get(target_layer)
-    if layer_rule is None or not layer_rule.allowed:
-        raise ValueError(
-            f"Preset {preset_id!r} targets {target_layer.value}, but effect {effect_definition.id!r} does not allow that layer"
-        )
-
-    raw_effect = raw_definition.get("effect")
-    if raw_effect is not None:
-        normalized_effect = str(raw_effect).strip()
-        local_effect_id = effect_definition.id
-        qualified_effect_id = f"{source_id}::{local_effect_id}"
-        if normalized_effect not in {local_effect_id, qualified_effect_id}:
-            raise ValueError(
-                f"Preset {preset_id!r} references effect {normalized_effect!r}, expected {local_effect_id!r} or {qualified_effect_id!r}"
-            )
+    allowed = {"title", "description", "params", "tags"}
+    unknown = sorted(set(raw_definition) - allowed)
+    if unknown:
+        raise ValueError(f"Preset {preset_id!r} contains unknown keys: {', '.join(unknown)}")
 
     params = raw_definition.get("params", {})
     if params is None:
         params = {}
     if not isinstance(params, dict):
         raise ValueError(f"Preset {preset_id!r} field 'params' must be a JSON object")
-    normalized_params = dict(params)
-    _validate_effect_params(effect_definition, preset_id, normalized_params)
-
-    duration_ms = raw_definition.get("duration_ms")
-    if duration_ms is not None:
-        duration_ms = int(duration_ms)
-        if duration_ms <= 0:
-            raise ValueError(f"Preset {preset_id!r} field 'duration_ms' must be > 0")
-
-    priority = raw_definition.get("priority")
-    if priority is not None:
-        priority = int(priority)
+    normalized_params = normalize_values(
+        effect_definition.parameter_schema,
+        params,
+        field_prefix=f"presets.{preset_id}.params",
+        require_required=False,
+    )
 
     tags = raw_definition.get("tags", ())
     if tags is None:
@@ -189,53 +134,8 @@ def parse_effect_preset_definition(
         source_id=source_id,
         effect_id=effect_definition.id,
         preset_id=preset_id,
-        category=category,
-        target_layer=target_layer,
         title=None if raw_definition.get("title") is None else str(raw_definition.get("title")),
         description=None if raw_definition.get("description") is None else str(raw_definition.get("description")),
         params=normalized_params,
-        duration_ms=duration_ms,
-        priority=priority,
-        enqueue=bool(raw_definition.get("enqueue", False)),
-        replace_existing=bool(raw_definition.get("replace_existing", True)),
         tags=tuple(str(item) for item in tags),
     )
-
-
-def _validate_effect_params(effect_definition: EffectDefinition, preset_id: str, params: dict[str, Any]) -> None:
-    schema = effect_definition.parameter_schema
-    for name, value in params.items():
-        if name not in schema:
-            raise ValueError(f"Preset {preset_id!r} defines unknown effect parameter: {name!r}")
-        _validate_param_value(preset_id, schema[name], value)
-
-
-def _validate_param_value(preset_id: str, definition, value: Any) -> None:
-    label = f"Preset {preset_id!r} parameter {definition.name!r}"
-    kind = definition.type
-    if kind == "bool":
-        if not isinstance(value, bool):
-            raise ValueError(f"{label} must be a boolean")
-    elif kind == "int":
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise ValueError(f"{label} must be an integer")
-    elif kind in {"float", "duration_ms"}:
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ValueError(f"{label} must be numeric")
-    elif kind == "enum":
-        if value not in set(definition.enum_values):
-            expected = ", ".join(repr(item) for item in definition.enum_values)
-            raise ValueError(f"{label} must be one of: {expected}")
-    elif kind == "color":
-        if not isinstance(value, (int, str)):
-            raise ValueError(f"{label} must be a color string or integer")
-    elif kind == "color_list":
-        if not isinstance(value, list) or not all(isinstance(item, (int, str)) for item in value):
-            raise ValueError(f"{label} must be a list of color strings or integers")
-
-    if definition.minimum is not None and isinstance(value, (int, float)) and not isinstance(value, bool):
-        if value < definition.minimum:
-            raise ValueError(f"{label} must be >= {definition.minimum}")
-    if definition.maximum is not None and isinstance(value, (int, float)) and not isinstance(value, bool):
-        if value > definition.maximum:
-            raise ValueError(f"{label} must be <= {definition.maximum}")

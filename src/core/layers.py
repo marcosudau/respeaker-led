@@ -10,7 +10,6 @@ from .models import BaseState, CountdownState
 LEGACY_SCENE_NAMES: dict[LayerId, str] = {
     LayerId.BACKGROUND_STATE_LAYER: "state_layer",
     LayerId.STATE_LAYER: "state_overlay",
-    LayerId.MAIN_LAYER: "active_visual",
     LayerId.TEMP_OVERLAY_LAYER: "temp_overlay",
     LayerId.ONGOING_OVERLAY_LAYER: "ongoing_overlay",
     LayerId.EVENT_LAYER: "event",

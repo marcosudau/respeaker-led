@@ -12,11 +12,38 @@ def write_effect_source(
     source_id: str,
     class_name: str,
     effect_id: str,
-    layer_name: str = "MAIN_LAYER",
+    layer_name: str = "STATE_LAYER",
     color: str = "0x224466",
     presets: dict | None = None,
     commands: dict | None = None,
 ) -> None:
+    if layer_name in {"BACKGROUND_STATE_LAYER", "STATE_LAYER"}:
+        definition_type = "DefinitionType.STATE"
+        overlay_mode = ""
+        duration_param = ""
+        duration_default = ""
+        finite_rule = "requires_indefinite_duration=True,"
+    elif layer_name == "EVENT_LAYER":
+        definition_type = "DefinitionType.EVENT"
+        overlay_mode = ""
+        duration_param = '"duration_ms": EffectParamDefinition(name="duration_ms", type="duration_ms", default=250, minimum=1),'
+        duration_default = ', "duration_ms": 250'
+        finite_rule = "requires_finite_duration=True,"
+    else:
+        definition_type = "DefinitionType.OVERLAY"
+        mode = "TIMED" if layer_name == "TEMP_OVERLAY_LAYER" else "CONTROLLED"
+        overlay_mode = f"overlay_mode=OverlayMode.{mode},"
+        duration_param = (
+            '"total_ms": EffectParamDefinition(name="total_ms", type="duration_ms", default=1000, minimum=1),'
+            if mode == "TIMED"
+            else ""
+        )
+        duration_default = ', "total_ms": 1000' if mode == "TIMED" else ""
+        finite_rule = (
+            "requires_finite_duration=True,"
+            if mode == "TIMED"
+            else "requires_indefinite_duration=True,"
+        )
     root.mkdir(parents=True, exist_ok=True)
     (root / "effect.yaml").write_text(
         "\n".join(
@@ -32,7 +59,7 @@ def write_effect_source(
     (root / "effect.py").write_text(
         textwrap.dedent(
             f"""
-            from src.core.effect_schema import BaseEffect, EffectDefinition, EffectParamDefinition, LayerId, LayerRule, PlaybackMode, EffectCapabilities, RenderContext
+            from src.core.effect_schema import BaseEffect, ColorModel, DefinitionType, EffectDefinition, EffectParamDefinition, LayerId, LayerRule, OverlayMode, PlaybackMode, EffectCapabilities, RenderContext
 
 
             class {class_name}(BaseEffect):
@@ -40,10 +67,14 @@ def write_effect_source(
                     id="{effect_id}",
                     title="{class_name}",
                     description="Generated for tests",
+                    definition_type={definition_type},
+                    {overlay_mode}
                     parameter_schema={{
                         "color": EffectParamDefinition(name="color", type="color", default="{color}"),
+                        "brightness": EffectParamDefinition(name="brightness", type="float", default=1.0, minimum=0.0, maximum=1.0),
+                        {duration_param}
                     }},
-                    defaults={{"color": "{color}"}},
+                    defaults={{"color": "{color}", "brightness": 1.0{duration_default}}},
                     capabilities=EffectCapabilities(
                         playback_modes=(PlaybackMode.LOOP, PlaybackMode.PERSISTENT),
                         restorable=True,
@@ -52,8 +83,10 @@ def write_effect_source(
                         LayerId.{layer_name}: LayerRule(
                             allowed=True,
                             allowed_playback_modes=(PlaybackMode.LOOP, PlaybackMode.PERSISTENT),
+                            {finite_rule}
                         ),
                     }},
+                    color_model=ColorModel.MONO,
                 )
 
                 def render(self, ctx: RenderContext) -> list[int | None]:
@@ -91,7 +124,7 @@ def write_effect_set_source(
             source_id=source_id,
             class_name=effect["class_name"],
             effect_id=effect["effect_id"],
-            layer_name=effect.get("layer_name", "MAIN_LAYER"),
+            layer_name=effect.get("layer_name", "STATE_LAYER"),
             color=effect.get("color", "0x224466"),
             presets=effect.get("presets"),
             commands=effect.get("commands"),

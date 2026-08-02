@@ -1,0 +1,41 @@
+presets:
+  solid_color_idle:
+    title: Solid Color Idle
+    description: Auto-generated state preset for solid_color (idle).
+    params:
+      color: "#4A7BFF"
+      brightness: 0.45
+    tags:
+      - state
+      - idle
+      - solid_color
+  solid_color_focus:
+    title: Solid Color Focus
+    description: Auto-generated state preset for solid_color (focus).
+    params:
+      color: "#2ED3A8"
+      brightness: 0.72
+    tags:
+      - state
+      - focus
+      - solid_color
+  solid_color_ready:
+    title: Solid Color Ready
+    description: Auto-generated state preset for solid_color (ready).
+    params:
+      color: "#5BC0FF"
+      brightness: 0.66
+    tags:
+      - state
+      - ready
+      - solid_color
+  solid_color_rest:
+    title: Solid Color Rest
+    description: Auto-generated state preset for solid_color (rest).
+    params:
+      color: "#7AA4FF"
+      brightness: 0.38
+    tags:
+      - state
+      - rest
+      - solid_color

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 from contextlib import asynccontextmanager
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 from ..infrastructure.logging_utils import get_logger
 from ..services.service import ControllerService
+from ..core.effect_schema import DefinitionType
+from ..core.parameter_validation import ParameterValidationError
 from .. import __version__
 
 
@@ -53,32 +55,43 @@ class EnabledCommand(BaseModel):
     enabled: bool
 
 
-class EffectCommand(BaseModel):
-    effect_id: str
-    target_layer: str
-    params: dict[str, Any] = Field(default_factory=dict)
-    duration_ms: int | None = None
-    priority: int | None = None
-    enqueue: bool = False
-    replace_existing: bool = True
-
-
-class ClearLayerCommand(BaseModel):
-    target_layer: str
-
-
 class RegisterEffectSourceRequest(BaseModel):
     path: str
     enabled: bool = True
 
 
-class ApplyEffectRequest(BaseModel):
-    target_layer: str
-    params: dict[str, Any] = Field(default_factory=dict)
-    duration_ms: int | None = None
+class SetStateV2Request(BaseModel):
+    target: str
+    config: dict[str, Any] = Field(default_factory=dict)
+    slot: Literal["background", "primary"] = "primary"
+    action: Literal["on", "off", "toggle"] = "on"
+
+
+class ClearStateV2Request(BaseModel):
+    slot: Literal["background", "primary"] = "primary"
+
+
+class SetOverlayV2Request(BaseModel):
+    target: str
+    channel: str | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
+    inputs: dict[str, Any] = Field(default_factory=dict)
+    action: Literal["on", "off", "toggle"] = "on"
+
+
+class UpdateOverlayV2Request(BaseModel):
+    channel: str
+    inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+class ClearOverlayV2Request(BaseModel):
+    channel: str
+
+
+class EmitEventV2Request(BaseModel):
+    target: str
+    config: dict[str, Any] = Field(default_factory=dict)
     priority: int | None = None
-    enqueue: bool = False
-    replace_existing: bool = True
 
 
 def create_app(
@@ -118,6 +131,11 @@ def create_app(
     def get_service(request: Request) -> ControllerService:
         return request.app.state.controller_service
 
+    @app.exception_handler(ParameterValidationError)
+    async def parameter_validation_error_handler(request: Request, exc: ParameterValidationError):
+        del request
+        return JSONResponse(status_code=422, content={"detail": exc.to_dict()})
+
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
         logger.exception("unhandled api exception method=%s path=%s", request.method, request.url.path)
@@ -132,34 +150,17 @@ def create_app(
             "version": app.version,
             "docs": "/docs",
             "health": "/health",
-            "api_base": "/api/v1",
+            "api_base": "/api/v2",
             "output_mode": snapshot["output_mode"],
             "requested_output_mode": snapshot["requested_output_mode"],
             "render_loop_running": snapshot["render_loop_running"],
             "commands": [
-                "list_effects",
-                "show_effect",
-                "list_effect_presets",
-                "list_effect_commands",
-                "apply_effect_preset",
-                "list_effect_sources",
-                "list_commands",
-                "set_state",
-                "clear_state",
-                "emit_event",
-                "apply_effect",
-                "clear_layer",
-                "reset",
-                "shutdown",
-                "ping",
-                "get_status",
-                "start_timeout_countdown",
-                "update_timeout_countdown",
-                "cancel_timeout_countdown",
-                "set_direction",
-                "clear_direction",
-                "set_brightness",
-                "set_enabled",
+                "list",
+                "show",
+                "set",
+                "clear",
+                "update",
+                "emit",
             ],
         }
 
@@ -184,6 +185,106 @@ def create_app(
     def status(request: Request):
         return get_service(request).get_status()
 
+    @app.get("/api/v2/states")
+    def list_states(request: Request, details: bool = False):
+        return get_service(request).list_definitions(DefinitionType.STATE, details=details)
+
+    @app.get("/api/v2/overlays")
+    def list_overlays(request: Request, details: bool = False):
+        return get_service(request).list_definitions(DefinitionType.OVERLAY, details=details)
+
+    @app.get("/api/v2/events")
+    def list_events(request: Request, details: bool = False):
+        return get_service(request).list_definitions(DefinitionType.EVENT, details=details)
+
+    @app.get("/api/v2/presets")
+    def list_presets_v2(
+        request: Request,
+        type: Literal["state", "overlay", "event"] | None = None,
+        details: bool = False,
+    ):
+        definition_type = None if type is None else DefinitionType(type)
+        return get_service(request).list_presets_v2(definition_type, details=details)
+
+    @app.get("/api/v2/show/{target:path}")
+    def show_target_v2(target: str, request: Request):
+        try:
+            return get_service(request).target_info(target)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.post("/api/v2/set/state")
+    def set_state_v2(payload: SetStateV2Request, request: Request):
+        try:
+            return get_service(request).set_state_target(
+                payload.target,
+                payload.config,
+                slot=payload.slot,
+                action=payload.action,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ParameterValidationError:
+            raise
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v2/clear/state")
+    def clear_state_v2(payload: ClearStateV2Request, request: Request):
+        return get_service(request).clear_state_target(slot=payload.slot)
+
+    @app.post("/api/v2/set/overlay")
+    def set_overlay_v2(payload: SetOverlayV2Request, request: Request):
+        try:
+            return get_service(request).set_overlay_target(
+                payload.target,
+                payload.channel,
+                payload.config,
+                payload.inputs,
+                action=payload.action,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ParameterValidationError:
+            raise
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v2/update/overlay")
+    def update_overlay_v2(payload: UpdateOverlayV2Request, request: Request):
+        try:
+            return get_service(request).update_overlay_target(payload.channel, payload.inputs)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ParameterValidationError:
+            raise
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/v2/clear/overlay")
+    def clear_overlay_v2(payload: ClearOverlayV2Request, request: Request):
+        try:
+            return get_service(request).clear_overlay_target(payload.channel)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/v2/emit/event")
+    def emit_event_v2(payload: EmitEventV2Request, request: Request):
+        try:
+            return get_service(request).emit_event_target(
+                payload.target,
+                payload.config,
+                priority=payload.priority,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ParameterValidationError:
+            raise
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     @app.get("/api/v1/effects")
     def list_effects(request: Request):
         return {"items": get_service(request).list_effects()}
@@ -203,39 +304,10 @@ def create_app(
     def list_effect_presets(source_id: str, effect_id: str, request: Request):
         return {"items": get_service(request).list_effect_presets(source_id, effect_id)}
 
-    @app.get("/api/v1/effects/{source_id}/{effect_id}/commands")
-    def list_effect_commands_for_effect(source_id: str, effect_id: str, request: Request):
-        return {"items": get_service(request).list_effect_commands_for_effect(source_id, effect_id)}
-
-    @app.post("/api/v1/effects/{source_id}/{effect_id}/apply")
-    def apply_effect_for_source(source_id: str, effect_id: str, payload: ApplyEffectRequest, request: Request):
-        service = get_service(request)
-        try:
-            return service.apply_effect(
-                f"{source_id}::{effect_id}",
-                payload.target_layer,
-                payload.params,
-                duration_ms=payload.duration_ms,
-                priority=payload.priority,
-                enqueue=payload.enqueue,
-                replace_existing=payload.replace_existing,
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-
     @app.get("/api/v1/effect-presets/{source_id}/{preset_id}")
     def effect_preset_detail(source_id: str, preset_id: str, request: Request):
         try:
             return get_service(request).effect_preset_info(source_id, preset_id)
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    @app.post("/api/v1/effect-presets/{source_id}/{preset_id}/apply")
-    def apply_effect_preset(source_id: str, preset_id: str, request: Request):
-        try:
-            return get_service(request).apply_effect_preset(source_id, preset_id)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -277,32 +349,6 @@ def create_app(
         try:
             return get_service(request).emit_event(payload.event_name, payload.payload)
         except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    @app.post("/api/v1/commands/apply_effect")
-    def apply_effect(request: Request, payload: EffectCommand):
-        service = get_service(request)
-        try:
-            return service.apply_effect(
-                payload.effect_id,
-                payload.target_layer,
-                payload.params,
-                duration_ms=payload.duration_ms,
-                priority=payload.priority,
-                enqueue=payload.enqueue,
-                replace_existing=payload.replace_existing,
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except (TypeError, ValueError) as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    @app.post("/api/v1/commands/clear_layer")
-    def clear_layer(request: Request, payload: ClearLayerCommand):
-        service = get_service(request)
-        try:
-            return service.clear_layer(payload.target_layer)
-        except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.post("/api/v1/commands/reset")
@@ -352,47 +398,5 @@ def create_app(
     @app.post("/api/v1/commands/set_enabled")
     def set_enabled(request: Request, payload: EnabledCommand):
         return get_service(request).set_enabled(payload.enabled)
-
-    @app.get("/api/v1/commands")
-    def list_all_effect_commands(request: Request):
-        return {"items": get_service(request).list_effect_commands()}
-
-    @app.get("/api/v1/commands/{source_id}")
-    def list_source_effect_commands(source_id: str, request: Request):
-        return {"items": get_service(request).list_effect_commands(source_id)}
-
-    @app.get("/api/v1/commands/{source_id}/{command_name}")
-    def effect_command_info(source_id: str, command_name: str, request: Request):
-        try:
-            return get_service(request).effect_command_info(source_id, command_name)
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    @app.post("/api/v1/commands/{source_id}/{command_name}")
-    def toggle_effect_command(source_id: str, command_name: str, request: Request):
-        try:
-            return get_service(request).invoke_effect_command(source_id, command_name)
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    @app.post("/api/v1/commands/{source_id}/{command_name}/on")
-    def enable_effect_command(source_id: str, command_name: str, request: Request):
-        try:
-            return get_service(request).invoke_effect_command(source_id, command_name, state="on")
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    @app.post("/api/v1/commands/{source_id}/{command_name}/off")
-    def disable_effect_command(source_id: str, command_name: str, request: Request):
-        try:
-            return get_service(request).invoke_effect_command(source_id, command_name, state="off")
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return app

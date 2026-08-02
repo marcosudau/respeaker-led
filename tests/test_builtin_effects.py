@@ -1,26 +1,6 @@
 from __future__ import annotations
 
-from tools.effect_building.effect_definitions.basic import (
-    BlinkColorEffect,
-    OffEffect,
-    ProgressBarEffect,
-    SoftPulseEffect,
-    SolidColorEffect,
-)
-from tools.effect_building.effect_definitions.overlays import (
-    CountdownRingEffect,
-    DirectionIndicatorEffect,
-    WarningFlashEffect,
-)
-from tools.effect_building.effect_definitions.ring_effects import (
-    DoaDirectionDotEffect,
-    FillRingEffect,
-    PulsePatternEffect,
-    RotatingSegmentEffect,
-    ShortPingEffect,
-    ShortFlashEffect,
-    TimerRingEffect,
-)
+from tools.effect_building.standard_effects import discover_standard_effects
 from src.engine.effect_registry import build_default_effect_registry
 from src.core.effect_schema import (
     EffectInvocation,
@@ -30,6 +10,23 @@ from src.core.effect_schema import (
     RenderContext,
 )
 
+_EFFECT_CLASSES = {
+    spec.effect_id: spec.effect_class
+    for spec in discover_standard_effects()
+}
+CountdownRingEffect = _EFFECT_CLASSES["countdown_ring"]
+DirectionIndicatorEffect = _EFFECT_CLASSES["direction_indicator"]
+FillRingEffect = _EFFECT_CLASSES["fill_ring"]
+ProgressBarEffect = _EFFECT_CLASSES["progress_bar"]
+PulsePatternEffect = _EFFECT_CLASSES["pulse_pattern"]
+RotatingSegmentEffect = _EFFECT_CLASSES["rotating_segment"]
+ShortFlashEffect = _EFFECT_CLASSES["short_flash"]
+ShortPingEffect = _EFFECT_CLASSES["short_ping"]
+SoftPulseEffect = _EFFECT_CLASSES["soft_pulse"]
+SolidColorEffect = _EFFECT_CLASSES["solid_color"]
+TimerRingEffect = _EFFECT_CLASSES["timer_ring"]
+WarningFlashEffect = _EFFECT_CLASSES["warning_flash"]
+
 
 def make_context(
     effect_class,
@@ -38,6 +35,7 @@ def make_context(
     now: float = 0.0,
     led_count: int = 4,
     params: dict[str, object] | None = None,
+    inputs: dict[str, object] | None = None,
     playback_mode: PlaybackMode | None = None,
     created_at: float = 0.0,
     requested_duration_ms: int | None = None,
@@ -57,6 +55,7 @@ def make_context(
             requested_duration_ms=requested_duration_ms,
         ),
         params=dict(params or {}),
+        inputs=dict(inputs or {}),
     )
 
 
@@ -64,7 +63,6 @@ def test_builtin_registry_exposes_initial_effect_set():
     registry = build_default_effect_registry()
 
     assert {
-        "off",
         "solid_color",
         "soft_pulse",
         "warning_flash",
@@ -86,8 +84,6 @@ def test_builtin_registry_exposes_initial_effect_set():
         "progress_ring",
         "timer_ring",
         "countdown_segment",
-        "doa_direction_dot",
-        "doa_direction_segment",
         "highlighted_segment",
         "opposing_markers",
         "short_flash",
@@ -101,7 +97,6 @@ def test_builtin_registry_exposes_initial_effect_set():
         "sparkle_burst",
         "short_ping",
     }.issubset(set(registry.list_effect_ids()))
-    assert registry.get("off").qualified_effect_id == "default-effects::off"
     assert registry.get("warning_flash").definition.title == WarningFlashEffect.definition.title
 
 
@@ -123,8 +118,6 @@ def test_all_new_effects_expose_general_brightness_parameter():
         "progress_ring",
         "timer_ring",
         "countdown_segment",
-        "doa_direction_dot",
-        "doa_direction_segment",
         "highlighted_segment",
         "opposing_markers",
         "short_flash",
@@ -150,18 +143,11 @@ def test_builtin_registry_uses_final_public_parameter_names():
 
     assert "background_color" in registry.get("soft_pulse").definition.parameter_schema
     assert "base_color" not in registry.get("soft_pulse").definition.parameter_schema
-    assert "direction" in registry.get("direction_indicator").definition.parameter_schema
+    assert "direction_deg" in registry.get("direction_indicator").definition.runtime_input_schema
+    assert registry.get("direction_indicator").definition.runtime_input_schema[
+        "direction_deg"
+    ].aliases == ("direction",)
     assert "direction_deg" not in registry.get("direction_indicator").definition.parameter_schema
-
-
-def test_off_effect_renders_black_frame_and_supports_persistent_background_layer():
-    effect = OffEffect()
-    definition = effect.get_definition()
-    frame = effect.render(make_context(OffEffect, layer_id=LayerId.BACKGROUND_STATE_LAYER, led_count=3))
-
-    assert frame == [0, 0, 0]
-    assert definition.layer_rules[LayerId.BACKGROUND_STATE_LAYER].persistent_storage is True
-    assert definition.layer_rules[LayerId.BACKGROUND_STATE_LAYER].requires_indefinite_duration is True
 
 
 def test_solid_color_effect_uses_defaults_and_parses_hex_strings():
@@ -170,7 +156,7 @@ def test_solid_color_effect_uses_defaults_and_parses_hex_strings():
     custom_frame = effect.render(
         make_context(
             SolidColorEffect,
-            layer_id=LayerId.MAIN_LAYER,
+            layer_id=LayerId.STATE_LAYER,
             led_count=2,
             params={"color": "0x224466"},
         )
@@ -186,7 +172,7 @@ def test_soft_pulse_effect_reaches_base_and_accent_color_at_deterministic_times(
     params = {
         "color": "#204060",
         "background_color": "#102030",
-        "period_ms": 2000,
+        "speed": 0.9,
     }
     start_frame = effect.render(
         make_context(
@@ -224,7 +210,7 @@ def test_warning_flash_effect_is_event_only_and_uses_priority_fifo_queueing():
     params = {
         "color": "#FFAA00",
         "background_color": "#120400",
-        "period_ms": 400,
+        "speed": 1.0,
         "duty_cycle": 0.5,
     }
     on_frame = effect.render(
@@ -262,31 +248,30 @@ def test_progress_bar_effect_renders_expected_led_split():
     frame = effect.render(
         make_context(
             ProgressBarEffect,
-            layer_id=LayerId.MAIN_LAYER,
+            layer_id=LayerId.ONGOING_OVERLAY_LAYER,
             led_count=6,
-            params={"value": 50, "color": "#112233", "background_color": "#010101"},
+            params={"color": "#112233", "background_color": "#010101"},
+            inputs={"progress": 50},
         )
     )
 
     assert frame == [0x112233, 0x112233, 0x112233, 0x010101, 0x010101, 0x010101]
 
 
-def test_direction_indicator_effect_marks_center_and_neighbors_transparently():
+def test_direction_indicator_effect_marks_one_led_transparently():
     effect = DirectionIndicatorEffect()
     frame = effect.render(
         make_context(
             DirectionIndicatorEffect,
             layer_id=LayerId.ONGOING_OVERLAY_LAYER,
             led_count=12,
-            params={"direction": 120.0},
+            inputs={"direction_deg": 120.0, "detection_state": "sound"},
             playback_mode=PlaybackMode.PERSISTENT,
         )
     )
 
-    assert frame[4] == 0xEAF8FF
-    assert frame[3] == 0x7FC9FF
-    assert frame[5] == 0x7FC9FF
-    assert frame[0] is None
+    assert frame[4] == 0x00C066
+    assert sum(value is not None for value in frame) == 1
 
 
 def test_countdown_ring_effect_uses_deadline_and_duration_to_render_remaining_segment():
@@ -322,7 +307,7 @@ def test_rotating_segment_effect_moves_a_fixed_length_segment():
         )
     )
 
-    assert frame == [0x000000, 0x112233, 0x112233, 0x112233, 0x000000, 0x000000, 0x000000, 0x000000]
+    assert frame == [0x000000, 0x000000, 0x000000, 0x000000, 0x112233, 0x112233, 0x112233, 0x000000]
 
 
 def test_general_brightness_scales_foreground_without_altering_background():
@@ -362,7 +347,7 @@ def test_pulse_pattern_effect_supports_double_pulse_behavior():
         make_context(
             PulsePatternEffect,
             layer_id=LayerId.STATE_LAYER,
-            now=0.9,
+            now=0.8,
             led_count=4,
             params={"pattern": "double", "speed": 1.0, "color": "#224466", "background_color": "#000000"},
             playback_mode=PlaybackMode.PERSISTENT,
@@ -381,12 +366,12 @@ def test_fill_ring_respects_start_led_and_direction():
             layer_id=LayerId.ONGOING_OVERLAY_LAYER,
             led_count=8,
             params={
-                "fill_level": 50,
                 "color": "#ABCDEF",
                 "background_color": "#010101",
                 "start_led": 6,
                 "reverse": True,
             },
+            inputs={"progress": 50},
             playback_mode=PlaybackMode.PERSISTENT,
         )
     )
@@ -413,19 +398,25 @@ def test_timer_ring_uses_remaining_ratio_for_colored_leds():
     assert frame[3:] == [0x000011, 0x000011, 0x000011, 0x000011, 0x000011]
 
 
-def test_doa_direction_dot_centers_point_size_on_target_led():
-    effect = DoaDirectionDotEffect()
-    frame = effect.render(
+def test_direction_indicator_is_pull_driven_and_transparent_without_activity():
+    registry = build_default_effect_registry()
+
+    registered = registry.get("direction_indicator")
+    definition = registered.definition
+    assert definition.input_sampling.mode.value == "pull"
+    assert definition.input_sampling.provider_id == "respeaker_doa"
+    assert definition.input_sampling.interval_ms == 0
+    frame = registered.effect_class().render(
         make_context(
-            DoaDirectionDotEffect,
+            registered.effect_class,
             layer_id=LayerId.ONGOING_OVERLAY_LAYER,
-            led_count=8,
-            params={"target_led": 5, "point_size": 3, "color": "#FFFFFF", "background_color": "#000000"},
+            led_count=12,
+            inputs={"direction_deg": 120.0, "detection_state": "none"},
             playback_mode=PlaybackMode.PERSISTENT,
         )
     )
 
-    assert frame == [0x000000, 0x000000, 0x000000, 0x000000, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0x000000]
+    assert frame == [None] * 12
 
 
 def test_short_ping_renders_a_head_and_fading_trail_from_start_led():

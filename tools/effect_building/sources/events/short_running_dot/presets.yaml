@@ -1,0 +1,57 @@
+presets:
+  short_running_dot_alert:
+    title: Short Running Dot Alert
+    description: Auto-generated event preset for short_running_dot (alert).
+    params:
+      color: "#FF5A5A"
+      background_color: "#120102"
+      brightness: 1.0
+      speed: 1.35
+      duration_ms: 900
+      reverse: false
+    tags:
+      - event
+      - alert
+      - short_running_dot
+  short_running_dot_notice:
+    title: Short Running Dot Notice
+    description: Auto-generated event preset for short_running_dot (notice).
+    params:
+      color: "#FFD166"
+      background_color: "#120A02"
+      brightness: 0.9
+      speed: 1.1
+      duration_ms: 1000
+      reverse: false
+    tags:
+      - event
+      - notice
+      - short_running_dot
+  short_running_dot_success:
+    title: Short Running Dot Success
+    description: Auto-generated event preset for short_running_dot (success).
+    params:
+      color: "#42D392"
+      background_color: "#02110A"
+      brightness: 0.88
+      speed: 0.95
+      duration_ms: 950
+      reverse: false
+    tags:
+      - event
+      - success
+      - short_running_dot
+  short_running_dot_urgent:
+    title: Short Running Dot Urgent
+    description: Auto-generated event preset for short_running_dot (urgent).
+    params:
+      color: "#FF3B30"
+      background_color: "#170102"
+      brightness: 1.0
+      speed: 1.6
+      duration_ms: 700
+      reverse: true
+    tags:
+      - event
+      - urgent
+      - short_running_dot

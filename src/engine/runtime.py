@@ -8,10 +8,22 @@ from typing import Any, Callable
 from ..integrations.adapters import ConsolePreviewAdapter, FrameAdapter
 from .composer import SceneComposer
 from .effect_registry import EffectRegistry, build_default_effect_registry
-from ..core.effect_schema import CommandKind, LayerId, NormalizedCommand, PersistedLayerState
+from ..core.effect_schema import (
+    CommandKind,
+    DefinitionType,
+    LayerId,
+    NormalizedCommand,
+    OverlayMode,
+    PersistedLayerState,
+)
+from ..core.parameter_validation import normalize_runtime_inputs, resolve_configuration
 from ..core.layers import LayerStore
 from ..core.models import BaseState, CountdownState, Frame, Scene
-from .normalization import ControllerCommandNormalizer, build_effect_invocation, canonicalize_effect_params
+from ..integrations.application_commands import (
+    ControllerCommandNormalizer,
+    build_effect_invocation,
+    canonicalize_effect_params,
+)
 from .renderer import SceneRenderer
 
 
@@ -41,16 +53,16 @@ class ControllerRuntime:
         self,
         adapter: FrameAdapter | None = None,
         effect_registry: EffectRegistry | None = None,
+        input_providers: dict[str, Callable] | None = None,
     ) -> None:
         self.effect_registry = effect_registry or build_default_effect_registry()
         self.normalizer = ControllerCommandNormalizer()
         self.store = LayerStore()
-        self.composer = SceneComposer(self.effect_registry)
+        self.composer = SceneComposer(self.effect_registry, input_providers=input_providers)
         self.renderer = SceneRenderer()
         self.adapter = adapter or ConsolePreviewAdapter()
         self.last_scene: Scene | None = None
         self.last_frame: Frame | None = None
-        self.active_effect_preset_id: str | None = None
         self._expire_callbacks: dict[str, Callable[[float], None]] = {}
         self._invocation_sequence = 0
         self._countdown_invocation_id: str | None = None
@@ -60,7 +72,6 @@ class ControllerRuntime:
         now = _timestamp_or_now(timestamp)
         name = _normalize_name(state_name, "idle")
         copied_payload = _copy_payload(payload)
-        self.active_effect_preset_id = None
         self.store.base_state = BaseState(name=name, payload=copied_payload, updated_at=now)
         self._apply_normalized_commands(
             self.normalizer.normalize_set_state(name, copied_payload, timestamp=now),
@@ -170,13 +181,11 @@ class ControllerRuntime:
 
     def reset(self, *, initial_state: str = "idle") -> None:
         self.store = LayerStore()
-        self.active_effect_preset_id = None
         self._expire_callbacks.clear()
         self._countdown_invocation_id = None
         self.set_state(initial_state, timestamp=time.monotonic())
 
     def set_progress(self, value: float, *, color: int = 0x3399FF, background_color: int = 0x03070B) -> None:
-        self.active_effect_preset_id = None
         now = time.monotonic()
         self._apply_normalized_commands(
             self.normalizer.normalize_set_progress(
@@ -188,12 +197,241 @@ class ControllerRuntime:
             timestamp=now,
         )
 
+    def set_state_target(
+        self,
+        target: str,
+        config: dict[str, Any] | None = None,
+        *,
+        slot: str = "primary",
+        action: str = "on",
+        timestamp: float | None = None,
+    ):
+        layer_id = self._state_layer(slot)
+        resolved = self.effect_registry.resolve_target(target, expected_type=DefinitionType.STATE)
+        target_id = self._resolved_target_id(resolved)
+        active = self._target_is_active(layer_id, target_id)
+        desired = self._resolve_switch_action(action, active)
+        if not desired:
+            if active:
+                self._clear_layer(layer_id)
+            return None
+        return self._apply_resolved_target(
+            resolved,
+            layer_id,
+            config=config,
+            timestamp=timestamp,
+            scene_name=f"state:{slot}",
+        )
+
+    def clear_state_target(self, *, slot: str = "primary") -> None:
+        self._clear_layer(self._state_layer(slot))
+
+    def set_overlay(
+        self,
+        target: str,
+        channel: str | None = None,
+        config: dict[str, Any] | None = None,
+        inputs: dict[str, Any] | None = None,
+        *,
+        action: str = "on",
+        timestamp: float | None = None,
+    ):
+        resolved = self.effect_registry.resolve_target(target, expected_type=DefinitionType.OVERLAY)
+        definition = resolved.effect.definition
+        if definition.overlay_mode is OverlayMode.CONTROLLED:
+            normalized_channel = self._normalize_channel(channel)
+        else:
+            if action != "on":
+                raise ValueError("Timed overlays support only action 'on'")
+            normalized_channel = (
+                None if channel is None else self._normalize_channel(channel)
+            )
+        layer_id = (
+            LayerId.TEMP_OVERLAY_LAYER
+            if definition.overlay_mode is OverlayMode.TIMED
+            else LayerId.ONGOING_OVERLAY_LAYER
+        )
+        if definition.overlay_mode is OverlayMode.CONTROLLED:
+            target_id = self._resolved_target_id(resolved)
+            active = self._channel_is_active(layer_id, normalized_channel) and self._target_is_active(
+                layer_id,
+                target_id,
+            )
+            desired = self._resolve_switch_action(action, active)
+            if not desired:
+                if active:
+                    self._clear_layer(layer_id)
+                return None
+        return self._apply_resolved_target(
+            resolved,
+            layer_id,
+            config=config,
+            inputs=inputs,
+            timestamp=timestamp,
+            scene_name=(
+                f"overlay:{normalized_channel}"
+                if normalized_channel is not None
+                else f"overlay:{definition.id}"
+            ),
+            metadata=(
+                {} if normalized_channel is None else {"channel": normalized_channel}
+            ),
+        )
+
+    def update_overlay(
+        self,
+        channel: str,
+        inputs: dict[str, Any],
+        *,
+        timestamp: float | None = None,
+    ) -> EffectInvocation:
+        normalized_channel = self._normalize_channel(channel)
+        layer_id, invocation = self._find_overlay_channel(normalized_channel)
+        registered = self.effect_registry.get(invocation.effect_id)
+        definition = registered.definition
+        if definition.overlay_mode is not OverlayMode.CONTROLLED:
+            raise ValueError(f"Overlay channel {normalized_channel!r} is timed and cannot be updated")
+        normalized = normalize_runtime_inputs(definition, inputs)
+        invocation.inputs.update(normalized)
+        now = _timestamp_or_now(timestamp)
+        invocation.input_last_attempt_at = now
+        invocation.input_last_success_at = now
+        invocation.input_error = None
+        return invocation
+
+    def clear_overlay(self, channel: str) -> None:
+        normalized_channel = self._normalize_channel(channel)
+        layer_id, _ = self._find_overlay_channel(normalized_channel)
+        self._clear_layer(layer_id)
+
+    def emit_event_target(
+        self,
+        target: str,
+        config: dict[str, Any] | None = None,
+        *,
+        priority: int | None = None,
+        timestamp: float | None = None,
+    ):
+        resolved = self.effect_registry.resolve_target(target, expected_type=DefinitionType.EVENT)
+        return self._apply_resolved_target(
+            resolved,
+            LayerId.EVENT_LAYER,
+            config=config,
+            timestamp=timestamp,
+            priority=priority,
+            enqueue=True,
+            scene_name=f"event:{resolved.effect.local_effect_id}",
+        )
+
+    def _apply_resolved_target(
+        self,
+        resolved,
+        layer_id: LayerId,
+        *,
+        config: dict[str, Any] | None = None,
+        inputs: dict[str, Any] | None = None,
+        timestamp: float | None = None,
+        priority: int | None = None,
+        enqueue: bool = False,
+        scene_name: str,
+        metadata: dict[str, Any] | None = None,
+    ):
+        definition = resolved.effect.definition
+        normalized_config = resolve_configuration(
+            definition,
+            preset=resolved.preset_params,
+            overrides=config,
+        )
+        normalized_inputs = normalize_runtime_inputs(definition, inputs)
+        duration_ms = None
+        if definition.definition_type is DefinitionType.EVENT or (
+            definition.definition_type is DefinitionType.OVERLAY
+            and definition.overlay_mode is OverlayMode.TIMED
+        ):
+            raw_duration = normalized_config.get("duration_ms", normalized_config.get("total_ms"))
+            if raw_duration is None:
+                raise ValueError(
+                    f"{definition.definition_type.value.title()} {definition.id!r} "
+                    "must define duration_ms or total_ms"
+                )
+            duration_ms = max(1, int(raw_duration))
+        meta = dict(metadata or {})
+        meta["target_id"] = self._resolved_target_id(resolved)
+        if resolved.preset_id is not None:
+            meta["preset_id"] = resolved.preset_id
+        for key, value in meta.items():
+            normalized_config[f"__{key}"] = value
+        return self.apply_effect(
+            resolved.effect.registered_id,
+            layer_id,
+            normalized_config,
+            inputs=normalized_inputs,
+            duration_ms=duration_ms,
+            priority=priority,
+            enqueue=enqueue,
+            scene_name=scene_name,
+            item_id=resolved.preset_id or resolved.effect.qualified_effect_id,
+            mode=definition.definition_type.value,
+            timestamp=timestamp,
+        )
+
+    def _state_layer(self, slot: str) -> LayerId:
+        normalized = str(slot or "").strip().lower().replace("-", "_")
+        layers = {
+            "background": LayerId.BACKGROUND_STATE_LAYER,
+            "primary": LayerId.STATE_LAYER,
+            "state": LayerId.STATE_LAYER,
+        }
+        if normalized not in layers:
+            raise ValueError("State slot must be 'background' or 'primary'")
+        return layers[normalized]
+
+    def _normalize_channel(self, channel: str | None) -> str:
+        normalized = str(channel or "").strip().lower().replace("-", "_")
+        if not normalized:
+            raise ValueError("Overlay channel must not be empty")
+        return normalized
+
+    def _resolved_target_id(self, resolved) -> str:
+        return resolved.preset_id or resolved.effect.qualified_effect_id
+
+    def _channel_is_active(self, layer_id: LayerId, channel: str) -> bool:
+        invocation = self.store.layer(layer_id).state.active_invocation
+        return invocation is not None and invocation.params.get("__channel") == channel
+
+    def _find_overlay_channel(self, channel: str) -> tuple[LayerId, EffectInvocation]:
+        for layer_id in (LayerId.ONGOING_OVERLAY_LAYER, LayerId.TEMP_OVERLAY_LAYER):
+            invocation = self.store.layer(layer_id).state.active_invocation
+            if invocation is not None and invocation.params.get("__channel") == channel:
+                return layer_id, invocation
+        raise KeyError(f"Unknown active overlay channel {channel!r}")
+
+    def _target_is_active(self, layer_id: LayerId, target_id: str) -> bool:
+        invocation = self.store.layer(layer_id).state.active_invocation
+        if invocation is None:
+            return False
+        active_target_id = invocation.params.get("__target_id")
+        if active_target_id is not None:
+            return active_target_id == target_id
+        return self.effect_registry.get(invocation.effect_id).qualified_effect_id == target_id
+
+    def _resolve_switch_action(self, action: str, active: bool) -> bool:
+        normalized = str(action or "on").strip().lower()
+        if normalized == "toggle":
+            return not active
+        if normalized in {"on", "true", "1"}:
+            return True
+        if normalized in {"off", "false", "0"}:
+            return False
+        raise ValueError("Action must be 'on', 'off', or 'toggle'")
+
     def apply_effect(
         self,
         effect_id: str,
         target_layer: LayerId,
         params: dict[str, Any] | None = None,
         *,
+        inputs: dict[str, Any] | None = None,
         duration_ms: int | None = None,
         priority: int | None = None,
         scene_name: str | None = None,
@@ -205,7 +443,6 @@ class ControllerRuntime:
         replace_existing: bool = True,
         timestamp: float | None = None,
     ):
-        self.active_effect_preset_id = None
         command_params = canonicalize_effect_params(params)
         if duration_ms is not None:
             command_params["duration_ms"] = int(duration_ms)
@@ -226,6 +463,7 @@ class ControllerRuntime:
                     target_layer=target_layer,
                     effect_id=effect_id,
                     params=command_params,
+                    inputs=dict(inputs or {}),
                     priority=priority,
                     timestamp=now,
                     enqueue=enqueue,
@@ -236,56 +474,8 @@ class ControllerRuntime:
         )
         return None if not applied else applied[0]
 
-    def apply_effect_preset(
-        self,
-        source_id: str,
-        preset_id: str,
-        *,
-        meta_params: dict[str, Any] | None = None,
-        duration_ms: int | None = None,
-        priority: int | None = None,
-        enqueue: bool | None = None,
-        replace_existing: bool | None = None,
-        scene_name: str | None = None,
-        item_id: str | None = None,
-        mode: str | None = None,
-        payload: dict[str, Any] | None = None,
-        valid: bool = True,
-        timestamp: float | None = None,
-    ):
-        preset = self.effect_registry.get_preset(source_id, preset_id)
-        params = dict(preset.params)
-        if meta_params:
-            params.update(meta_params)
-        applied = self.apply_effect(
-            preset.qualified_effect_id,
-            preset.target_layer,
-            params,
-            duration_ms=preset.duration_ms if duration_ms is None else duration_ms,
-            priority=preset.priority if priority is None else priority,
-            scene_name=scene_name or f"preset:{preset.qualified_preset_id}",
-            item_id=item_id or preset.preset_id,
-            mode=mode or preset.preset_id,
-            payload=payload,
-            valid=valid,
-            enqueue=preset.enqueue if enqueue is None else enqueue,
-            replace_existing=preset.replace_existing if replace_existing is None else replace_existing,
-            timestamp=timestamp,
-        )
-        self.active_effect_preset_id = preset.qualified_preset_id
-        return applied
-
     def clear_layer(self, target_layer: LayerId) -> None:
         self._clear_layer(target_layer)
-
-    def is_command_active(self, source_id: str, command_name: str, target_layer: LayerId) -> bool:
-        invocation = self.store.layer(target_layer).state.active_invocation
-        if invocation is None:
-            return False
-        return (
-            str(invocation.params.get("__command_source_id", "")) == str(source_id)
-            and str(invocation.params.get("__command_name", "")) == str(command_name)
-        )
 
     def apply_default_background_state(self) -> None:
         self.apply_effect(
@@ -387,8 +577,6 @@ class ControllerRuntime:
 
     def get_status(self, now: float | None = None) -> dict:
         now = time.monotonic() if now is None else now
-        main_entry = self.store.layer(LayerId.MAIN_LAYER)
-        main_invocation = main_entry.state.active_invocation
         current_event = self.store.current_event
         pending_events = self.store.pending_events
         return {
@@ -397,17 +585,6 @@ class ControllerRuntime:
                 "payload": self._sanitize_value(self.store.base_state.payload),
                 "updated_at": self.store.base_state.updated_at,
             },
-            "active_visual": None
-            if main_invocation is None
-            else {
-                "id": main_entry.item_id or main_invocation.invocation_id,
-                "mode": main_entry.mode or main_invocation.effect_id,
-                "payload": self._sanitize_value(main_entry.payload),
-                "updated_at": main_invocation.created_at,
-                "valid": main_entry.valid,
-                "visual": self._serialize_invocation_visual(main_invocation),
-            },
-            "active_effect_preset_id": self.active_effect_preset_id,
             "direction": self.store.direction,
             "brightness": self.store.brightness,
             "enabled": self.store.enabled,
@@ -425,9 +602,19 @@ class ControllerRuntime:
                 "pending": [self._serialize_event_invocation(event) for event in pending_events],
             },
             "render_layers": {
-                "state_visual": self._serialize_layer_visual(LayerId.BACKGROUND_STATE_LAYER),
-                "direction_visual": self._serialize_layer_visual(LayerId.ONGOING_OVERLAY_LAYER),
-                "countdown_visual": self._serialize_layer_visual(LayerId.TEMP_OVERLAY_LAYER),
+                "background_state_visual": self._serialize_layer_visual(
+                    LayerId.BACKGROUND_STATE_LAYER,
+                    now,
+                ),
+                "state_visual": self._serialize_layer_visual(LayerId.STATE_LAYER, now),
+                "direction_visual": self._serialize_layer_visual(
+                    LayerId.ONGOING_OVERLAY_LAYER,
+                    now,
+                ),
+                "countdown_visual": self._serialize_layer_visual(
+                    LayerId.TEMP_OVERLAY_LAYER,
+                    now,
+                ),
             },
             "last_scene": self._serialize_scene(self.last_scene),
             "last_frame": self._serialize_frame(self.last_frame),
@@ -464,6 +651,10 @@ class ControllerRuntime:
                 invocation_id=self._next_invocation_id(command),
                 created_at=created_at,
             )
+            registered = self.effect_registry.get(invocation.effect_id)
+            if registered.definition.effective_input_sampling() is not None and invocation.inputs:
+                invocation.input_last_attempt_at = created_at
+                invocation.input_last_success_at = created_at
             removed_ids = self.store.set_invocation(
                 invocation.target_layer,
                 invocation,
@@ -566,19 +757,55 @@ class ControllerRuntime:
             return [self._signature_value(item) for item in value]
         return repr(value)
 
-    def _serialize_invocation_visual(self, invocation) -> dict:
+    def _serialize_invocation_visual(self, invocation, now: float) -> dict:
+        registered = self.effect_registry.get(invocation.effect_id)
         return {
             "effect_id": invocation.effect_id,
             "playback_mode": None if invocation.playback_mode is None else invocation.playback_mode.value,
             "requested_duration_ms": invocation.requested_duration_ms,
             "params": self._sanitize_value(_public_params(invocation.params)),
+            "inputs": self._sanitize_value(invocation.inputs),
+            "input_health": self._serialize_input_health(
+                registered.definition,
+                invocation,
+                now,
+            ),
         }
 
-    def _serialize_layer_visual(self, layer_id: LayerId) -> dict | None:
+    def _serialize_input_health(self, definition, invocation, now: float) -> dict | None:
+        policy = definition.effective_input_sampling()
+        if policy is None:
+            return None
+        anchor = (
+            invocation.created_at
+            if invocation.input_last_success_at is None
+            else invocation.input_last_success_at
+        )
+        age_ms = max(0, int(round((now - anchor) * 1000.0)))
+        missed = min(
+            policy.max_missed_heartbeats,
+            age_ms // policy.heartbeat_interval_ms,
+        )
+        if age_ms >= policy.failure_after_ms:
+            status = "failed"
+        elif invocation.input_last_success_at is None:
+            status = "waiting"
+        else:
+            status = "healthy"
+        return {
+            "mode": policy.mode.value,
+            "status": status,
+            "age_ms": age_ms,
+            "missed_heartbeats": missed,
+            "max_missed_heartbeats": policy.max_missed_heartbeats,
+            "last_error": invocation.input_error,
+        }
+
+    def _serialize_layer_visual(self, layer_id: LayerId, now: float) -> dict | None:
         invocation = self.store.layer(layer_id).state.active_invocation
         if invocation is None:
             return None
-        return self._serialize_invocation_visual(invocation)
+        return self._serialize_invocation_visual(invocation, now)
 
     def _serialize_event_invocation(self, invocation) -> dict:
         return {

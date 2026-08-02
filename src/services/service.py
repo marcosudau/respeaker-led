@@ -5,11 +5,17 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
-from ..integrations.adapters import ConsolePreviewAdapter, FrameAdapter, ReSpeakerAdapter
+from ..integrations.adapters import (
+    ConsolePreviewAdapter,
+    DoAInputAdapter,
+    FrameAdapter,
+    ReSpeakerAdapter,
+)
 from ..infrastructure.background_state_store import load_background_state, save_background_state
-from ..core.effect_schema import parse_layer_id
+from ..core.effect_schema import DefinitionType
 from ..infrastructure.logging_utils import get_logger
 from ..infrastructure.paths import BACKGROUND_STATE_FILE
+from ..engine.input_provider import PolledInputProvider
 from ..engine.runtime import ControllerRuntime
 from ..core.models import Frame, LED_COUNT
 
@@ -37,7 +43,20 @@ class ControllerService:
             use_device=use_device,
             adapter_factory=adapter_factory,
         )
-        self.runtime = ControllerRuntime(adapter=self.adapter)
+        self._hardware_input_providers: dict[str, PolledInputProvider] = {}
+        if isinstance(self.adapter, DoAInputAdapter):
+            self._hardware_input_providers["respeaker_doa"] = PolledInputProvider(
+                "respeaker_doa",
+                self.adapter.read_doa_inputs,
+                max_hz=30.0,
+            )
+        self.runtime = ControllerRuntime(
+            adapter=self.adapter,
+            input_providers={
+                provider_id: provider.sample
+                for provider_id, provider in self._hardware_input_providers.items()
+            },
+        )
         self._lock = threading.RLock()
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
@@ -115,9 +134,30 @@ class ControllerService:
         logger.info("controller service stopped")
 
     def _render_once_locked(self, now: float | None = None) -> None:
-        self.runtime.render_once(time.monotonic() if now is None else now)
+        resolved_now = time.monotonic() if now is None else now
+        self._refresh_hardware_inputs(resolved_now)
+        self.runtime.render_once(resolved_now)
         self._sync_background_state_storage()
         self._render_count += 1
+
+    def _refresh_hardware_inputs(self, now: float) -> None:
+        for provider in self._hardware_input_providers.values():
+            previous_error = provider.last_error
+            attempted = provider.refresh(now)
+            if not attempted:
+                continue
+            current_error = provider.last_error
+            if current_error is not None and current_error != previous_error:
+                logger.warning(
+                    "hardware input polling failed provider=%s error=%s",
+                    provider.provider_id,
+                    current_error,
+                )
+            elif current_error is None and previous_error is not None:
+                logger.info(
+                    "hardware input polling recovered provider=%s",
+                    provider.provider_id,
+                )
 
     def _restore_background_state(self) -> None:
         persisted_state = load_background_state(self.background_state_file)
@@ -179,6 +219,10 @@ class ControllerService:
                 "output_mode": self.output_mode,
                 "device_available": self.device_available,
                 "fallback_active": self.fallback_active,
+                "hardware_inputs": {
+                    provider_id: provider.status(time.monotonic())
+                    for provider_id, provider in self._hardware_input_providers.items()
+                },
             }
         )
         return snapshot
@@ -253,6 +297,154 @@ class ControllerService:
         with self._lock:
             return [self._serialize_registered_effect(effect) for effect in self.runtime.effect_registry.list_registered_effects()]
 
+    def list_definitions(
+        self,
+        definition_type: DefinitionType,
+        *,
+        details: bool = False,
+    ) -> list[str] | list[dict[str, Any]]:
+        with self._lock:
+            effects = [
+                effect
+                for effect in self.runtime.effect_registry.list_registered_effects()
+                if effect.definition.definition_type is definition_type
+            ]
+            if not details:
+                return [effect.local_effect_id for effect in effects]
+            return [self._serialize_definition_v2(effect) for effect in effects]
+
+    def list_presets_v2(
+        self,
+        definition_type: DefinitionType | None = None,
+        *,
+        details: bool = False,
+    ) -> list[str] | list[dict[str, Any]]:
+        with self._lock:
+            presets = self.runtime.effect_registry.list_effect_presets()
+            if definition_type is not None:
+                presets = [
+                    preset
+                    for preset in presets
+                    if self.runtime.effect_registry.get_for_source(
+                        preset["source_id"],
+                        preset["effect_id"],
+                    ).definition.definition_type
+                    is definition_type
+                ]
+            if details:
+                return presets
+            return [preset["preset_id"] for preset in presets]
+
+    def target_info(self, target: str) -> dict[str, Any]:
+        with self._lock:
+            resolved = self.runtime.effect_registry.resolve_target(target)
+            payload = self._serialize_definition_v2(resolved.effect)
+            payload["resolved_from"] = target
+            payload["resolved_kind"] = resolved.kind
+            if resolved.preset_id is not None:
+                payload["preset"] = {
+                    "id": resolved.preset_id,
+                    "config": dict(resolved.preset_params or {}),
+                }
+            return payload
+
+    def set_state_target(
+        self,
+        target: str,
+        config: dict[str, Any] | None = None,
+        *,
+        slot: str = "primary",
+        action: str = "on",
+    ) -> dict[str, Any]:
+        snapshot = self._mutate(
+            lambda: self.runtime.set_state_target(target, config, slot=slot, action=action)
+        )
+        return {
+            "ok": True,
+            "operation": "set",
+            "type": "state",
+            "target": target,
+            "slot": slot,
+            "action": action,
+            "status": snapshot,
+        }
+
+    def clear_state_target(self, *, slot: str = "primary") -> dict[str, Any]:
+        snapshot = self._mutate(lambda: self.runtime.clear_state_target(slot=slot))
+        return {
+            "ok": True,
+            "operation": "clear",
+            "type": "state",
+            "slot": slot,
+            "status": snapshot,
+        }
+
+    def set_overlay_target(
+        self,
+        target: str,
+        channel: str | None = None,
+        config: dict[str, Any] | None = None,
+        inputs: dict[str, Any] | None = None,
+        *,
+        action: str = "on",
+    ) -> dict[str, Any]:
+        snapshot = self._mutate(
+            lambda: self.runtime.set_overlay(
+                target,
+                channel,
+                config,
+                inputs,
+                action=action,
+            )
+        )
+        return {
+            "ok": True,
+            "operation": "set",
+            "type": "overlay",
+            "target": target,
+            "channel": channel,
+            "action": action,
+            "status": snapshot,
+        }
+
+    def update_overlay_target(self, channel: str, inputs: dict[str, Any]) -> dict[str, Any]:
+        snapshot = self._mutate(lambda: self.runtime.update_overlay(channel, inputs))
+        return {
+            "ok": True,
+            "operation": "update",
+            "type": "overlay",
+            "channel": channel,
+            "status": snapshot,
+        }
+
+    def clear_overlay_target(self, channel: str) -> dict[str, Any]:
+        snapshot = self._mutate(lambda: self.runtime.clear_overlay(channel))
+        return {
+            "ok": True,
+            "operation": "clear",
+            "type": "overlay",
+            "channel": channel,
+            "status": snapshot,
+        }
+
+    def emit_event_target(
+        self,
+        target: str,
+        config: dict[str, Any] | None = None,
+        *,
+        priority: int | None = None,
+    ) -> dict[str, Any]:
+        snapshot = self._mutate(
+            lambda: self.runtime.emit_event_target(target, config, priority=priority)
+        )
+        return {
+            "ok": True,
+            "operation": "emit",
+            "type": "event",
+            "target": target,
+            "status": snapshot,
+        }
+
     def list_effects_for_source(self, source_id: str) -> list[dict[str, Any]]:
         with self._lock:
             return [
@@ -295,18 +487,6 @@ class ControllerService:
             self.runtime.effect_registry.remove_source(source_id)
             return {"items": [self._serialize_effect_source(source) for source in self.runtime.effect_registry.list_effect_sources()]}
 
-    def list_effect_commands(self, source_id: str | None = None) -> list[dict[str, Any]]:
-        with self._lock:
-            return self.runtime.effect_registry.list_effect_commands(source_id)
-
-    def list_effect_commands_for_effect(self, source_id: str, effect_id: str) -> list[dict[str, Any]]:
-        with self._lock:
-            return self.runtime.effect_registry.list_effect_commands_for_effect(source_id, effect_id)
-
-    def effect_command_info(self, source_id: str, command_name: str) -> dict[str, Any]:
-        with self._lock:
-            return self.runtime.effect_registry.get_command(source_id, command_name).serialize()
-
     def _serialize_registered_effect(self, registered) -> dict[str, Any]:
         definition = registered.definition
         return {
@@ -333,121 +513,72 @@ class ControllerService:
                     "maximum": param.maximum,
                     "enum_values": list(param.enum_values),
                     "unit": param.unit,
+                    "nullable": param.nullable,
+                    "aliases": list(param.aliases),
                 }
                 for name, param in definition.parameter_schema.items()
             },
         }
 
-    def apply_effect(
-        self,
-        effect_id: str,
-        target_layer: str,
-        params: dict[str, Any] | None = None,
-        *,
-        duration_ms: int | None = None,
-        priority: int | None = None,
-        enqueue: bool = False,
-        replace_existing: bool = True,
-    ) -> dict[str, Any]:
-        layer_id = parse_layer_id(target_layer)
-        effect_params = dict(params or {})
-        return self._mutate(
-            lambda: self.runtime.apply_effect(
-                effect_id,
-                layer_id,
-                effect_params,
-                duration_ms=duration_ms,
-                priority=priority,
-                enqueue=enqueue,
-                replace_existing=replace_existing,
-                scene_name=f"manual:{layer_id.value.lower()}:{effect_id}",
-                item_id=f"manual:{effect_id}",
-                mode=effect_id,
-                payload=effect_params,
-            )
-        )
+    def _serialize_definition_v2(self, registered) -> dict[str, Any]:
+        definition = registered.definition
+        return {
+            "id": definition.id,
+            "qualified_id": registered.qualified_effect_id,
+            "source_id": registered.source_id,
+            "package_id": registered.package_id,
+            "type": definition.definition_type.value,
+            "overlay_mode": (
+                None if definition.overlay_mode is None else definition.overlay_mode.value
+            ),
+            "title": definition.title,
+            "description": definition.description,
+            "version": definition.version,
+            "defaults": dict(definition.defaults),
+            "parameters": {
+                name: self._serialize_parameter(param)
+                for name, param in definition.parameter_schema.items()
+            },
+            "runtime_inputs": {
+                name: self._serialize_parameter(param)
+                for name, param in definition.runtime_input_schema.items()
+            },
+            "visual": {
+                "color_model": definition.color_model.value,
+                "composition": definition.composition.value,
+                "animated": definition.animated,
+                "directional": definition.directional,
+            },
+            "input_sampling": self._serialize_input_sampling(definition),
+            "tags": list(definition.tags),
+        }
 
-    def clear_layer(self, target_layer: str) -> dict[str, Any]:
-        layer_id = parse_layer_id(target_layer)
-        return self._mutate(lambda: self.runtime.clear_layer(layer_id))
+    def _serialize_parameter(self, param) -> dict[str, Any]:
+        return {
+            "type": param.type,
+            "required": param.required,
+            "default": param.default,
+            "description": param.description,
+            "minimum": param.minimum,
+            "maximum": param.maximum,
+            "enum_values": list(param.enum_values),
+            "unit": param.unit,
+            "nullable": param.nullable,
+            "aliases": list(param.aliases),
+        }
 
-    def invoke_effect_command(self, source_id: str, command_name: str, state: str | None = None) -> dict[str, Any]:
-        command = self.runtime.effect_registry.get_command(source_id, command_name)
-        desired_state = self._resolve_command_state(command, state)
-        return self._mutate(lambda: self._apply_effect_command(command, desired_state))
-
-    def apply_effect_preset(self, source_id: str, preset_id: str) -> dict[str, Any]:
-        return self._mutate(
-            lambda: self.runtime.apply_effect_preset(
-                source_id,
-                preset_id,
-                scene_name=f"preset:{source_id}:{preset_id}",
-                item_id=f"preset:{source_id}:{preset_id}",
-                mode=preset_id,
-                payload={"source_id": source_id, "preset_id": preset_id},
-            )
-        )
-
-    def _apply_effect_command(self, command, desired_state: str) -> None:
-        action = command.on_action if desired_state == "on" else command.off_action
-        if action is None:
-            raise ValueError(f"Command {command.command_name!r} does not support state {desired_state!r}")
-        if action.action == "clear_layer":
-            self.runtime.clear_layer(action.target_layer)
-            return
-        if action.action == "apply_preset":
-            if action.preset_id is None:
-                raise ValueError(f"Command {command.command_name!r} is missing a preset reference")
-            self.runtime.apply_effect_preset(
-                command.source_id,
-                action.preset_id,
-                meta_params={
-                    "__command_source_id": command.source_id,
-                    "__command_name": command.command_name,
-                },
-                duration_ms=action.duration_ms,
-                priority=action.priority,
-                enqueue=action.enqueue,
-                replace_existing=action.replace_existing,
-                scene_name=f"command:{command.source_id}:{command.command_name}",
-                item_id=f"command:{command.source_id}:{command.command_name}",
-                mode=command.command_name,
-                payload={"source_id": command.source_id, "command_name": command.command_name},
-                valid=True,
-            )
-            return
-
-        params = dict(action.params)
-        params["__command_source_id"] = command.source_id
-        params["__command_name"] = command.command_name
-        self.runtime.apply_effect(
-            action.effect_id,
-            action.target_layer,
-            params,
-            duration_ms=action.duration_ms,
-            priority=action.priority,
-            enqueue=action.enqueue,
-            replace_existing=action.replace_existing,
-            scene_name=f"command:{command.source_id}:{command.command_name}",
-            item_id=f"command:{command.source_id}:{command.command_name}",
-            mode=command.command_name,
-            payload={"source_id": command.source_id, "command_name": command.command_name},
-            valid=True,
-        )
-
-    def _resolve_command_state(self, command, requested_state: str | None) -> str:
-        if requested_state is not None:
-            normalized = str(requested_state).strip().lower()
-            if normalized not in {"on", "off"}:
-                raise ValueError(f"Unsupported command state: {requested_state!r}")
-            if normalized == "off" and command.off_action is None:
-                raise ValueError(f"Command {command.command_name!r} does not support 'off'")
-            return normalized
-
-        if command.kind == "state_toggle":
-            if self.runtime.is_command_active(command.source_id, command.command_name, command.on_action.target_layer):
-                return "off"
-        return "on"
+    def _serialize_input_sampling(self, definition) -> dict[str, Any] | None:
+        policy = definition.effective_input_sampling()
+        if policy is None:
+            return None
+        return {
+            "mode": policy.mode.value,
+            "provider_id": policy.provider_id,
+            "interval_ms": policy.interval_ms,
+            "heartbeat_interval_ms": policy.heartbeat_interval_ms,
+            "max_missed_heartbeats": policy.max_missed_heartbeats,
+            "failure_after_ms": policy.failure_after_ms,
+        }
 
     def _serialize_effect_source(self, source) -> dict[str, Any]:
         return {
@@ -459,7 +590,6 @@ class ControllerService:
             "package_id": source.package_id,
             "package_version": source.package_version,
             "preset_count": source.preset_count,
-            "command_count": source.command_count,
         }
 
     def _emit_service_signal(self, color: int) -> None:

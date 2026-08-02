@@ -11,6 +11,8 @@ from src.engine.effect_registry import EffectRegistry, build_default_effect_regi
 from src.core.effect_schema import (
     DEFAULT_LAYER_PRIORITIES,
     BaseEffect,
+    ColorModel,
+    DefinitionType,
     EffectCapabilities,
     EffectDefinition,
     EffectInvocation,
@@ -29,10 +31,18 @@ class SoftPulseEffect(BaseEffect):
         id="soft_pulse",
         title="Soft Pulse",
         description="Weiches Pulsieren einer Farbe",
+        definition_type=DefinitionType.STATE,
         parameter_schema={
             "color": EffectParamDefinition(name="color", type="color", default="#33AAFF"),
+            "brightness": EffectParamDefinition(
+                name="brightness",
+                type="float",
+                default=1.0,
+                minimum=0.0,
+                maximum=1.0,
+            ),
         },
-        defaults={"color": "#33AAFF"},
+        defaults={"color": "#33AAFF", "brightness": 1.0},
         capabilities=EffectCapabilities(
             playback_modes=(PlaybackMode.LOOP, PlaybackMode.PERSISTENT),
             restorable=True,
@@ -41,8 +51,10 @@ class SoftPulseEffect(BaseEffect):
             LayerId.STATE_LAYER: LayerRule(
                 allowed=True,
                 allowed_playback_modes=(PlaybackMode.LOOP, PlaybackMode.PERSISTENT),
+                requires_indefinite_duration=True,
             ),
         },
+        color_model=ColorModel.MONO,
     )
 
     def render(self, ctx: RenderContext) -> list[int | None]:
@@ -54,6 +66,11 @@ class WarningFlashEffect(BaseEffect):
         id="warning_flash",
         title="Warning Flash",
         description="Kurzer Warnblitz",
+        definition_type=DefinitionType.EVENT,
+        parameter_schema={
+            "duration_ms": EffectParamDefinition(name="duration_ms", type="duration_ms", default=250, minimum=1),
+        },
+        defaults={"duration_ms": 250},
         capabilities=EffectCapabilities(
             playback_modes=(PlaybackMode.SINGLE_RUN,),
             supports_queueing=True,
@@ -63,6 +80,7 @@ class WarningFlashEffect(BaseEffect):
             LayerId.EVENT_LAYER: LayerRule(
                 allowed=True,
                 allowed_playback_modes=(PlaybackMode.SINGLE_RUN,),
+                requires_finite_duration=True,
             ),
         },
     )
@@ -106,6 +124,12 @@ def test_registry_rejects_duplicate_effect_ids():
             id="soft_pulse",
             title="Duplicate Soft Pulse",
             description="Duplikat",
+            definition_type=DefinitionType.STATE,
+            layer_rules={
+                LayerId.STATE_LAYER: LayerRule(
+                    requires_indefinite_duration=True,
+                )
+            },
         )
 
         def render(self, ctx: RenderContext) -> list[int | None]:
@@ -139,8 +163,7 @@ def test_default_registry_registers_builtin_effects():
     registry = build_default_effect_registry()
     sources = {source.source_id: source for source in registry.list_effect_sources()}
 
-    assert {"off", "solid_color", "soft_pulse", "warning_flash"}.issubset(set(registry.list_effect_ids()))
-    assert registry.get("off").source_id == "default-effects"
+    assert {"solid_color", "soft_pulse", "warning_flash"}.issubset(set(registry.list_effect_ids()))
     assert registry.get("default-effects::solid_color").definition.id == "solid_color"
     assert sources["default-effects"].kind == "effect_set"
     assert Path(sources["default-effects"].path) == configured_default_effect_set.resolve()
@@ -159,7 +182,7 @@ def test_default_registry_prefers_first_available_artifact_candidate(tmp_path, m
                 "package_id": "default.soft_pulse",
                 "class_name": "BundledSoftPulseEffect",
                 "effect_id": "soft_pulse",
-                "layer_name": "MAIN_LAYER",
+                "layer_name": "STATE_LAYER",
                 "color": "#123456",
             }
         ],
@@ -235,7 +258,7 @@ def test_default_registry_raises_when_default_artifact_is_invalid(tmp_path, monk
         build_default_effect_registry()
 
 
-def test_registry_can_register_effect_set_and_commands(tmp_path):
+def test_registry_can_register_effect_set_and_resolve_preset(tmp_path):
     set_dir = tmp_path / "voice_assistant_src"
     write_effect_set_source(
         set_dir,
@@ -248,22 +271,10 @@ def test_registry_can_register_effect_set_and_commands(tmp_path):
                 "package_id": "voice.listening",
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
-                "layer_name": "MAIN_LAYER",
+                "layer_name": "STATE_LAYER",
                 "presets": {
-                    "effect_listening_default": {
-                        "category": "effect",
-                        "target_layer": "MAIN_LAYER",
+                    "listening_default": {
                         "params": {"color": "#224466"},
-                    }
-                },
-                "commands": {
-                    "listening": {
-                        "kind": "state_toggle",
-                        "on": {"preset": "effect_listening_default"},
-                        "off": {
-                            "action": "clear_layer",
-                            "target_layer": "MAIN_LAYER",
-                        },
                     }
                 },
             },
@@ -284,12 +295,16 @@ def test_registry_can_register_effect_set_and_commands(tmp_path):
 
     assert source.kind == "effect_set"
     assert "app.voice_assistant::listening_blue" in registry.list_effect_ids()
-    commands = registry.list_effect_commands("app.voice_assistant")
-    assert commands[0]["command_name"] == "listening"
-    assert commands[0]["on"]["preset"] == "effect_listening_default"
+    resolved = registry.resolve_target(
+        "app.voice_assistant::listening_default",
+        expected_type=DefinitionType.STATE,
+    )
+    assert resolved.kind == "preset"
+    assert resolved.effect.definition.id == "listening_blue"
+    assert resolved.preset_params == {"color": "#224466"}
 
 
-def test_registry_lists_effect_commands_via_registry_model_instead_of_service_filtering(tmp_path):
+def test_registry_rejects_wrong_resolved_definition_type(tmp_path):
     set_dir = tmp_path / "voice_assistant_src"
     write_effect_set_source(
         set_dir,
@@ -302,46 +317,7 @@ def test_registry_lists_effect_commands_via_registry_model_instead_of_service_fi
                 "package_id": "voice.listening",
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
-                "layer_name": "MAIN_LAYER",
-                "presets": {
-                    "effect_listening_default": {
-                        "category": "effect",
-                        "target_layer": "MAIN_LAYER",
-                        "params": {"color": "#224466"},
-                    }
-                },
-                "commands": {
-                    "listening": {
-                        "kind": "state_toggle",
-                        "on": {"preset": "effect_listening_default"},
-                        "off": {
-                            "action": "clear_layer",
-                            "target_layer": "MAIN_LAYER",
-                        },
-                    }
-                },
-            },
-            {
-                "dir_name": "idle",
-                "package_id": "voice.idle",
-                "class_name": "IdleBlueEffect",
-                "effect_id": "idle_blue",
-                "layer_name": "STATE_LAYER",
-                "commands": {
-                    "idle-direct": {
-                        "kind": "state_toggle",
-                        "on": {
-                            "action": "apply_effect",
-                            "effect": "idle_blue",
-                            "target_layer": "STATE_LAYER",
-                            "params": {"color": "#335577"},
-                        },
-                        "off": {
-                            "action": "clear_layer",
-                            "target_layer": "STATE_LAYER",
-                        },
-                    }
-                },
+                "layer_name": "EVENT_LAYER",
             },
         ],
     )
@@ -351,11 +327,41 @@ def test_registry_lists_effect_commands_via_registry_model_instead_of_service_fi
     registry = EffectRegistry()
     registry.register_effect_source(package_path)
 
-    listening_commands = registry.list_effect_commands_for_effect("app.voice_assistant", "listening_blue")
-    idle_commands = registry.list_effect_commands_for_effect("app.voice_assistant", "idle_blue")
+    with pytest.raises(ValueError, match="not a state"):
+        registry.resolve_target(
+            "app.voice_assistant::listening_blue",
+            expected_type=DefinitionType.STATE,
+        )
 
-    assert [command["command_name"] for command in listening_commands] == ["listening"]
-    assert [command["command_name"] for command in idle_commands] == ["idle-direct"]
+
+def test_registry_rejects_global_id_collisions_across_sources(tmp_path):
+    artifacts = []
+    for source_id in ("app.one", "app.two"):
+        source = tmp_path / source_id
+        write_effect_set_source(
+            source,
+            source_id=source_id,
+            set_id=source_id.replace(".", "_"),
+            title=source_id,
+            effects=[
+                {
+                    "dir_name": "shared",
+                    "package_id": f"{source_id}.shared",
+                    "class_name": "SharedEffect",
+                    "effect_id": "shared",
+                    "layer_name": "STATE_LAYER",
+                }
+            ],
+        )
+        artifact = tmp_path / f"{source_id}.lefxset"
+        build_effect_set(source, artifact)
+        artifacts.append(artifact)
+
+    registry = EffectRegistry()
+    registry.register_effect_source(artifacts[0])
+    with pytest.raises(ValueError, match="Global id collision"):
+        registry.register_effect_source(artifacts[1])
+    assert [source.source_id for source in registry.list_effect_sources()] == ["app.one"]
 
 
 def test_registry_autodiscovers_effect_packages_from_package_root(tmp_path, monkeypatch):
@@ -372,22 +378,10 @@ def test_registry_autodiscovers_effect_packages_from_package_root(tmp_path, monk
                 "package_id": "voice.listening",
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
-                "layer_name": "MAIN_LAYER",
+                "layer_name": "STATE_LAYER",
                 "presets": {
-                    "effect_listening_default": {
-                        "category": "effect",
-                        "target_layer": "MAIN_LAYER",
+                    "listening_default": {
                         "params": {"color": "#224466"},
-                    }
-                },
-                "commands": {
-                    "listening": {
-                        "kind": "state_toggle",
-                        "on": {"preset": "effect_listening_default"},
-                        "off": {
-                            "action": "clear_layer",
-                            "target_layer": "MAIN_LAYER",
-                        },
                     }
                 },
             }
@@ -422,7 +416,7 @@ def test_registry_skips_autodiscovered_duplicate_effect_packages(tmp_path, monke
                 "package_id": "voice.listening",
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
-                "layer_name": "MAIN_LAYER",
+                "layer_name": "STATE_LAYER",
             }
         ],
     )

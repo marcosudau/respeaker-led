@@ -25,6 +25,16 @@ class RecordingAdapter:
         self.closed = True
 
 
+class RecordingDoAAdapter(RecordingAdapter):
+    def __init__(self) -> None:
+        super().__init__()
+        self.doa_reads = 0
+
+    def read_doa_inputs(self):
+        self.doa_reads += 1
+        return {"direction_deg": 90.0, "detection_state": "sound"}
+
+
 def _startable_service(**kwargs) -> ControllerService:
     return ControllerService(
         use_device=False,
@@ -58,8 +68,8 @@ def test_service_applies_and_persists_default_background_fallback(tmp_path):
 
     snapshot = service.snapshot()
 
-    assert snapshot["render_layers"]["state_visual"]["effect_id"] == "solid_color"
-    assert snapshot["render_layers"]["state_visual"]["params"] == {"color": "#FFFFFF", "brightness": 0.2}
+    assert snapshot["render_layers"]["background_state_visual"]["effect_id"] == "solid_color"
+    assert snapshot["render_layers"]["background_state_visual"]["params"] == {"color": "#FFFFFF", "brightness": 0.2}
     assert json.loads(state_file.read_text(encoding="utf-8"))["effect_id"] == "solid_color"
 
 
@@ -79,6 +89,59 @@ def test_service_starts_with_published_default_effect_artifact():
         service.stop()
 
 
+def test_service_exposes_respeaker_doa_provider_to_pull_overlays():
+    adapter = RecordingDoAAdapter()
+    service = ControllerService(
+        use_device=False,
+        adapter_factory=lambda: adapter,
+        signal_on_s=0.0,
+        signal_off_s=0.0,
+    )
+    try:
+        result = service.set_overlay_target(
+            "direction_indicator",
+            "test_doa",
+            {},
+        )
+        visual = result["status"]["render_layers"]["direction_visual"]
+
+        assert adapter.doa_reads == 1
+        assert visual["inputs"] == {
+            "direction_deg": 90.0,
+            "detection_state": "sound",
+        }
+        assert visual["input_health"]["mode"] == "pull"
+        assert visual["input_health"]["status"] == "healthy"
+        assert adapter.frames[-1][3] == 0x00C066
+        assert adapter.frames[-1].count(0x00C066) == 1
+        assert result["status"]["hardware_inputs"]["respeaker_doa"]["poll_count"] == 1
+    finally:
+        service.stop()
+
+
+def test_service_polls_doa_without_an_active_doa_effect_and_caps_rate():
+    adapter = RecordingDoAAdapter()
+    service = ControllerService(
+        use_device=False,
+        adapter_factory=lambda: adapter,
+        signal_on_s=0.0,
+        signal_off_s=0.0,
+    )
+    try:
+        with service._lock:
+            service._render_once_locked(10.0)
+            service._render_once_locked(10.01)
+            service._render_once_locked(10.034)
+
+        status = service.snapshot()["hardware_inputs"]["respeaker_doa"]
+        assert adapter.doa_reads == 2
+        assert status["poll_count"] == 2
+        assert status["max_hz"] == 30.0
+        assert status["available"] is True
+    finally:
+        service.stop()
+
+
 def test_service_requires_published_default_effect_artifact(monkeypatch):
     monkeypatch.setattr(effect_registry_module, "_default_effect_artifact_candidates", lambda: [])
 
@@ -90,15 +153,19 @@ def test_service_restores_persisted_background_state_on_start(tmp_path):
     state_file = tmp_path / "background_state.json"
     first = ControllerService(use_device=False, background_state_file=state_file)
     try:
-        first.apply_effect("solid_color", "background", {"color": "0x224466", "brightness": 0.5})
+        first.set_state_target(
+            "solid_color",
+            {"color": "0x224466", "brightness": 0.5},
+            slot="background",
+        )
     finally:
         first.stop()
 
     second = ControllerService(use_device=False, background_state_file=state_file)
     try:
         snapshot = second.snapshot()
-        assert snapshot["render_layers"]["state_visual"]["effect_id"] == "solid_color"
-        assert snapshot["render_layers"]["state_visual"]["params"] == {"color": "0x224466", "brightness": 0.5}
+        assert snapshot["render_layers"]["background_state_visual"]["effect_id"] == "solid_color"
+        assert snapshot["render_layers"]["background_state_visual"]["params"] == {"color": "#224466", "brightness": 0.5}
     finally:
         second.stop()
 
@@ -107,7 +174,7 @@ def test_shutdown_does_not_overwrite_persisted_background_with_service_state(tmp
     state_file = tmp_path / "background_state.json"
     first = ControllerService(use_device=False, background_state_file=state_file)
     try:
-        first.apply_effect("solid_color", "background", {"color": "0x123456"})
+        first.set_state_target("solid_color", {"color": "0x123456"}, slot="background")
         first.shutdown()
     finally:
         first.stop()
@@ -115,7 +182,7 @@ def test_shutdown_does_not_overwrite_persisted_background_with_service_state(tmp
     second = ControllerService(use_device=False, background_state_file=state_file)
     try:
         snapshot = second.snapshot()
-        assert snapshot["render_layers"]["state_visual"]["params"]["color"] == "0x123456"
+        assert snapshot["render_layers"]["background_state_visual"]["params"]["color"] == "#123456"
     finally:
         second.stop()
 
@@ -141,7 +208,7 @@ def test_service_emits_start_and_stop_signal_sequences():
     assert adapter.closed is True
 
 
-def test_service_can_register_and_toggle_packaged_command(tmp_path):
+def test_service_can_register_and_set_packaged_preset(tmp_path):
     set_dir = tmp_path / "voice_assistant_src"
     write_effect_set_source(
         set_dir,
@@ -154,22 +221,10 @@ def test_service_can_register_and_toggle_packaged_command(tmp_path):
                 "package_id": "voice.listening",
                 "class_name": "ListeningBlueEffect",
                 "effect_id": "listening_blue",
-                "layer_name": "MAIN_LAYER",
+                "layer_name": "STATE_LAYER",
                 "presets": {
-                    "effect_listening_default": {
-                        "category": "effect",
-                        "target_layer": "MAIN_LAYER",
+                    "listening_default": {
                         "params": {"color": "#224466"},
-                    }
-                },
-                "commands": {
-                    "listening": {
-                        "kind": "state_toggle",
-                        "on": {"preset": "effect_listening_default"},
-                        "off": {
-                            "action": "clear_layer",
-                            "target_layer": "MAIN_LAYER",
-                        },
                     }
                 },
             }
@@ -182,17 +237,15 @@ def test_service_can_register_and_toggle_packaged_command(tmp_path):
     try:
         registration = service.register_effect_source(str(package_path))
         assert registration["source"]["source_id"] == "app.voice_assistant"
-        assert service.list_effect_commands("app.voice_assistant")[0]["command_name"] == "listening"
-        assert service.list_effect_presets("app.voice_assistant", "listening_blue")[0]["preset_id"] == "effect_listening_default"
+        assert service.list_effect_presets("app.voice_assistant", "listening_blue")[0]["preset_id"] == "listening_default"
 
-        enabled = service.invoke_effect_command("app.voice_assistant", "listening")
-        assert enabled["active_visual"]["visual"]["effect_id"] == "app.voice_assistant::listening_blue"
+        enabled = service.set_state_target("app.voice_assistant::listening_default")
+        assert enabled["status"]["render_layers"]["state_visual"]["effect_id"] == "app.voice_assistant::listening_blue"
 
-        disabled = service.invoke_effect_command("app.voice_assistant", "listening")
-        assert disabled["active_visual"] is None
-
-        applied_preset = service.apply_effect_preset("app.voice_assistant", "effect_listening_default")
-        assert applied_preset["active_effect_preset_id"] == "app.voice_assistant::effect_listening_default"
-        assert applied_preset["active_visual"]["visual"]["effect_id"] == "app.voice_assistant::listening_blue"
+        disabled = service.set_state_target(
+            "app.voice_assistant::listening_default",
+            action="off",
+        )
+        assert disabled["status"]["render_layers"]["state_visual"] is None
     finally:
         service.stop()

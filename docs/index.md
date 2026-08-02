@@ -1,25 +1,37 @@
 # Dokumentation
 
-Diese Doku beschreibt nur noch den aktiven Service-Pfad des Repos.
+Diese Dokumentation beschreibt den aktiven Service- und LEFX-V2-Pfad.
 
-## Hier anfangen
+## Anwenden
 
-- [Schnellstart in einzelnen Schritten](getting_started.md)
-- [CLI und API im Detail](api_guide.md)
-- [Effekte verstehen und neue Effekte bauen](effects.md)
-- [Aktueller Ansatz im Repo](current_approach.md)
-
-## Optional
-
-- [Effekt-Presets und Commands](presets.md)
+- [Schnellstart](getting_started.md)
+- [CLI-Referenz](cli_guide.md)
+- [HTTP-API-Referenz](api_guide.md)
 - [Troubleshooting](troubleshooting.md)
 
-## Fuer Entwicklung
+## Effektsystem
 
-- [Entwickler-Doku](dev/index.md)
-- [Planungs- und Architekturhistorie](planning/index.md)
+- [Ueberblick und Navigation](effect-system/README.md)
+- [Effektsystem und Effektentwicklung](effects.md)
+- [Praktische Effektentwicklung](effect-development/README.md)
+- [Validierbare Tutorial-Pakete](examples/effects/README.md)
 
-## Grundsatz
+## Entwickeln und betreiben
 
-- Es gibt nur noch einen aktiven Betriebsweg: einen laufenden lokalen Service.
-- Alle Steuerung laeuft ueber CLI oder HTTP gegen diesen Service.
+- [Entwicklerdokumentation](dev/index.md)
+- [Aktuelle Architektur](dev/architecture.md)
+- [Build und Release](dev/build.md)
+- [Oeffentliche Einstiegspunkte](dev/public_entry_points.md)
+
+## Planung und Geschichte
+
+- [Aktive Planung](planning/index.md)
+- [Historisches Archiv](archive/README.md)
+
+## Grundsaetze
+
+- Es gibt einen aktiven Betriebsweg: den laufenden lokalen Service.
+- CLI und HTTP steuern dieselbe Runtime.
+- `effect-system/` beschreibt den verbindlichen Ist-Zustand.
+- `planning/` enthaelt nur offene Zukunftsplanung.
+- `archive/` ist vollstaendig erhalten, aber nicht normativ.

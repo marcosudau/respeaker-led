@@ -1,0 +1,57 @@
+presets:
+  countdown_segment_assist:
+    title: Countdown Segment Assist
+    description: Auto-generated overlay preset for countdown_segment (assist).
+    params:
+      color: "#7FC9FF"
+      background_color: "#000000"
+      brightness: 0.6
+      total_ms: 4000
+      segment_length: 4
+      reverse: false
+    tags:
+      - overlay
+      - assist
+      - countdown_segment
+  countdown_segment_tracking:
+    title: Countdown Segment Tracking
+    description: Auto-generated overlay preset for countdown_segment (tracking).
+    params:
+      color: "#33FFAA"
+      background_color: "#000000"
+      brightness: 0.85
+      total_ms: 4400
+      segment_length: 4
+      reverse: true
+    tags:
+      - overlay
+      - tracking
+      - countdown_segment
+  countdown_segment_guide:
+    title: Countdown Segment Guide
+    description: Auto-generated overlay preset for countdown_segment (guide).
+    params:
+      color: "#FFD166"
+      background_color: "#090703"
+      brightness: 0.78
+      total_ms: 4800
+      segment_length: 4
+      reverse: false
+    tags:
+      - overlay
+      - guide
+      - countdown_segment
+  countdown_segment_marker:
+    title: Countdown Segment Marker
+    description: Auto-generated overlay preset for countdown_segment (marker).
+    params:
+      color: "#FF8AAE"
+      background_color: "#090205"
+      brightness: 0.74
+      total_ms: 3600
+      segment_length: 4
+      reverse: true
+    tags:
+      - overlay
+      - marker
+      - countdown_segment

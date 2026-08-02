@@ -1,0 +1,57 @@
+presets:
+  fading_rotating_segment_idle:
+    title: Fading Rotating Segment Idle
+    description: Auto-generated state preset for fading_rotating_segment (idle).
+    params:
+      color: "#4A7BFF"
+      background_color: "#020814"
+      brightness: 0.45
+      speed: 0.7
+      segment_length: 4
+      reverse: false
+    tags:
+      - state
+      - idle
+      - fading_rotating_segment
+  fading_rotating_segment_focus:
+    title: Fading Rotating Segment Focus
+    description: Auto-generated state preset for fading_rotating_segment (focus).
+    params:
+      color: "#2ED3A8"
+      background_color: "#03110D"
+      brightness: 0.72
+      speed: 1.1
+      segment_length: 4
+      reverse: false
+    tags:
+      - state
+      - focus
+      - fading_rotating_segment
+  fading_rotating_segment_ready:
+    title: Fading Rotating Segment Ready
+    description: Auto-generated state preset for fading_rotating_segment (ready).
+    params:
+      color: "#5BC0FF"
+      background_color: "#041018"
+      brightness: 0.66
+      speed: 0.95
+      segment_length: 4
+      reverse: false
+    tags:
+      - state
+      - ready
+      - fading_rotating_segment
+  fading_rotating_segment_rest:
+    title: Fading Rotating Segment Rest
+    description: Auto-generated state preset for fading_rotating_segment (rest).
+    params:
+      color: "#7AA4FF"
+      background_color: "#05070C"
+      brightness: 0.38
+      speed: 0.55
+      segment_length: 4
+      reverse: false
+    tags:
+      - state
+      - rest
+      - fading_rotating_segment

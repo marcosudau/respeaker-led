@@ -6,18 +6,21 @@ Wenn du nur den Service starten und steuern willst, brauchst du diesen Bereich n
 
 ## Architektur und Orientierung
 
-- [Runtime Layer-Modell](runtime_layers.md)
-- [Development Notes](dev_notes.md)
+- [Aktuelle Architektur](architecture.md)
 - [Build und Release](build.md)
 - [Public Entry Points](public_entry_points.md)
-- [Effekte verstehen und neue Effekte bauen](../effects.md)
-- [Planungs- und Architekturstand](../planning/index.md)
+- [CLI-Referenz](../cli_guide.md)
+- [HTTP-API-Referenz](../api_guide.md)
+- [LEFX-V2-Systemreferenz](../effect-system/README.md)
+- [Effekte praktisch entwickeln](../effect-development/README.md)
+- [Experiment-Workflow](experiment_workflow.md)
 
 ## Typische Dev-Fragen
 
 ### Ich will verstehen, wie States, Events und Overlays intern zusammenspielen
 
-- [runtime_layers.md](runtime_layers.md)
+- [Layer und Komposition](../effect-system/03_layers_and_composition.md)
+- [Typen und Lebenszyklen](../effect-system/04_effect_types_and_lifecycles.md)
 
 ### Ich will wissen, welche oeffentlichen Einstiegspunkte stabil sind
 
@@ -25,4 +28,12 @@ Wenn du nur den Service starten und steuern willst, brauchst du diesen Bereich n
 
 ### Ich will den aktuellen Service-Ansatz statt alter Migrationshistorie verstehen
 
-- [../current_approach.md](../current_approach.md)
+- [architecture.md](architecture.md)
+
+### Ich suche alte Planungs- oder Entwicklernotizen
+
+- [Historisches Archiv](../archive/README.md)
+
+### Ich will eine groessere oder hardwareabhaengige Aenderung ausprobieren
+
+- [experiment_workflow.md](experiment_workflow.md)
