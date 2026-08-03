@@ -1,0 +1,25 @@
+presets:
+  warn_event_warning_yellow:
+    title: Warnung Gelb
+    description: Zwei gut sichtbare, aber weiche gelbe Pulse.
+    params:
+      color: '#FFD84D'
+      brightness: 0.88
+      duration_ms: 1000
+      pulse_count: 2
+    tags:
+    - event
+    - warning
+    - yellow
+  warn_event_warning_soft:
+    title: Warnung Sanft
+    description: Langsamere und weniger helle Warnung.
+    params:
+      color: '#F6C453'
+      brightness: 0.65
+      duration_ms: 1250
+      pulse_count: 2
+    tags:
+    - event
+    - warning
+    - soft

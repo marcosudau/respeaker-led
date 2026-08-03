@@ -1,0 +1,27 @@
+presets:
+  speaking_rhythmic_cyan:
+    title: Rhythmisches Cyan
+    description: Lebendige cyanfarbene Segmente für normale Sprachausgabe.
+    params:
+      color: '#36CFFF'
+      brightness: 0.9
+      speed: 1.25
+      min_brightness: 0.18
+      segment_length: 2
+    tags:
+    - state
+    - speaking
+    - cyan
+  speaking_rhythmic_blue:
+    title: Rhythmisches Blau
+    description: Etwas ruhigere blaue Segmente.
+    params:
+      color: '#438BFF'
+      brightness: 0.84
+      speed: 1.05
+      min_brightness: 0.16
+      segment_length: 2
+    tags:
+    - state
+    - speaking
+    - blue

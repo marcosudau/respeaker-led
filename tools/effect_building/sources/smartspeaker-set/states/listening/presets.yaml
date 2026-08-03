@@ -1,0 +1,25 @@
+presets:
+  listening_calm_cyan:
+    title: Ruhiges Cyan
+    description: Sanfte Cyan-Anzeige für den normalen Zuhörmodus.
+    params:
+      color: '#32D7FF'
+      brightness: 0.68
+      speed: 0.65
+      min_brightness: 0.22
+    tags:
+    - state
+    - listening
+    - cyan
+  listening_calm_blue:
+    title: Ruhiges Blau
+    description: Etwas kühlerer, dunklerer Zuhörmodus.
+    params:
+      color: '#3F8CFF'
+      brightness: 0.64
+      speed: 0.58
+      min_brightness: 0.2
+    tags:
+    - state
+    - listening
+    - blue

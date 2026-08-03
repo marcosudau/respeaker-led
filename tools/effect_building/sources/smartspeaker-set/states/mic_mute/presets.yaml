@@ -1,0 +1,23 @@
+presets:
+  mic_mute_clear_red:
+    title: Klares Rot
+    description: Deutliches rotes X-Muster für stummgeschaltetes Mikrofon.
+    params:
+      color: '#FF3038'
+      brightness: 0.9
+      segment_length: 1
+    tags:
+    - state
+    - mute
+    - red
+  mic_mute_dim_red:
+    title: Gedämpftes Rot
+    description: Zurückhaltendere Variante für längere Stummschaltung.
+    params:
+      color: '#D9232E'
+      brightness: 0.58
+      segment_length: 1
+    tags:
+    - state
+    - mute
+    - dim

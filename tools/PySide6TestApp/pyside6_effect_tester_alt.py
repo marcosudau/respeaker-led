@@ -801,7 +801,7 @@ class ReleaseControllerBackend:
             raise RuntimeError("Backend is not started")
         return self.client
 
-    def list_effects2(self) -> list[dict[str, Any]]:
+    def list_effects(self) -> list[dict[str, Any]]:
         self._effect_details.clear()
         effects: list[dict[str, Any]] = []
         for path in ("states", "overlays", "events"):
@@ -814,67 +814,6 @@ class ReleaseControllerBackend:
                 item["_runtime_input_names"] = list(runtime_inputs)
                 self._effect_details[(item["source_id"], item["id"])] = item
                 effects.append(item)
-        return effects
-
-    def list_effects(self) -> list[dict[str, Any]]:
-        self._effect_details.clear()
-
-        effects: list[dict[str, Any]] = []
-
-        for path in ("states", "overlays", "events"):
-            payload = self._client().request_json(
-                "GET",
-                f"/api/v2/{path}?details=true",
-            )
-
-            for raw in payload:
-                item = dict(raw)
-
-                item["supported_layers"] = [
-                    select_target_layer(item)
-                ]
-
-                # Normale Effektparameter und laufende Runtime-Eingaben
-                # bewusst getrennt halten.
-                #
-                # Beispiel direction_indicator:
-                #
-                # parameters:
-                #   - color
-                #   - brightness
-                #   - angle_offset_deg
-                #   - reverse
-                #
-                # runtime_inputs:
-                #   - direction_deg
-                #   - detection_state
-                #
-                # Runtime-Eingaben dürfen hier nicht mit den normalen
-                # Effektparametern zusammengeführt werden. Bei Pull-Effekten
-                # werden sie vom registrierten Input-Provider geliefert und
-                # könnten manuell gesetzte Werte beim nächsten Render-Tick
-                # ohnehin wieder überschreiben.
-                parameters = dict(
-                    item.get("parameters") or {}
-                )
-                runtime_inputs = dict(
-                    item.get("runtime_inputs") or {}
-                )
-
-                item["parameters"] = parameters
-                item["_runtime_inputs"] = runtime_inputs
-                item["_runtime_input_names"] = list(
-                    runtime_inputs.keys()
-                )
-
-                key = (
-                    str(item["source_id"]),
-                    str(item["id"]),
-                )
-
-                self._effect_details[key] = item
-                effects.append(item)
-
         return effects
 
     def reload_effects(self) -> list[dict[str, Any]]:

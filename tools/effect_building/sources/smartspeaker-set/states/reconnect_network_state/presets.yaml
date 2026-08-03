@@ -1,0 +1,27 @@
+presets:
+  reconnect_network_state_standard_yellow:
+    title: Standard Yellow
+    description: Deutlich sichtbare Standardanzeige für die fehlende Verbindung.
+    params:
+      color: '#FFD84D'
+      secondary_color: '#7A5A00'
+      brightness: 0.85
+      speed: 0.42
+      min_brightness: 0.2
+    tags:
+    - state
+    - reconnect
+    - yellow
+  reconnect_network_state_subtle_yellow:
+    title: Dezent Yellow
+    description: Zurückhaltendere Variante für längere Unterbrechungen.
+    params:
+      color: '#FFD84D'
+      secondary_color: '#7A5A00'
+      brightness: 0.62
+      speed: 0.33999999999999997
+      min_brightness: 0.14
+    tags:
+    - state
+    - reconnect
+    - subtle

@@ -1,0 +1,27 @@
+presets:
+  processing_balanced_blue:
+    title: Ausgeglichenes Blau
+    description: Drei gleichmäßig rotierende blaue Punkte.
+    params:
+      color: '#2478FF'
+      brightness: 0.85
+      speed: 0.9
+      reverse: false
+      point_count: 3
+    tags:
+    - state
+    - processing
+    - balanced
+  processing_fast_blue:
+    title: Schnelles Blau
+    description: Vier schnellere Punkte für intensive Verarbeitung.
+    params:
+      color: '#3B82F6'
+      brightness: 0.92
+      speed: 1.2
+      reverse: false
+      point_count: 4
+    tags:
+    - state
+    - processing
+    - fast

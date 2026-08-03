@@ -1,0 +1,5 @@
+package_id: skill-examples.example_rotating_segment_state
+source_id: skill-examples
+entry_file: effect.py
+entry_class: ExampleRotatingSegmentState
+min_service_version: 1.0.0

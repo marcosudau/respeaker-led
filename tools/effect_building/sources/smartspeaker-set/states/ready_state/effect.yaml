@@ -1,0 +1,5 @@
+package_id: smartspeaker-set.ready_state
+source_id: smartspeaker-set
+entry_file: effect.py
+entry_class: ReadyState
+min_service_version: 1.0.0

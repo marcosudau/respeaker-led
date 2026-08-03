@@ -1,0 +1,25 @@
+presets:
+  example_soft_pulse_calm:
+    title: Example Soft Pulse Calm
+    description: Langsamer und gedämpfter Atemeffekt.
+    params:
+      color: "#4A7BFF"
+      background_color: "#020814"
+      brightness: 0.5
+      speed: 0.7
+      min_brightness: 0.08
+    tags:
+      - example
+      - calm
+  example_soft_pulse_active:
+    title: Example Soft Pulse Active
+    description: Deutlichere und schnellere Pulsvariante.
+    params:
+      color: "#2ED3A8"
+      background_color: "#03110D"
+      brightness: 0.85
+      speed: 1.25
+      min_brightness: 0.16
+    tags:
+      - example
+      - active

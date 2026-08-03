@@ -52,7 +52,7 @@ behaelt die letzten gueltigen Werte.
 
 Typische Push-Beispiele:
 
-- DoA-Integration sendet `direction_deg`.
+- Eine externe Anwendung sendet einen laufend verwalteten Fortschrittswert.
 - Lautstaerkesteuerung sendet `progress`.
 - Externe Timer-Anwendung sendet `remaining_ms` oder `progress`.
 
@@ -207,7 +207,8 @@ Die ReSpeaker-Firmware kann DoA unabhaengig vom internen LED-Effekt liefern.
 Trotzdem bleibt die Verantwortung getrennt:
 
 ```text
-ReSpeaker -> USB-Integration -> Push-Channel -> DoA-Definition -> Frame
+ReSpeaker -> USB-Integration -> gecachter Provider-Snapshot
+          -> DoA-Definition -> Frame
 ```
 
 USB-Zugriff, Wiederverbindung und Geraeteauswahl gehoeren in die Integration.

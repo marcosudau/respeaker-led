@@ -1,0 +1,5 @@
+package_id: smartspeaker-set.connected_event
+source_id: smartspeaker-set
+entry_file: effect.py
+entry_class: ConnectedEvent
+min_service_version: 1.0.0

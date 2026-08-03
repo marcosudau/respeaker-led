@@ -1,0 +1,5 @@
+package_id: smartspeaker-set.processing
+source_id: smartspeaker-set
+entry_file: effect.py
+entry_class: ProcessingState
+min_service_version: 1.0.0

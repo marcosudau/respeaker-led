@@ -6,7 +6,7 @@ Verantwortungen verbindlich getrennt bleiben.
 ## Verantwortungsmatrix
 
 | Bereich | Besitzt |
-|---|---|
+| --- | --- |
 | LEFX-Paket | visuelle Bedeutung, Schemas, Renderlogik, lokale Assets und optionale Presets |
 | Engine | Typvertraege, Lebenszyklen, Layer, Komposition, Queue, Input-Health und Hardwareausgabe |
 | Integration | Hardwarezugriff, externe Datenquellen und anwendungsspezifische Zuordnung |
@@ -70,18 +70,18 @@ nicht gesammelt werden.
 Die Engine darf nach Typ, Overlay-Modus, Layer-Regel und Capability
 entscheiden. Sie darf nicht anhand einer konkreten ID verzweigen.
 
-### Korrekt
+### Korrekt:  anhand von Definitionstyp
 
 ```python
 if definition.definition_type is DefinitionType.EVENT:
     enqueue(invocation)
 ```
 
-### Falsch
+### Falsch: anhand von ID
 
 ```python
 if definition.id == "warning_flash":
-    enqueue(invocation)
+    enqueue(invocation)Integ
 ```
 
 Die Bedeutung `warning` gehoert ins Paket oder in eine Integration.
@@ -144,7 +144,7 @@ gehoert an die Systemgrenze. Konkrete Bedeutung bleibt lokal:
 ```text
 Generisch: "blau" -> "#0000FF"
 Paketlokal: direction_deg -> Position auf dem Ring
-Integration: Mikrofonwert -> DoA-Channel
+Integration: ReSpeaker-Wert -> `respeaker_doa`-Snapshot
 ```
 
 Eine zentrale Datei darf deshalb keine Defaults oder Verhaltenszweige fuer
@@ -167,7 +167,7 @@ Verbindliche Betriebsregel:
 ## Modulzuordnung
 
 | Fragestellung | Zustaendiger Bereich |
-|---|---|
+| --- | --- |
 | Welche Werte darf die Definition annehmen? | LEFX-Schema im Paket |
 | Wie wird ein Wert in Pixel uebersetzt? | Paket-Renderlogik |
 | Wann startet oder endet eine Instanz? | Runtime |

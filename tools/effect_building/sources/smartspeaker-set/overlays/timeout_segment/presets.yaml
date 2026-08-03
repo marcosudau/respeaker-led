@@ -1,0 +1,27 @@
+presets:
+  timeout_segment_gentle_yellow_5s:
+    title: Sanftes Gelb 5 Sekunden
+    description: Kurzes warmgelbes Timeout-Segment.
+    params:
+      color: '#FFD166'
+      brightness: 0.72
+      duration_ms: 5000
+      reverse: false
+      segment_length: 6
+    tags:
+    - overlay
+    - timeout
+    - yellow
+  timeout_segment_gentle_cyan_10s:
+    title: Sanftes Cyan 10 Sekunden
+    description: Längere, kühlere Timeout-Anzeige.
+    params:
+      color: '#4ED9E8'
+      brightness: 0.66
+      duration_ms: 10000
+      reverse: false
+      segment_length: 8
+    tags:
+    - overlay
+    - timeout
+    - cyan

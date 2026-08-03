@@ -1,0 +1,25 @@
+presets:
+  waiting_slow_cyan:
+    title: Langsames Cyan
+    description: Ein ruhiger cyanfarbener Laufpunkt.
+    params:
+      color: '#3DDCFF'
+      brightness: 0.7
+      speed: 0.28
+      reverse: false
+    tags:
+    - state
+    - waiting
+    - cyan
+  waiting_slow_blue:
+    title: Langsames Blau
+    description: Ein dezenter blauer Laufpunkt.
+    params:
+      color: '#448AFF'
+      brightness: 0.68
+      speed: 0.24
+      reverse: false
+    tags:
+    - state
+    - waiting
+    - blue

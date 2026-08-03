@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
 import math
+from typing import Any
+
 from src.core.color_math import scale_color
 from src.core.effect_schema import (
     BaseEffect,
@@ -58,8 +59,8 @@ class Effect(BaseEffect):
         id="direction_indicator",
         title="DoA Direction Indicator",
         description=(
-            "Zeigt bei aktiver Voice Activity genau eine Richtungs-LED und "
-            "laesst den darunterliegenden State unveraendert sichtbar."
+            "Zeigt bei aktiver Voice Activity die erkannte Richtung weich "
+            "zwischen den benachbarten LEDs an."
         ),
         definition_type=DefinitionType.OVERLAY,
         overlay_mode=OverlayMode.CONTROLLED,
@@ -141,31 +142,6 @@ class Effect(BaseEffect):
         tags=("builtin", "overlay", "direction", "doa"),
     )
 
-    def render2(self, ctx: RenderContext) -> list[int | None]:
-        params = _merge_params(ctx)
-        direction = params.get("direction_deg")
-        detection_state = str(params.get("detection_state", "none")).strip().lower()
-        if (
-            direction is None
-            or detection_state not in {"sound", "speech"}
-            or ctx.led_count <= 0
-        ):
-            return [None] * ctx.led_count
-        direction_deg = (
-            _parse_float(direction, 0.0)
-            + _parse_float(params.get("angle_offset_deg"), 0.0)
-        ) % 360.0
-        if bool(params.get("reverse", False)):
-            direction_deg = (-direction_deg) % 360.0
-        center = int(round((direction_deg / 360.0) * ctx.led_count)) % ctx.led_count
-        color = _parse_color(params.get("color"), 0x00C066)
-        brightness = min(1.0, max(0.0, _parse_float(params.get("brightness"), 1.0)))
-        if brightness < 1.0:
-            color = scale_color(color, brightness)
-        colors: list[int | None] = [None] * ctx.led_count
-        colors[center] = color
-        return colors
-
     def render(self, ctx: RenderContext) -> list[int | None]:
         params = _merge_params(ctx)
 
@@ -181,34 +157,21 @@ class Effect(BaseEffect):
         ):
             return [None] * ctx.led_count
 
-        # Absoluten Messwinkel des ReSpeakers einlesen.
         raw_direction_deg = _parse_float(direction, 0.0) % 360.0
 
-        # Die Messrichtung spiegeln, ohne dabei den festen Offset zu spiegeln.
         if bool(params.get("reverse", False)):
             raw_direction_deg = (-raw_direction_deg) % 360.0
 
-        # Der Offset beschreibt danach ausschließlich die physische Ausrichtung
-        # zwischen ReSpeaker-Winkel und LED-Indexierung.
         angle_offset_deg = _parse_float(
             params.get("angle_offset_deg"),
             0.0,
         )
 
-        mapped_direction_deg = (
+        direction_deg = (
             raw_direction_deg + angle_offset_deg
         ) % 360.0
 
-        # Eindeutige Rundung auf die nächstgelegene LED.
-        #
-        # Nicht Python-round() verwenden, da dieses bei exakt halben Werten
-        # Banker's Rounding verwendet:
-        # round(0.5) == 0, round(1.5) == 2 usw.
-        degrees_per_led = 360.0 / ctx.led_count
-        led_position = mapped_direction_deg / degrees_per_led
-        center = int(math.floor(led_position + 0.5)) % ctx.led_count
-
-        color = _parse_color(
+        base_color = _parse_color(
             params.get("color"),
             0x00C066,
         )
@@ -221,9 +184,26 @@ class Effect(BaseEffect):
             ),
         )
 
-        if brightness < 1.0:
-            color = scale_color(color, brightness)
+        degrees_per_led = 360.0 / ctx.led_count
+        led_position = direction_deg / degrees_per_led
+
+        left_index = int(math.floor(led_position)) % ctx.led_count
+        right_index = (left_index + 1) % ctx.led_count
+        right_weight = led_position - math.floor(led_position)
+        left_weight = 1.0 - right_weight
 
         frame: list[int | None] = [None] * ctx.led_count
-        frame[center] = color
+
+        if left_weight > 0.0:
+            frame[left_index] = scale_color(
+                base_color,
+                brightness * left_weight,
+            )
+
+        if right_weight > 0.0:
+            frame[right_index] = scale_color(
+                base_color,
+                brightness * right_weight,
+            )
+
         return frame

@@ -1,0 +1,23 @@
+presets:
+  success_event_success_green:
+    title: Erfolg Grün
+    description: Deutlicher grüner Erfolgsimpuls.
+    params:
+      color: '#39D98A'
+      brightness: 0.95
+      duration_ms: 520
+    tags:
+    - event
+    - success
+    - green
+  success_event_success_soft:
+    title: Erfolg Sanft
+    description: Zurückhaltender, etwas längerer Erfolgsimpuls.
+    params:
+      color: '#63D9A6'
+      brightness: 0.72
+      duration_ms: 650
+    tags:
+    - event
+    - success
+    - soft
