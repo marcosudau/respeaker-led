@@ -193,6 +193,7 @@ vorbestehenden, durch den Doku-Umbau verursachten Testfehler
 | D | pytest der 7 relevanten Testdateien | grün (nach Behebung der vorbestehenden Doku-/Umgebungsfehler) |
 | E | `python -m pytest -q` (Gesamtsuite) | **190 passed, 1 skipped** |
 | F | `python tools/effect_building/build_lefxset.py --rebuild-packages` | ok, cache_cleaned=true, Cache entfernt |
+| CI | Push auf `main` (Commit `dfd51cc`), GitHub-Actions-Workflow | **Run 30805521138: test-Job success, build-Job success** (inkl. Build-Pipeline, EXE- und Release-Bundle-Artefakte) |
 
 ## 9. Gebauter Bestand pro Set
 
