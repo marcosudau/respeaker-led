@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tools.effect_building.standard_effects import discover_standard_effects
+from tools.effect_building.effect_set_sources import discover_effect_sets, discover_effect_sources
 from src.engine.effect_registry import build_default_effect_registry
 from src.core.effect_schema import (
     EffectInvocation,
@@ -10,11 +10,16 @@ from src.core.effect_schema import (
     RenderContext,
 )
 
+_DEFAULT_SET = next(
+    effect_set
+    for effect_set in discover_effect_sets()
+    if effect_set.set_id == "default-effects"
+)
 _EFFECT_CLASSES = {
     spec.effect_id: spec.effect_class
-    for spec in discover_standard_effects()
+    for spec in discover_effect_sources(_DEFAULT_SET)
 }
-CountdownRingEffect = _EFFECT_CLASSES["countdown_ring"]
+CountdownCircleEffect = _EFFECT_CLASSES["countdown_circle"]
 DirectionIndicatorEffect = _EFFECT_CLASSES["direction_indicator"]
 FillRingEffect = _EFFECT_CLASSES["fill_ring"]
 ProgressBarEffect = _EFFECT_CLASSES["progress_bar"]
@@ -68,7 +73,7 @@ def test_builtin_registry_exposes_initial_effect_set():
         "warning_flash",
         "progress_bar",
         "direction_indicator",
-        "countdown_ring",
+        "countdown_circle",
         "rotating_segment",
         "fading_rotating_segment",
         "rotating_gradient",
@@ -81,7 +86,7 @@ def test_builtin_registry_exposes_initial_effect_set():
         "scanner",
         "yin_yang_spin",
         "fill_ring",
-        "progress_ring",
+        "progress_circle",
         "timer_ring",
         "countdown_segment",
         "highlighted_segment",
@@ -115,7 +120,7 @@ def test_all_new_effects_expose_general_brightness_parameter():
         "scanner",
         "yin_yang_spin",
         "fill_ring",
-        "progress_ring",
+        "progress_circle",
         "timer_ring",
         "countdown_segment",
         "highlighted_segment",
@@ -274,11 +279,11 @@ def test_direction_indicator_effect_marks_one_led_transparently():
     assert sum(value is not None for value in frame) == 1
 
 
-def test_countdown_ring_effect_uses_deadline_and_duration_to_render_remaining_segment():
-    effect = CountdownRingEffect()
+def test_countdown_circle_effect_uses_deadline_and_duration_to_render_remaining_segment():
+    effect = CountdownCircleEffect()
     frame = effect.render(
         make_context(
-            CountdownRingEffect,
+            CountdownCircleEffect,
             layer_id=LayerId.TEMP_OVERLAY_LAYER,
             now=0.5,
             led_count=6,

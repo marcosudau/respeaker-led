@@ -18,4 +18,4 @@ Aktuelle Systemdokumentation:
 
 Historische Planung:
 
-- [Dokumentationsarchiv](../archive/README.md)
+- [Dokumentationsarchiv](../.archive/README.md)

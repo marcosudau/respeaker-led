@@ -14,12 +14,15 @@ from src.engine.effect_package_builder import (
     validate_effect_set_source,
 )
 from src.engine.effect_package_loader import load_effect_package, load_effect_set
-from tools.effect_building.standard_effects import discover_standard_effects
+from tools.effect_building.effect_set_sources import (
+    discover_effect_sets,
+    discover_effect_sources,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_ROOT = PROJECT_ROOT / "docs" / "effect-development" / "templates"
-EXAMPLE_ROOT = PROJECT_ROOT / "docs" / "examples" / "effects"
+EXAMPLE_ROOT = PROJECT_ROOT / "docs" / "effect_examples"
 
 TEMPLATES = (
     "tpl_state_basic",
@@ -146,6 +149,11 @@ def test_tutorial_lefxset_is_built_from_prebuilt_packages(tmp_path):
 
 
 def test_tutorial_definitions_are_not_in_standard_catalog():
-    standard_ids = {spec.effect_id for spec in discover_standard_effects()}
+    default_set = next(
+        effect_set
+        for effect_set in discover_effect_sets()
+        if effect_set.set_id == "default-effects"
+    )
+    standard_ids = {spec.effect_id for spec in discover_effect_sources(default_set)}
 
     assert standard_ids.isdisjoint(EXAMPLES)

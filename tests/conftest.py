@@ -50,17 +50,17 @@ def pytest_unconfigure(config: pytest.Config) -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 def ensure_builtin_effect_artifacts() -> None:
-    from tools.effect_building.standard_effects import (
-        DEFAULT_LEFXSET_ROOT,
-        build_standard_effect_packages,
-        build_standard_effect_set,
+    from tools.effect_building.effect_set_builder import (
+        build_all_effect_packages,
+        build_all_effect_sets,
     )
+    from tools.effect_building.effect_set_sources import DEFAULT_OUTPUT_ROOT
 
-    default_effect_set = DEFAULT_LEFXSET_ROOT / "default-effects.lefxset"
+    default_effect_set = DEFAULT_OUTPUT_ROOT / "default-effects.lefxset"
     if default_effect_set.is_file():
         return
-    build_standard_effect_packages()
-    build_standard_effect_set()
+    build_all_effect_packages()
+    build_all_effect_sets()
 
 
 def _restore_environment(name: str, value: str | None) -> None:

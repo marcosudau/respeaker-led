@@ -1,4 +1,4 @@
-package_id: default-effects.progress_ring
+package_id: default-effects.progress_circle
 source_id: default-effects
 entry_file: effect.py
 entry_class: Effect

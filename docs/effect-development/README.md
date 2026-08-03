@@ -68,4 +68,4 @@ Runtime-Bibliothek.
 - [Effektuebersicht](../effects.md)
 - [Buildprozess](../../tools/effect_building/BUILD_PROCESS.md)
 - [CLI und HTTP API](../api_guide.md)
-- [V3-Idee: optionale Lifecycle-Hooks](../planning/v3/lifecycle_hooks.md)
+- [V3-Idee: optionale Lifecycle-Hooks](../.planning/v3/lifecycle_hooks.md)

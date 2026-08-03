@@ -1,6 +1,6 @@
 # Tutorial-Abschluss: LEFX und LEFXSET bauen
 
-Dieser Schritt verwendet die drei Quellen unter `docs/examples/effects`.
+Dieser Schritt verwendet die drei Quellen unter `docs/effect_examples`.
 Ausgaben gehoeren in einen temporaeren Cache und nicht in den Projektroot.
 
 ## 1. Anatomie pruefen
@@ -42,7 +42,7 @@ Verifiziere jedes Artefakt mit `verify-effect-package`.
 
 ## 3. LEFXSET bauen
 
-Kopiere `docs/examples/effects/tutorial_set/set.yaml` nach
+Kopiere `docs/effect_examples/tutorial_set/set.yaml` nach
 `$out/set-source/set.yaml`. Danach:
 
 ```powershell

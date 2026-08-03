@@ -5,6 +5,6 @@
   "build_release_bundle": true,
   "cleanup": true,
   "builtin-effects-discovery": [
-    "tools/effect_building/build/output/default-effects.lefxset"
+    "tools/effect_building/build/output"
   ]
 }

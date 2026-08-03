@@ -132,7 +132,7 @@ def test_composer_orders_state_active_direction_countdown_and_event_layers():
     store.set_invocation(
         LayerId.TEMP_OVERLAY_LAYER,
         make_invocation(
-            "countdown_ring",
+            "countdown_circle",
             LayerId.TEMP_OVERLAY_LAYER,
             invocation_id="countdown",
             created_at=0.0,

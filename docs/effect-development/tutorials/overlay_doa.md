@@ -1,7 +1,7 @@
 # Tutorial: DoA-Push-Overlay
 
 Das fertige Paket liegt unter
-`docs/examples/effects/overlays/example_doa`. Es visualisiert einen extern
+`docs/effect_examples/overlays/example_doa`. Es visualisiert einen extern
 gelieferten Richtungswinkel, ohne die ReSpeaker-Hardware selbst anzusprechen.
 
 ## 1. Systemgrenze

@@ -1,4 +1,4 @@
-package_id: default-effects.countdown_ring
+package_id: default-effects.countdown_circle
 source_id: default-effects
 entry_file: effect.py
 entry_class: Effect

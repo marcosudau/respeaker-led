@@ -3,10 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from tests.build_artifact_helpers import default_effect_set_path
-from tools.effect_building.standard_effects import (
+from tools.effect_building.effect_set_sources import (
     DEFAULT_BUILD_ROOT,
     DEFAULT_SOURCES_ROOT,
-    discover_standard_effects,
+    discover_effect_sets,
+    discover_effect_sources,
 )
 
 
@@ -56,8 +57,16 @@ def test_standard_effect_sources_are_typed_autonomous_and_outside_build_output()
     assert not sources_root.is_relative_to(build_root)
     assert not (PROJECT_ROOT / "tools" / "effect_building" / "effect_definitions").exists()
     assert not (PROJECT_ROOT / "tools" / "effect_building" / "sorted_by_type").exists()
+    assert not (sources_root / "states").exists()
+    assert not (sources_root / "overlays").exists()
+    assert not (sources_root / "events").exists()
+    assert (sources_root / "default-effects" / "set.yaml").is_file()
+    assert (sources_root / "smartspeaker-set" / "set.yaml").is_file()
 
-    specs = discover_standard_effects()
+    effect_sets = discover_effect_sets()
+    assert [effect_set.set_id for effect_set in effect_sets] == ["default-effects", "smartspeaker-set"]
+    default_set = next(effect_set for effect_set in effect_sets if effect_set.set_id == "default-effects")
+    specs = discover_effect_sources(default_set)
     assert len(specs) == 34
     for spec in specs:
         definition = spec.effect_class.get_definition()

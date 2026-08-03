@@ -32,7 +32,7 @@ Wenn du nur den Service starten und steuern willst, brauchst du diesen Bereich n
 
 ### Ich suche alte Planungs- oder Entwicklernotizen
 
-- [Historisches Archiv](../archive/README.md)
+- [Historisches Archiv](../.archive/README.md)
 
 ### Ich will eine groessere oder hardwareabhaengige Aenderung ausprobieren
 

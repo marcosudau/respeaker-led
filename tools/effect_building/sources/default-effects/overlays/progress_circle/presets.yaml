@@ -1,7 +1,7 @@
 presets:
-  progress_ring_assist:
+  progress_circle_assist:
     title: Progress Ring Assist
-    description: Auto-generated overlay preset for progress_ring (assist).
+    description: Auto-generated overlay preset for progress_circle (assist).
     params:
       color: "#7FC9FF"
       background_color: "#000000"
@@ -11,10 +11,10 @@ presets:
     tags:
       - overlay
       - assist
-      - progress_ring
-  progress_ring_tracking:
+      - progress_circle
+  progress_circle_tracking:
     title: Progress Ring Tracking
-    description: Auto-generated overlay preset for progress_ring (tracking).
+    description: Auto-generated overlay preset for progress_circle (tracking).
     params:
       color: "#33FFAA"
       background_color: "#000000"
@@ -24,10 +24,10 @@ presets:
     tags:
       - overlay
       - tracking
-      - progress_ring
-  progress_ring_guide:
+      - progress_circle
+  progress_circle_guide:
     title: Progress Ring Guide
-    description: Auto-generated overlay preset for progress_ring (guide).
+    description: Auto-generated overlay preset for progress_circle (guide).
     params:
       color: "#FFD166"
       background_color: "#090703"
@@ -37,10 +37,10 @@ presets:
     tags:
       - overlay
       - guide
-      - progress_ring
-  progress_ring_marker:
+      - progress_circle
+  progress_circle_marker:
     title: Progress Ring Marker
-    description: Auto-generated overlay preset for progress_ring (marker).
+    description: Auto-generated overlay preset for progress_circle (marker).
     params:
       color: "#FF8AAE"
       background_color: "#090205"
@@ -50,4 +50,4 @@ presets:
     tags:
       - overlay
       - marker
-      - progress_ring
+      - progress_circle

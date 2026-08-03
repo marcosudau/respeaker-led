@@ -14,7 +14,7 @@ Diese Dokumentation beschreibt den aktiven Service- und LEFX-V2-Pfad.
 - [Ueberblick und Navigation](effect-system/README.md)
 - [Effektsystem und Effektentwicklung](effects.md)
 - [Praktische Effektentwicklung](effect-development/README.md)
-- [Validierbare Tutorial-Pakete](examples/effects/README.md)
+- [Validierbare Tutorial-Pakete](effect_examples/README.md)
 
 ## Entwickeln und betreiben
 
@@ -25,8 +25,8 @@ Diese Dokumentation beschreibt den aktiven Service- und LEFX-V2-Pfad.
 
 ## Planung und Geschichte
 
-- [Aktive Planung](planning/index.md)
-- [Historisches Archiv](archive/README.md)
+- [Aktive Planung](.planning/index.md)
+- [Historisches Archiv](.archive/README.md)
 
 ## Grundsaetze
 

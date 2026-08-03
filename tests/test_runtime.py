@@ -196,10 +196,10 @@ def test_timed_overlay_needs_no_channel_and_cannot_toggle():
     import pytest
 
     controller = make_controller()
-    invocation = controller.set_overlay("countdown_ring", config={"total_ms": "1s"})
+    invocation = controller.set_overlay("countdown_circle", config={"total_ms": "1s"})
 
     assert invocation.target_layer is LayerId.TEMP_OVERLAY_LAYER
     assert invocation.requested_duration_ms == 1000
     with pytest.raises(ValueError, match="only action 'on'"):
-        controller.set_overlay("countdown_ring", action="toggle")
+        controller.set_overlay("countdown_circle", action="toggle")
 

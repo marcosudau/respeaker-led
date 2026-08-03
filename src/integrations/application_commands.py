@@ -369,7 +369,7 @@ class ControllerCommandNormalizer:
             NormalizedCommand(
                 kind=CommandKind.SET_EFFECT,
                 target_layer=LayerId.TEMP_OVERLAY_LAYER,
-                effect_id="countdown_ring",
+                effect_id="countdown_circle",
                 params=_meta(
                     {
                         "total_ms": total_ms,

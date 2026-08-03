@@ -9,7 +9,8 @@ from src.interfaces.cli import build_parser
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DOCS_ROOT = PROJECT_ROOT / "docs"
-ARCHIVE_ROOT = DOCS_ROOT / "archive"
+ARCHIVE_ROOT = DOCS_ROOT / ".archive"
+PLANNING_ROOT = DOCS_ROOT / ".planning"
 
 CHAPTERS = (
     "01_overview.md",
@@ -27,9 +28,11 @@ CHAPTERS = (
 )
 
 ARCHIVED_PATHS = (
-    "effect-concepts/Effekte_Konzepte/Das_Finale_Effekte-Modell.md",
-    "effect-concepts/konzept_effekt_dateien/08__01_konzept_effekt_dateien.md",
-    "effect-concepts/konzept_effekt_dateien/08__13_konzept_effekt_dateien.md",
+    "effect-concepts/für_historie_wichtitige_dokumente/Das_Finale_Effekte-Modell.md",
+    "effect-concepts/für_historie_wichtitige_dokumente/DoA_Konzept_Integration_und_Template.md",
+    "effect-concepts/für_historie_wichtitige_dokumente/Effekte-Bedeutung_System_Beispiele.md",
+    "effect-concepts/für_historie_wichtitige_dokumente/history_doc_led_controller_respeaker.md",
+    "effect-concepts/für_historie_wichtitige_dokumente/konzept_lefx_dateien/08__13_konzept_lefx_dateien.md",
     "effect-concepts/lefx_schema_v2_implemented_baseline.md",
     "project-history/development/dev_notes.md",
     "project-history/development/runtime_layers.md",
@@ -40,9 +43,23 @@ ARCHIVED_PATHS = (
     "project-history/replaced-current-docs/current_approach.md",
     "project-history/replaced-current-docs/effects_before_reference.md",
     "project-history/replaced-current-docs/presets.md",
-    "prompts/prompt_einstiegshilfe.md",
-    "sanitation-reports/2026-07-08_git_sanierungsplan.md",
-    "sanitation-reports/2026-07-28_konsolidierungsabschluss.md",
+    "project-history/sanitation-reports/2026-07-08_git_sanierungsplan.md",
+    "project-history/sanitation-reports/2026-07-28_konsolidierungsabschluss.md",
+)
+
+HISTORICAL_CONCEPT_FILES = (
+    "08__02_konzept_lefx_dateien.md",
+    "08__04_final_konzept_lefx_dateien.md",
+    "08__04_konzept_lefx_dateien.md",
+    "08__05_konzept_lefx_dateien.md",
+    "08__06_konzept_lefx_dateien.md",
+    "08__07_konzept_lefx_dateien.md",
+    "08__08_konzept_lefx_dateien.md",
+    "08__09_konzept_lefx_dateien.md",
+    "08__10_konzept_lefx_dateien.md",
+    "08__11_konzept_lefx_dateien.md",
+    "08__12_konzept_lefx_dateien.md",
+    "08__13_konzept_lefx_dateien.md",
 )
 
 
@@ -83,30 +100,33 @@ def test_legacy_documentation_is_archived_and_not_mixed_with_current_docs():
     for relative_path in ARCHIVED_PATHS:
         assert (ARCHIVE_ROOT / relative_path).is_file()
 
+    assert not (DOCS_ROOT / "archive").exists()
     assert not (DOCS_ROOT / "current_approach.md").exists()
     assert not (DOCS_ROOT / "presets.md").exists()
     assert not (DOCS_ROOT / "reports").exists()
     assert not (DOCS_ROOT / "history_and_legacy").exists()
-    assert not (DOCS_ROOT / "planning" / "Effekte_Konzepte").exists()
-    assert not (DOCS_ROOT / "planning" / "konzept_effekt_dateien").exists()
+    assert not (DOCS_ROOT / "planning").exists()
 
 
-def test_empty_historical_files_are_preserved():
-    for name in ("08__01_konzept_effekt_dateien.md", "08__03_konzept_effekt_dateien.md"):
-        path = (
-            ARCHIVE_ROOT
-            / "effect-concepts"
-            / "konzept_effekt_dateien"
-            / name
-        )
-        assert path.is_file()
-        assert path.read_bytes() == b""
+def test_historical_concept_files_are_preserved_with_content():
+    concept_root = (
+        ARCHIVE_ROOT
+        / "effect-concepts"
+        / "für_historie_wichtitige_dokumente"
+        / "konzept_lefx_dateien"
+    )
+    present = {path.name for path in concept_root.glob("*.md")}
+
+    assert set(HISTORICAL_CONCEPT_FILES) <= present
+    for name in HISTORICAL_CONCEPT_FILES:
+        assert (concept_root / name).is_file()
+        assert (concept_root / name).read_bytes() != b""
 
 
 def test_active_planning_contains_only_current_plans():
     planning_files = {
-        path.relative_to(DOCS_ROOT / "planning").as_posix()
-        for path in (DOCS_ROOT / "planning").rglob("*.md")
+        path.relative_to(PLANNING_ROOT).as_posix()
+        for path in PLANNING_ROOT.rglob("*.md")
     }
 
     assert planning_files == {

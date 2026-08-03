@@ -1,7 +1,7 @@
 # Tutorial: rotierender State
 
 Das fertige Paket liegt unter
-`docs/examples/effects/states/example_rotation`. Es zeigt einen dauerhaft
+`docs/effect_examples/states/example_rotation`. Es zeigt einen dauerhaft
 laufenden, deckenden Grundzustand ohne internen Mutationszustand.
 
 ## 1. Quelle erzeugen

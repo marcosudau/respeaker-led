@@ -172,7 +172,7 @@ def _normalized_level(value: Any, default: float) -> float:
 
 class Effect(BaseEffect):
     definition = EffectDefinition(
-        id="progress_ring",
+        id="progress_circle",
         definition_type=DefinitionType.OVERLAY,
         overlay_mode=OverlayMode.CONTROLLED,
         title="Progress Ring",

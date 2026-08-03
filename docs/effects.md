@@ -17,7 +17,7 @@ Entwicklungsdokumentation.
 - [Gueltige Basistemplates](effect-development/templates/README.md)
 - [Tutorials](effect-development/README.md#empfohlener-einstieg)
 - [LEFX und LEFXSET bauen](effect-development/tutorials/build_packages.md)
-- [Tutorial-Effektquellen](examples/effects/README.md)
+- [Tutorial-Effektquellen](effect_examples/README.md)
 
 ## System bedienen
 
@@ -25,5 +25,5 @@ Entwicklungsdokumentation.
 - [CLI und HTTP API](api_guide.md)
 - [Bedienmodell des Effektsystems](effect-system/09_control_interface.md)
 
-Historische Konzepte befinden sich unter [Archiv](archive/README.md) und sind
+Historische Konzepte befinden sich unter [Archiv](.archive/README.md) und sind
 nicht Teil des aktuellen Systemvertrags.

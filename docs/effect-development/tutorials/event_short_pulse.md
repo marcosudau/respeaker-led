@@ -1,7 +1,7 @@
 # Tutorial: kurzes Puls-Event
 
 Das fertige Paket liegt unter
-`docs/examples/effects/events/example_short_pulse`. Es zeigt einen einzelnen
+`docs/effect_examples/events/example_short_pulse`. Es zeigt einen einzelnen
 Helligkeitsverlauf auf der priorisierten Event-Ebene.
 
 ## 1. Endlicher Vertrag

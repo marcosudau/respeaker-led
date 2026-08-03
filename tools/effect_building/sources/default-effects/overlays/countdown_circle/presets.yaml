@@ -1,7 +1,7 @@
 presets:
-  countdown_ring_assist:
+  countdown_circle_assist:
     title: Countdown Ring Assist
-    description: Auto-generated overlay preset for countdown_ring (assist).
+    description: Auto-generated overlay preset for countdown_circle (assist).
     params:
       color: "#7FC9FF"
       secondary_color: "#EAF8FF"
@@ -10,10 +10,10 @@ presets:
     tags:
       - overlay
       - assist
-      - countdown_ring
-  countdown_ring_tracking:
+      - countdown_circle
+  countdown_circle_tracking:
     title: Countdown Ring Tracking
-    description: Auto-generated overlay preset for countdown_ring (tracking).
+    description: Auto-generated overlay preset for countdown_circle (tracking).
     params:
       color: "#33FFAA"
       secondary_color: "#D8FFF0"
@@ -22,10 +22,10 @@ presets:
     tags:
       - overlay
       - tracking
-      - countdown_ring
-  countdown_ring_guide:
+      - countdown_circle
+  countdown_circle_guide:
     title: Countdown Ring Guide
-    description: Auto-generated overlay preset for countdown_ring (guide).
+    description: Auto-generated overlay preset for countdown_circle (guide).
     params:
       color: "#FFD166"
       secondary_color: "#FFF0C2"
@@ -34,10 +34,10 @@ presets:
     tags:
       - overlay
       - guide
-      - countdown_ring
-  countdown_ring_marker:
+      - countdown_circle
+  countdown_circle_marker:
     title: Countdown Ring Marker
-    description: Auto-generated overlay preset for countdown_ring (marker).
+    description: Auto-generated overlay preset for countdown_circle (marker).
     params:
       color: "#FF8AAE"
       secondary_color: "#FFD3E0"
@@ -46,4 +46,4 @@ presets:
     tags:
       - overlay
       - marker
-      - countdown_ring
+      - countdown_circle

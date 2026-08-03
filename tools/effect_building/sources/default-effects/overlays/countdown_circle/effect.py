@@ -57,7 +57,7 @@ def _parse_int(value: Any, default: int) -> int:
 
 class Effect(BaseEffect):
     definition = EffectDefinition(
-        id="countdown_ring",
+        id="countdown_circle",
         title="Countdown Ring",
         description="Stellt einen Countdown als normale temporale Overlay-Effektklasse dar.",
         definition_type=DefinitionType.OVERLAY,

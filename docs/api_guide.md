@@ -296,7 +296,7 @@ Timed Overlay:
 
 ```json
 {
-  "target": "countdown_ring",
+  "target": "countdown_circle",
   "config": {
     "total_ms": "5s"
   }

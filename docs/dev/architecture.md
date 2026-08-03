@@ -363,4 +363,4 @@ Diese Routen verwenden intern dieselbe Runtime. Sie erweitern den
 LEFX-V2-Paketvertrag nicht.
 
 Historische Architekturdokumente und fruehere Zielbilder stehen im
-[Projektarchiv](../archive/project-history/README.md).
+[Projektarchiv](../.archive/project-history/README.md).

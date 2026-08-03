@@ -1,0 +1,9 @@
+set_id: default-effects
+source_id: default-effects
+title: Default Effects
+description: Kuratierte allgemeine First-Party-Effekte des LED-Controllers.
+version: 1
+min_service_version: 1.0.0
+tags:
+  - first-party
+  - default

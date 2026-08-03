@@ -248,7 +248,7 @@ python .\main.py set overlay direction_indicator `
 Timed Overlay:
 
 ```powershell
-python .\main.py set overlay countdown_ring `
+python .\main.py set overlay countdown_circle `
   --config '{"total_ms":"5s"}'
 ```
 
