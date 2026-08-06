@@ -248,6 +248,34 @@ presets = service.list_presets_v2()
 
 ---
 
+## Effekt-Sets: Dynamic Loading & Registrierung zur Laufzeit
+
+Der LED-Controller unterstützt das dynamische Laden zusätzlicher `.lefxset`- und `.lefx`-Effektpakete zur Laufzeit — ohne Neustart der Anwendung.
+
+### 1. Nachladen im Python-Code
+
+```python
+# Zusätzliches Effekt-Set (.lefxset) registrieren
+service.runtime.effect_registry.register_effect_source("pfad/zu/smartspeaker-set.lefxset")
+
+# Neue Effekte aus dem Set stehen sofort als Target-IDs bereit:
+service.set_state_target("thinking")
+service.emit_event_target("confirm_event")
+```
+
+### 2. Nachladen per CLI
+
+```bash
+# Neues Effektset im laufenden Daemon registrieren
+respeaker-led register-effect-source pfad/zu/smartspeaker-set.lefxset
+
+# Registrierte Effektquellen auflisten
+respeaker-led list-effect-sources
+```
+
+---
+
+
 ## Vollständiges Anwendungsbeispiel: STT-App
 
 ```python
