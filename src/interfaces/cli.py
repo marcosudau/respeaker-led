@@ -281,6 +281,51 @@ def _normalize_argv(argv: list[str]) -> list[str]:
     return normalized
 
 
+def ensure_daemon_running(
+    host: str = "127.0.0.1",
+    port: int = 8765,
+    timeout: float = 0.5,
+    startup_wait: float = 5.0,
+) -> bool:
+    """Check if the daemon is running; start it in the background if not."""
+    client = LocalControllerClient(host=host, port=port, timeout=timeout)
+    result = client.ping()
+    if result.ok:
+        return True
+
+    import subprocess
+    cmd = [sys.executable, "-m", "src", "serve", "--host", host, "--port", str(port)]
+    try:
+        if sys.platform.startswith("win"):
+            creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            subprocess.Popen(
+                cmd,
+                creationflags=creationflags,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+            )
+        else:
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+    except OSError as exc:
+        logger.warning("failed to spawn daemon: %s", exc)
+        return False
+
+    import time as _time
+    attempts = int(startup_wait / 0.5)
+    for _ in range(attempts):
+        _time.sleep(0.5)
+        if client.ping().ok:
+            return True
+    return False
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args(_normalize_argv(sys.argv[1:]))
@@ -366,6 +411,16 @@ def main() -> int:
         "set_enabled",
     }:
         setup_logging(console=False)
+
+        # Auto-spawn daemon for non-serve commands
+        if args.command_kind != "serve":
+            if not ensure_daemon_running(
+                host=getattr(args, "host", "127.0.0.1"),
+                port=getattr(args, "port", 8765),
+            ):
+                print(json.dumps({"ok": False, "error": "Could not start or connect to the LED controller daemon"}, ensure_ascii=True))
+                return 1
+
         client = make_client(args, best_effort=False)
 
         if args.command_kind == "list_v2":

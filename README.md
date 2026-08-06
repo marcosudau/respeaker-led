@@ -1,147 +1,135 @@
-# reSpeaker LED Controller Service
+# respeaker-led
 
-Dieses Repo konzentriert sich auf einen dauerhaft laufenden lokalen LED-Service, der per CLI oder HTTP gesteuert wird.
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Alle aktiven Einstiegspunkte laufen ueber `main.py`, `src/interfaces/cli.py`, `src/interfaces/api.py` und `src/services/service.py`.
+**respeaker-led** ist die offizielle Python-Bibliothek und CLI-Steuerung für den **reSpeaker XVF3800 LED-Ring**.
 
-## Schnellstart
+Das Paket bietet sowohl einen automatischen Hintergrund-Daemon (mit robuster USB-Auto-Reconnect-Logik) als auch eine direkte Einbettung (`ControllerService`) in eigene Python-Anwendungen (z. B. Sprachassistenten oder STT-Pipelines).
 
-Die leichteste Schritt-fuer-Schritt-Anleitung steht hier:
+---
 
-- [docs/getting_started.md](docs/getting_started.md)
+## Features
 
-Die Kurzfassung:
+- 🔌 **USB Auto-Reconnect & Resilienz**: Automatischer Verbindungsaufbau, Heartbeat-Überwachung und Wiederherstellung des Hardware-Modus bei Kabeltrennung.
+- 🐍 **Direkte Python-Einbettung**: `ControllerService` im selben Prozess ausführen — ohne HTTP-Latenz oder externe Services.
+- 💻 **CLI-Steuerung mit Auto-Daemon**: Befehle wie `respeaker-led set state listening` starten den Hintergrunddienst bei Bedarf automatisch.
+- 🎨 **Umfangreiche Effekt-Bibliothek**: 24 Zustände (Listening, Processing, Speaking, etc.), 20 flüchtige Events, 13 Overlays (DOA-Richtungsanzeige, Countdown-Ring) und Preset-Support.
+- 🖼️ **Virtueller Vorschau-Modus**: Kann auch ohne angeschlossene Hardware zur Entwicklung verwendet werden (`console-preview`).
 
-### 1. Service starten
+---
 
-```powershell
-python .\main.py --no-device serve --host 127.0.0.1 --port 8765
+## Installation
+
+```bash
+pip install respeaker-led
 ```
 
-Optional mit Portpool fuer den Unterprozess-Betrieb:
+### Optional: GUI-Demo (PySide6)
 
-```powershell
-python .\main.py --no-device serve --host 127.0.0.1 --port 8765 --port-pool 8765-8770
+Wenn du das mitgelieferte PySide6-Beispiel zur Echtzeit-Visualisierung im Fenster ausführen möchtest:
+
+```bash
+pip install respeaker-led[demo]
 ```
 
-### 2. In einem zweiten Terminal pruefen, ob er laeuft
+---
 
-```powershell
-python .\main.py ping
-python .\main.py status
+## Nutzung 1: Direkte Einbettung in Python-Apps (Embedded)
+
+Für Sprachassistenten, STT-Pipelines oder eigene GUI-Anwendungen:
+
+```python
+from respeaker_led import ControllerService
+
+# Service im selben Prozess starten
+with ControllerService(use_device=True) as service:
+    # 1. Hauptzustand setzen
+    service.set_state_target("listening")
+
+    # 2. Kurzes Event auslösen (z. B. Wake-Word)
+    service.emit_event_target("short_flash", {"color": "0xFFFFFF"})
+
+    # 3. Overlay setzen (z. B. DOA-Richtungsanzeige)
+    service.set_overlay_target("direction_indicator", channel="doa", inputs={"angle": 180.0})
+
+    # ... Anwendungslogik ...
+
+    service.set_state_target("processing")
 ```
 
-### 3. Verfuegbare Effekte abfragen
+👉 **Vollständiges Anwender-Handbuch & Effekt-Tabellen:**  
+Siehe [docs/integration_guide.md](docs/integration_guide.md)
 
-```powershell
-python .\main.py list-effects
+---
+
+## Nutzung 2: CLI-Befehle
+
+Nach der Installation stehen dir folgende Konsolenbefehle zur Verfügung:  
+`respeaker-led`, `led-controller`, `ledctl`, `respeaker`, `led`
+
+```bash
+# Zustand setzen (startet den Daemon automatisch im Hintergrund)
+respeaker-led set state listening
+
+# Hintergrund-Zustand ändern
+respeaker-led set state solid_color --params '{"color":"0x00AAFF"}'
+
+# Kurzes Event auslösen
+respeaker-led emit event short_flash --params '{"color":"0xFFFFFF"}'
+
+# Helligkeit regeln
+respeaker-led set brightness 0.5
+
+# Status abfragen
+respeaker-led status
+
+# Daemon explizit als Service im Vordergrund betreiben
+respeaker-led serve
 ```
 
-### 4. Einen Effekt setzen
+---
 
-```powershell
-python .\main.py apply-effect solid_color main --params '{"color":"0x224466"}'
-python .\main.py apply-effect soft_pulse state --params '{"color":"0x33AAFF","base_color":"0x02060A","period_ms":1600}'
-python .\main.py emit-event trigger_received --duration-ms 900 --source manual
+## Nutzung 3: PySide6 Demo-Anwendung
+
+Das Repository enthält eine einsatzbereite PySide6 GUI-Anwendung mit einem virtuellen 12-LED-Ring in Echtzeit:
+
+```bash
+# Virtueller Modus (ohne Hardware):
+python examples/pyside6_demo.py
+
+# Mit echter USB-Hardware:
+python examples/pyside6_demo.py --device
 ```
 
-### 5. Effekt wieder entfernen oder Service beenden
+---
 
-```powershell
-python .\main.py clear-layer main
-python .\main.py shutdown
-```
+## Entwicklung & Tests
 
-## Entwicklung
+Für die lokale Entwicklung mit `uv`:
 
-Die lokale Entwicklungs- und CI-Umgebung ist auf `uv` und Python 3.12 ausgerichtet.
-
-### 1. Abhaengigkeiten synchronisieren
-
-```powershell
+```bash
+# Abhängigkeiten synchronisieren
 uv sync --all-groups
-```
 
-### 2. Tests ausfuehren
-
-```powershell
+# Test-Suite ausführen (192 Tests)
 uv run pytest -q
+
+# Paket lokal bauen
+uv build
 ```
 
-Pytest buendelt temporaere Dateien, den Pytest-Cache, Python-Bytecode und die nur fuer
-Tests gebauten Effektartefakte unter `tests/.cache/`. Der Ordner wird nach jeder
-Testsitzung automatisch entfernt.
+---
 
-### 3. Groessere Aenderungen isoliert erproben
+## Dokumentation
 
-Hardwaretests, Architekturumbauten und Aenderungen am Effektemodell werden
-zuerst in separaten lokalen Versuchsklonen entwickelt:
+- 📖 [Integration Guide (Python-Einbettung & Effekt-Katalog)](docs/integration_guide.md)
+- 🛠️ [CLI Guide](docs/cli_guide.md)
+- 🔌 [API Guide](docs/api_guide.md)
+- 🏗️ [Architektur-Dokumentation](docs/dev/architecture.md)
 
-```powershell
-.\build-tools\scripts\new_experiment.ps1 -Name mein-experiment
-```
+---
 
-Die Klone verwenden eine gemeinsame, nicht an einen Checkout gekoppelte Venv.
-Der vollstaendige Ablauf und die Kriterien fuer eine spaetere Uebernahme nach
-`main` stehen im [Experiment-Workflow](docs/dev/experiment_workflow.md).
+## Lizenz
 
-## Building
-
-Der Standard-Build laeuft ueber [build-tools/build.py](build-tools/build.py) und liest seine Schalter und Effektquellen aus [build-tools/build_config.json](build-tools/build_config.json).
-
-```powershell
-uv run python build-tools/build.py --force
-```
-
-Standardmaessig werden die Artefakte mit Version gebaut:
-
-- `dist/led_controller_service_<version>.exe`
-- `dist/release_bundle/led_controller_service_<version>_windows_x64.zip`
-
-Mit `--no-version` werden dieselben Artefakte ohne Versionssuffix erzeugt.
-
-Die Detail-Doku fuer Build-Skripte, Konfiguration, Cleanup und Bundle-Template steht in [build-tools/README.md](build-tools/README.md).
-
-## Release
-
-Die einzige Versionsquelle ist [build-tools/version.py](build-tools/version.py); lokale Builds lesen diese Datei nur, sie aendern sie nicht.
-
-Fuer einen GitHub-Release muss ein Tag `vX.Y.Z` erstellt werden, dessen Version exakt zu `build-tools/version.py` passt.
-
-Lokal entsteht das Release-Bundle als ZIP unter `dist/release_bundle/`; im Release-Workflow wird genau dieses ZIP als Release-Artefakt veroeffentlicht.
-
-Die Release-Regeln und der Tag-basierte Ablauf stehen in [build-tools/RELEASE.md](build-tools/RELEASE.md).
-
-## Projektstruktur in kurz
-
-- `src/` enthaelt die fachlich gegliederte Paketstruktur fuer CLI, API, Service, Runtime, Renderer und Effect-Registry.
-- `build-tools/` enthaelt den kompletten normalen Build-Prozess, das PyInstaller-Spec-File, die Versionsquelle und das Release-Bundle-Template.
-- `tools/effect_building/` enthaelt das separate Effekt-Building und liefert die `.lefx`- und `.lefxset`-Artefakte, die ueber `build-tools/build_config.json` eingebunden werden.
-- zur Laufzeit schreibt der Service `background_state.json` und `active_service.json` in ein Temp-Verzeichnis unter `respeaker_led_controller_runtime_state/`.
-- `logs/led_controller.log` enthaelt das einfache Basislogging des Service.
-- `src/python_control/` enthaelt den Low-Level-Hardwarezugriff.
-- `docs/` enthaelt die verbleibende Nutzer-Doku.
-- `docs/dev/` enthaelt die interne Entwickler-Doku.
-- `tests/` prueft den Service-Pfad, API, CLI, Runtime und Build-Tooling.
-
-## Wichtige Hinweise
-
-- `--no-device` startet den Service ohne echte Hardware und previewt Frames in der Konsole.
-- Ohne gespeicherten Background-State startet der Service mit einem gedimmten weissen Grundlicht als Online-Anzeige.
-- Beim Start prueft der Service die gewuenschte Portbelegung vorab; optional kann er auf einen Port aus `--port-pool` ausweichen.
-- Es ist nur eine aktive Instanz vorgesehen; eine neu gestartete Instanz versucht eine vorhandene alte Instanz zuerst zu beenden.
-- Der gewaehlt gestartete Host/Port wird fuer Host-Anwendungen in `active_service.json` im Temp-Verzeichnis abgelegt und beim Start zusaetzlich als JSON auf stdout ausgegeben.
-- Start und Stop des Service werden durch drei schnelle Vollring-Blinks signalisiert: Gruen beim Start, Rot beim Stop.
-- Fuer echte Fernsteuerung muessen Service und Steuer-Kommandos in getrennten Terminals laufen.
-- Optional kannst du statt `main.py` auch `python -m src ...` verwenden.
-
-## Weiterfuehrende Doku
-
-- [docs/getting_started.md](docs/getting_started.md)
-- [docs/cli_guide.md](docs/cli_guide.md)
-- [docs/api_guide.md](docs/api_guide.md)
-- [docs/effects.md](docs/effects.md)
-- [docs/dev/architecture.md](docs/dev/architecture.md)
-- [docs/effect-system/08_packages_ids_and_configuration.md](docs/effect-system/08_packages_ids_and_configuration.md)
-- [docs/troubleshooting.md](docs/troubleshooting.md)
-- [docs/dev/index.md](docs/dev/index.md)
+MIT License © [Marco Sudau](https://github.com/marcosudau)

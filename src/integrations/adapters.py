@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import importlib.util
 import math
-import threading
 from typing import Protocol, runtime_checkable
 
 from ..core.models import Frame
 from ..infrastructure.logging_utils import get_logger
-from ..infrastructure.paths import XVF_HOST_PATH
+from .usb_connection import UsbConnectionManager
 
 
 logger = get_logger(__name__)
@@ -59,35 +57,41 @@ class MemoryFrameAdapter(ConsolePreviewAdapter):
 
 
 class ReSpeakerAdapter:
-    def __init__(self) -> None:
-        spec = importlib.util.spec_from_file_location("xvf_host_module", XVF_HOST_PATH)
-        if spec is None or spec.loader is None:
-            raise RuntimeError(f"Could not load xvf_host.py from {XVF_HOST_PATH}")
-
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        self._module = module
-        self._device = module.find()
-        if not self._device:
-            raise RuntimeError("No reSpeaker device found.")
+    def __init__(self, usb_manager: UsbConnectionManager | None = None) -> None:
+        if usb_manager is not None:
+            self._usb = usb_manager
+        else:
+            # Legacy path: create a standalone manager for backward compat
+            from .usb_connection import UsbConnectionManager
+            self._usb = UsbConnectionManager()
+            self._usb.start()
         self._ring_mode = False
         self._last_leds: tuple[int, ...] | None = None
-        self._io_lock = threading.RLock()
+
+    @property
+    def usb_manager(self) -> UsbConnectionManager:
+        return self._usb
 
     def apply_frame(self, frame: Frame) -> None:
+        if not self._usb.is_connected:
+            return
         leds = tuple(frame.leds)
-        with self._io_lock:
-            if not self._ring_mode:
-                self._device.write("LED_EFFECT", [5])
+        try:
+            if not self._ring_mode or self._usb.consume_ring_mode_dirty():
+                self._usb.write("LED_EFFECT", [5])
                 self._ring_mode = True
             if leds == self._last_leds:
                 return
-            self._device.write("LED_RING_COLOR", list(leds))
+            self._usb.write("LED_RING_COLOR", list(leds))
             self._last_leds = leds
+        except Exception:
+            self._ring_mode = False
+            self._last_leds = None
 
     def read_doa_inputs(self) -> dict[str, object]:
-        with self._io_lock:
-            payload = self._device.read("DOA_VALUE")
+        if not self._usb.is_connected:
+            raise RuntimeError("USB device not connected")
+        payload = self._usb.read("DOA_VALUE")
         if not isinstance(payload, tuple) or len(payload) != 2:
             logger.warning("DOA DEBUG invalid payload=%r", payload)
             raise RuntimeError(f"Unexpected DOA_VALUE payload: {payload!r}")
@@ -121,5 +125,4 @@ class ReSpeakerAdapter:
         }
 
     def close(self) -> None:
-        with self._io_lock:
-            self._device.close()
+        self._usb.close()

@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-
 import pytest
 
 from src.integrations.adapters import ConsolePreviewAdapter, MemoryFrameAdapter, ReSpeakerAdapter
 from src.core.models import Frame, LED_COUNT
-from src.infrastructure.paths import XVF_HOST_PATH
 
 
 def test_console_preview_adapter_formats_frame(capsys):
@@ -30,71 +27,65 @@ def test_memory_frame_adapter_keeps_last_frame_without_output(capsys):
     assert adapter.last_frame is frame
 
 
-def test_respeaker_adapter_loads_driver_from_expected_path(monkeypatch):
-    recorded: dict[str, object] = {}
+def test_respeaker_adapter_loads_driver_from_expected_path():
     writes: list[tuple[str, object]] = []
+    closed = []
 
-    class FakeDevice:
-        def write(self, command: str, payload):
-            writes.append((command, payload))
+    class FakeUsbManager:
+        @property
+        def is_connected(self) -> bool:
+            return True
+
+        def consume_ring_mode_dirty(self) -> bool:
+            return False
+
+        def write(self, name: str, data: list) -> None:
+            writes.append((name, data))
+
+        def read(self, name: str):
+            return ()
 
         def close(self) -> None:
-            writes.append(("close", None))
+            closed.append(True)
 
-    class FakeLoader:
-        def exec_module(self, module) -> None:
-            module.find = lambda: FakeDevice()
-
-    def fake_spec_from_file_location(name: str, path):
-        recorded["name"] = name
-        recorded["path"] = path
-        return SimpleNamespace(loader=FakeLoader())
-
-    monkeypatch.setattr("importlib.util.spec_from_file_location", fake_spec_from_file_location)
-    monkeypatch.setattr("importlib.util.module_from_spec", lambda spec: SimpleNamespace())
-
-    adapter = ReSpeakerAdapter()
+    manager = FakeUsbManager()
+    adapter = ReSpeakerAdapter(usb_manager=manager)
     frame = Frame(leds=list(range(LED_COUNT)), timestamp=0.0)
     adapter.apply_frame(frame)
     adapter.apply_frame(frame)
     adapter.close()
 
-    assert recorded["name"] == "xvf_host_module"
-    assert recorded["path"] == XVF_HOST_PATH
     assert writes == [
         ("LED_EFFECT", [5]),
         ("LED_RING_COLOR", frame.leds),
-        ("close", None),
     ]
+    assert closed == [True]
 
 
-def test_respeaker_adapter_reads_doa_value_without_led_side_effects(monkeypatch, caplog):
+def test_respeaker_adapter_reads_doa_value_without_led_side_effects(caplog):
     reads: list[str] = []
     writes: list[tuple[str, object]] = []
 
-    class FakeDevice:
-        def read(self, command: str):
-            reads.append(command)
-            return (135, 1)
+    class FakeUsbManager:
+        @property
+        def is_connected(self) -> bool:
+            return True
 
-        def write(self, command: str, payload):
-            writes.append((command, payload))
+        def consume_ring_mode_dirty(self) -> bool:
+            return False
+
+        def write(self, name: str, data: list) -> None:
+            writes.append((name, data))
+
+        def read(self, name: str):
+            reads.append(name)
+            return (135, 1)
 
         def close(self) -> None:
             return None
 
-    class FakeLoader:
-        def exec_module(self, module) -> None:
-            module.find = lambda: FakeDevice()
-
-    monkeypatch.setattr(
-        "importlib.util.spec_from_file_location",
-        lambda name, path: SimpleNamespace(loader=FakeLoader()),
-    )
-    monkeypatch.setattr("importlib.util.module_from_spec", lambda spec: SimpleNamespace())
-
     with caplog.at_level("DEBUG", logger="led_controller.integrations.adapters"):
-        inputs = ReSpeakerAdapter().read_doa_inputs()
+        inputs = ReSpeakerAdapter(usb_manager=FakeUsbManager()).read_doa_inputs()
 
     assert reads == ["DOA_VALUE"]
     assert inputs == {"direction_deg": 135.0, "detection_state": "sound"}
@@ -104,70 +95,71 @@ def test_respeaker_adapter_reads_doa_value_without_led_side_effects(monkeypatch,
     ) in caplog.messages
 
 
-def test_respeaker_adapter_maps_inactive_vad_flag_to_none(monkeypatch):
-    class FakeDevice:
-        def read(self, command: str):
-            assert command == "DOA_VALUE"
+def test_respeaker_adapter_maps_inactive_vad_flag_to_none():
+    class FakeUsbManager:
+        @property
+        def is_connected(self) -> bool:
+            return True
+
+        def consume_ring_mode_dirty(self) -> bool:
+            return False
+
+        def write(self, name: str, data: list) -> None:
+            pass
+
+        def read(self, name: str):
+            assert name == "DOA_VALUE"
             return (275, 0)
 
         def close(self) -> None:
             return None
 
-    class FakeLoader:
-        def exec_module(self, module) -> None:
-            module.find = lambda: FakeDevice()
-
-    monkeypatch.setattr(
-        "importlib.util.spec_from_file_location",
-        lambda name, path: SimpleNamespace(loader=FakeLoader()),
-    )
-    monkeypatch.setattr("importlib.util.module_from_spec", lambda spec: SimpleNamespace())
-
-    assert ReSpeakerAdapter().read_doa_inputs() == {
+    assert ReSpeakerAdapter(usb_manager=FakeUsbManager()).read_doa_inputs() == {
         "direction_deg": 275.0,
         "detection_state": "none",
     }
 
 
-def test_respeaker_adapter_rejects_invalid_doa_value(monkeypatch):
-    class FakeDevice:
-        def read(self, command: str):
+def test_respeaker_adapter_rejects_invalid_doa_value():
+    class FakeUsbManager:
+        @property
+        def is_connected(self) -> bool:
+            return True
+
+        def consume_ring_mode_dirty(self) -> bool:
+            return False
+
+        def write(self, name: str, data: list) -> None:
+            pass
+
+        def read(self, name: str):
             return (999, 1)
 
         def close(self) -> None:
             return None
 
-    class FakeLoader:
-        def exec_module(self, module) -> None:
-            module.find = lambda: FakeDevice()
-
-    monkeypatch.setattr(
-        "importlib.util.spec_from_file_location",
-        lambda name, path: SimpleNamespace(loader=FakeLoader()),
-    )
-    monkeypatch.setattr("importlib.util.module_from_spec", lambda spec: SimpleNamespace())
-
     with pytest.raises(RuntimeError, match="out of range"):
-        ReSpeakerAdapter().read_doa_inputs()
+        ReSpeakerAdapter(usb_manager=FakeUsbManager()).read_doa_inputs()
 
 
-def test_respeaker_adapter_rejects_invalid_vad_flag(monkeypatch):
-    class FakeDevice:
-        def read(self, command: str):
+def test_respeaker_adapter_rejects_invalid_vad_flag():
+    class FakeUsbManager:
+        @property
+        def is_connected(self) -> bool:
+            return True
+
+        def consume_ring_mode_dirty(self) -> bool:
+            return False
+
+        def write(self, name: str, data: list) -> None:
+            pass
+
+        def read(self, name: str):
             return (180, 7)
 
         def close(self) -> None:
             return None
 
-    class FakeLoader:
-        def exec_module(self, module) -> None:
-            module.find = lambda: FakeDevice()
-
-    monkeypatch.setattr(
-        "importlib.util.spec_from_file_location",
-        lambda name, path: SimpleNamespace(loader=FakeLoader()),
-    )
-    monkeypatch.setattr("importlib.util.module_from_spec", lambda spec: SimpleNamespace())
-
     with pytest.raises(RuntimeError, match="VAD flag"):
-        ReSpeakerAdapter().read_doa_inputs()
+        ReSpeakerAdapter(usb_manager=FakeUsbManager()).read_doa_inputs()
+

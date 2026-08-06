@@ -11,6 +11,7 @@ from ..integrations.adapters import (
     FrameAdapter,
     ReSpeakerAdapter,
 )
+from ..integrations.usb_connection import UsbConnectionManager
 from ..infrastructure.background_state_store import load_background_state, save_background_state
 from ..core.effect_schema import DefinitionType
 from ..infrastructure.logging_utils import get_logger
@@ -29,6 +30,7 @@ class ControllerService:
         *,
         fps: float = 8.0,
         use_device: bool = True,
+        usb_manager: UsbConnectionManager | None = None,
         adapter_factory: Callable[[], FrameAdapter] | None = None,
         background_state_file: str | Path | None = None,
         signal_on_s: float = 0.06,
@@ -39,8 +41,10 @@ class ControllerService:
         self.signal_on_s = max(0.0, float(signal_on_s))
         self.signal_off_s = max(0.0, float(signal_off_s))
         self.requested_output_mode = "device" if use_device else "console-preview"
+        self._usb_manager = usb_manager
         self.adapter, self.output_mode, self.device_available, self.fallback_active, self._adapter_error = self._build_adapter(
             use_device=use_device,
+            usb_manager=usb_manager,
             adapter_factory=adapter_factory,
         )
         self._hardware_input_providers: dict[str, PolledInputProvider] = {}
@@ -74,16 +78,11 @@ class ControllerService:
             self.fallback_active,
         )
 
-        if self.fallback_active and use_device:
-            self.runtime.set_state(
-                "offline",
-                payload={"reason": "device_unavailable", "error": self._adapter_error},
-            )
-
     def _build_adapter(
         self,
         *,
         use_device: bool,
+        usb_manager: UsbConnectionManager | None,
         adapter_factory: Callable[[], FrameAdapter] | None,
     ) -> tuple[FrameAdapter, str, bool, bool, str | None]:
         if adapter_factory is not None:
@@ -103,13 +102,25 @@ class ControllerService:
             )
 
         try:
-            return ReSpeakerAdapter(), "device", True, False, None
+            if usb_manager is None:
+                self._usb_manager = UsbConnectionManager()
+                self._usb_manager.start()
+                usb_manager = self._usb_manager
+            
+            return ReSpeakerAdapter(usb_manager=usb_manager), "device", True, False, None
         except Exception as exc:
             fallback = ConsolePreviewAdapter(show_timestamp=False, emit_output=False)
             return fallback, "console-preview", False, True, repr(exc)
 
     def set_shutdown_callback(self, callback: Callable[[], None] | None) -> None:
         self._shutdown_callback = callback
+
+    def __enter__(self) -> ControllerService:
+        self.start()
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.stop()
 
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
@@ -131,7 +142,10 @@ class ControllerService:
             self.runtime.close()
         self._thread = None
         self._started_at = None
+        if self._usb_manager is not None:
+            self._usb_manager.stop()
         logger.info("controller service stopped")
+
 
     def _render_once_locked(self, now: float | None = None) -> None:
         resolved_now = time.monotonic() if now is None else now
@@ -219,6 +233,7 @@ class ControllerService:
                 "output_mode": self.output_mode,
                 "device_available": self.device_available,
                 "fallback_active": self.fallback_active,
+                "usb_connection": self._usb_manager.connection_stats if self._usb_manager is not None else None,
                 "hardware_inputs": {
                     provider_id: provider.status(time.monotonic())
                     for provider_id, provider in self._hardware_input_providers.items()

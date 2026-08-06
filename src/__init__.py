@@ -24,10 +24,13 @@ def _load_version() -> str:
         return "0+unknown"
 
 
+from .services.service import ControllerService
+
 __version__ = _load_version()
 
 __all__ = [
     "__version__",
+    "ControllerService",
     "core",
     "engine",
     "infrastructure",
@@ -36,3 +39,4 @@ __all__ = [
     "python_control",
     "services",
 ]
+
