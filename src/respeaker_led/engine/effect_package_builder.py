@@ -42,6 +42,8 @@ _ALLOWED_EFFECT_IMPORTS = {
     "random",
     "statistics",
     "typing",
+    "respeaker_led.core.color_math",
+    "respeaker_led.core.effect_schema",
     "src.core.color_math",
     "src.core.effect_schema",
 }
@@ -488,6 +490,14 @@ def _load_effect_class(source_dir: Path, entry_file: Path, configured_entry_clas
     module = importlib.util.module_from_spec(spec)
     module.__package__ = module_name.rpartition(".")[0]
     sys.modules[module_name] = module
+    import respeaker_led
+    import respeaker_led.core.color_math
+    import respeaker_led.core.effect_schema
+    sys.modules.setdefault("src", respeaker_led)
+    sys.modules.setdefault("src.core", respeaker_led.core)
+    sys.modules.setdefault("src.core.effect_schema", respeaker_led.core.effect_schema)
+    sys.modules.setdefault("src.core.color_math", respeaker_led.core.color_math)
+
     spec.loader.exec_module(module)
 
     discovered = [
@@ -778,7 +788,7 @@ def _render_effect_python(
     lines = [
         "from __future__ import annotations",
         "",
-        f"from src.core.effect_schema import {import_names}",
+        f"from respeaker_led.core.effect_schema import {import_names}",
         "",
         "",
         f"class {class_name}(BaseEffect):",

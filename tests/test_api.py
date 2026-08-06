@@ -4,9 +4,9 @@ import json
 
 from fastapi.testclient import TestClient
 
-from src.integrations.adapters import MemoryFrameAdapter
-from src.engine.effect_package_builder import build_effect_set
-from src.interfaces.api import create_app
+from respeaker_led.integrations.adapters import MemoryFrameAdapter
+from respeaker_led.engine.effect_package_builder import build_effect_set
+from respeaker_led.interfaces.api import create_app
 from tests.package_test_utils import write_effect_set_source
 
 

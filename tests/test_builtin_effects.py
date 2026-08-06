@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from tools.effect_building.effect_set_sources import discover_effect_sets, discover_effect_sources
-from src.engine.effect_registry import build_default_effect_registry
-from src.core.effect_schema import (
+from respeaker_led.engine.effect_registry import build_default_effect_registry
+from respeaker_led.core.effect_schema import (
     EffectInvocation,
     LayerId,
     PlaybackMode,

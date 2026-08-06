@@ -59,7 +59,7 @@ def write_effect_source(
     (root / "effect.py").write_text(
         textwrap.dedent(
             f"""
-            from src.core.effect_schema import BaseEffect, ColorModel, DefinitionType, EffectDefinition, EffectParamDefinition, LayerId, LayerRule, OverlayMode, PlaybackMode, EffectCapabilities, RenderContext
+            from respeaker_led.core.effect_schema import BaseEffect, ColorModel, DefinitionType, EffectDefinition, EffectParamDefinition, LayerId, LayerRule, OverlayMode, PlaybackMode, EffectCapabilities, RenderContext
 
 
             class {class_name}(BaseEffect):

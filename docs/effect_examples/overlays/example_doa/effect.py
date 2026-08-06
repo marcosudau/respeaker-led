@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.core.effect_schema import (
+from respeaker_led.core.effect_schema import (
     BaseEffect,
     ColorModel,
     CompositionMode,

@@ -35,11 +35,11 @@ demo = [
 
 
 [project.scripts]
-led-controller = "src.interfaces.cli:main"
-ledctl = "src.interfaces.cli:main"
-respeaker = "src.interfaces.cli:main"
-respeaker-led = "src.interfaces.cli:main"
-led = "src.interfaces.cli:main"
+led-controller = "respeaker_led.interfaces.cli:main"
+ledctl = "respeaker_led.interfaces.cli:main"
+respeaker = "respeaker_led.interfaces.cli:main"
+respeaker-led = "respeaker_led.interfaces.cli:main"
+led = "respeaker_led.interfaces.cli:main"
 
 
 [dependency-groups]
@@ -53,7 +53,10 @@ dev = [
 path = "build-tools/version.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["src/respeaker_led"]
+
+
+
 
 [tool.hatch.build.targets.sdist]
 include = [

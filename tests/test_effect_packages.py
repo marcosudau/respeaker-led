@@ -5,8 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from src.core.effect_schema import DefinitionType, OverlayMode
-from src.engine.effect_package_builder import (
+from respeaker_led.core.effect_schema import DefinitionType, OverlayMode
+from respeaker_led.engine.effect_package_builder import (
     build_effect_package,
     build_effect_set,
     init_effect_batch,
@@ -15,7 +15,7 @@ from src.engine.effect_package_builder import (
     validate_effect_set_source,
     validate_effect_source,
 )
-from src.engine.effect_package_loader import (
+from respeaker_led.engine.effect_package_loader import (
     inspect_effect_source,
     load_effect_package,
     load_effect_set,
@@ -87,12 +87,12 @@ def test_v2_rejects_generic_common_modules_and_controller_imports(tmp_path):
     (source / "common.py").unlink()
     effect_source = source / "effect.py"
     effect_source.write_text(
-        "from src.engine.runtime import ControllerRuntime\n"
+        "from respeaker_led.engine.runtime import ControllerRuntime\n"
         + effect_source.read_text(encoding="utf-8"),
         encoding="utf-8",
     )
 
-    with pytest.raises(ValueError, match="unsupported module 'src.engine.runtime'"):
+    with pytest.raises(ValueError, match="unsupported module '(src|respeaker_led).engine.runtime'"):
         validate_effect_source(source)
 
 

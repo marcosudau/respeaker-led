@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from src.engine.composer import SceneComposer
-from src.engine.effect_registry import build_default_effect_registry
-from src.core.effect_schema import (
+from respeaker_led.engine.composer import SceneComposer
+from respeaker_led.engine.effect_registry import build_default_effect_registry
+from respeaker_led.core.effect_schema import (
     BaseEffect,
     CommandKind,
     CompositionMode,
@@ -21,8 +21,8 @@ from src.core.effect_schema import (
     PlaybackMode,
     RenderContext,
 )
-from src.core.layers import LayerStore
-from src.integrations.application_commands import build_effect_invocation
+from respeaker_led.core.layers import LayerStore
+from respeaker_led.integrations.application_commands import build_effect_invocation
 
 
 class PullOverlayEffect(BaseEffect):

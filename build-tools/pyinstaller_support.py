@@ -18,8 +18,8 @@ def build_datas() -> list[tuple[str, str]]:
     datas = [
         (str(BUILD_CONFIG_PATH), "build-tools"),
         (str(VERSION_PATH), "build-tools"),
-        (str(PROJECT_ROOT / "src" / "python_control" / "xvf_host.py"), "src/python_control"),
-        (str(PROJECT_ROOT / "src" / "python_control" / "respeaker_get_doa.py"), "src/python_control"),
+        (str(PROJECT_ROOT / "src" / "respeaker_led" / "python_control" / "xvf_host.py"), "src/respeaker_led/python_control"),
+        (str(PROJECT_ROOT / "src" / "respeaker_led" / "python_control" / "respeaker_get_doa.py"), "src/respeaker_led/python_control"),
     ]
     datas.extend(
         (str(Path(artifact["source_path"])), _artifact_destination(Path(artifact["source_path"])))

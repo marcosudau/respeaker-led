@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.core.value_normalization import (
+from respeaker_led.core.value_normalization import (
     ValueNormalizationError,
     describe_color,
     format_color,

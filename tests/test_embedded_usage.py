@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src import ControllerService
+from respeaker_led import ControllerService
 
 
 def test_controller_service_context_manager():

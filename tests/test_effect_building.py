@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from src.engine.effect_package_builder import build_effect_package, build_effect_set, validate_effect_set_source
-from src.engine.effect_package_loader import load_effect_package, load_effect_set
+from respeaker_led.engine.effect_package_builder import build_effect_package, build_effect_set, validate_effect_set_source
+from respeaker_led.engine.effect_package_loader import load_effect_package, load_effect_set
 from tests.package_test_utils import write_effect_source
 from tools.effect_building.build_lefx import main as build_lefx_main
 from tools.effect_building.build_lefxset import main as build_lefxset_main

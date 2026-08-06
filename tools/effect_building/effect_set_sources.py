@@ -4,9 +4,9 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.core.effect_schema import BaseEffect, DefinitionType
-from src.engine.effect_package_builder import _load_effect_class
-from src.engine.effect_package_schema import load_source_manifest
+from respeaker_led.core.effect_schema import BaseEffect, DefinitionType
+from respeaker_led.engine.effect_package_builder import _load_effect_class
+from respeaker_led.engine.effect_package_schema import load_source_manifest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

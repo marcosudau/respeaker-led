@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
         loaded = None
         set_effect_count = 0
         if effect_set_path.is_file():
-            from src.engine.effect_package_loader import load_effect_set
+            from respeaker_led.engine.effect_package_loader import load_effect_set
 
             loaded = load_effect_set(effect_set_path)
             set_effect_count = len(loaded.effects)

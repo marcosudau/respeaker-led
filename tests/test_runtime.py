@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 
-from src.core.color_math import scale_color
-from src.core.effect_schema import LayerId
-from src.core.models import LED_COUNT
-from src.engine.runtime import ControllerRuntime
+from respeaker_led.core.color_math import scale_color
+from respeaker_led.core.effect_schema import LayerId
+from respeaker_led.core.models import LED_COUNT
+from respeaker_led.engine.runtime import ControllerRuntime
 
 
 class SilentAdapter:
@@ -43,7 +43,7 @@ def test_runtime_rejects_removed_main_layer_name():
     controller.set_state("idle", timestamp=0.0)
     import pytest
 
-    from src.core.effect_schema import parse_layer_id
+    from respeaker_led.core.effect_schema import parse_layer_id
 
     with pytest.raises(ValueError, match="Unknown layer"):
         parse_layer_id("main")

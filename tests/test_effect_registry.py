@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from src.engine.effect_package_builder import build_effect_package, build_effect_set
-import src.engine.effect_registry as effect_registry_module
-from src.engine.effect_registry import EffectRegistry, build_default_effect_registry
-from src.core.effect_schema import (
+from respeaker_led.engine.effect_package_builder import build_effect_package, build_effect_set
+import respeaker_led.engine.effect_registry as effect_registry_module
+from respeaker_led.engine.effect_registry import EffectRegistry, build_default_effect_registry
+from respeaker_led.core.effect_schema import (
     DEFAULT_LAYER_PRIORITIES,
     BaseEffect,
     ColorModel,

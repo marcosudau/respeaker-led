@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from src.core.effect_schema import (
+from respeaker_led.core.effect_schema import (
     BaseEffect,
     DefinitionType,
     EffectDefinition,
@@ -13,8 +13,8 @@ from src.core.effect_schema import (
     PlaybackMode,
     RenderContext,
 )
-from src.engine.effect_package_builder import build_effect_package, build_effect_set
-from src.engine.effect_package_loader import LoadedEffectPackage, load_effect_package, load_effect_set
+from respeaker_led.engine.effect_package_builder import build_effect_package, build_effect_set
+from respeaker_led.engine.effect_package_loader import LoadedEffectPackage, load_effect_package, load_effect_set
 
 from .effect_set_sources import (
     DEFAULT_BUILD_CACHE_ROOT,

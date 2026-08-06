@@ -94,7 +94,7 @@ def cleanup_after_build(
     if not dry_run:
         for target in sorted(targets, key=lambda path: (path.is_file(), len(path.parts)), reverse=True):
             if target.is_dir():
-                shutil.rmtree(target, ignore_errors=False)
+                shutil.rmtree(target, ignore_errors=True)
             else:
                 target.unlink(missing_ok=True)
             removed.append(target.relative_to(project_root).as_posix())

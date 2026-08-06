@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-import src.engine.effect_registry as effect_registry_module
-from src.core.models import LED_COUNT
-from src.engine.effect_package_builder import build_effect_set
-from src.services.service import ControllerService
+import respeaker_led.engine.effect_registry as effect_registry_module
+from respeaker_led.core.models import LED_COUNT
+from respeaker_led.engine.effect_package_builder import build_effect_set
+from respeaker_led.services.service import ControllerService
 from tests.build_artifact_helpers import default_effect_set_path
 from tests.package_test_utils import write_effect_set_source
 

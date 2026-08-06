@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from urllib.parse import unquote
 
-from src.interfaces.cli import build_parser
+from respeaker_led.interfaces.cli import build_parser
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -156,7 +156,7 @@ def test_cli_reference_covers_every_implemented_subcommand():
 
 
 def test_api_reference_covers_every_implemented_route():
-    source = (PROJECT_ROOT / "src" / "interfaces" / "api.py").read_text(
+    source = (PROJECT_ROOT / "src" / "respeaker_led" / "interfaces" / "api.py").read_text(
         encoding="utf-8"
     )
     implemented_routes = {

@@ -45,7 +45,7 @@ def setup_logging(
 
 
 def get_logger(name: str) -> logging.Logger:
-    normalized = str(name or "app").strip().replace("src.", "")
+    normalized = str(name or "app").strip().replace("respeaker_led.", "").replace("src.", "")
     if normalized == "__main__":
         normalized = "main"
     return logging.getLogger(f"led_controller.{normalized}")

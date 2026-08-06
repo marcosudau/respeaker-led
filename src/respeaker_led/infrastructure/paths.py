@@ -6,14 +6,16 @@ from pathlib import Path
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
-RESOURCE_ROOT = Path(getattr(sys, "_MEIPASS", PACKAGE_ROOT.parent)).resolve()
+RESOURCE_ROOT = Path(getattr(sys, "_MEIPASS", PACKAGE_ROOT.parents[1])).resolve()
 PROJECT_ROOT = RESOURCE_ROOT
 APP_ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else PROJECT_ROOT
 BUILD_TOOLS_ROOT = RESOURCE_ROOT / "build-tools"
 BUILD_CONFIG_PATH = BUILD_TOOLS_ROOT / "build_config.json"
 APP_EFFECTS_ROOT = APP_ROOT / "effects"
 APP_EFFECT_PACKAGES_ROOT = APP_ROOT / "packages"
-SOURCE_ROOT = PROJECT_ROOT / "src"
+SOURCE_ROOT = PROJECT_ROOT / "src" / "respeaker_led"
+
+
 DEFAULT_EFFECT_SOURCE_ID = "default-effects"
 DEFAULT_EFFECT_SET_FILENAME = "default-effects.lefxset"
 APP_DEFAULT_EFFECT_SET_PATH = APP_EFFECTS_ROOT / DEFAULT_EFFECT_SET_FILENAME

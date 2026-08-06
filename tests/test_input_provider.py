@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.core.effect_schema import InputContext
-from src.engine.input_provider import PolledInputProvider
+from respeaker_led.core.effect_schema import InputContext
+from respeaker_led.engine.input_provider import PolledInputProvider
 
 
 def _context(now: float) -> InputContext:

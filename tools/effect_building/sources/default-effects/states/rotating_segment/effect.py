@@ -4,8 +4,8 @@ import hashlib
 import math
 from typing import Any
 
-from src.core.color_math import blend, scale_color
-from src.core.effect_schema import (
+from respeaker_led.core.color_math import blend, scale_color
+from respeaker_led.core.effect_schema import (
     BaseEffect,
     ColorModel,
     CompositionMode,

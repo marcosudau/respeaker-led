@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.integrations.stt_adapter import SttLedAdapter
+from respeaker_led.integrations.stt_adapter import SttLedAdapter
 
 
 class RecordingClient:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import socket
 
-from src.services.service_hosting import (
+from respeaker_led.services.service_hosting import (
     ActiveServiceInfo,
     create_active_service_info,
     default_port_pool,
@@ -84,9 +84,9 @@ def test_take_over_existing_instance_requests_shutdown(monkeypatch, tmp_path):
             events.append("shutdown")
             return type("Result", (), {"ok": True})()
 
-    monkeypatch.setattr("src.services.service_hosting.LocalControllerClient", FakeClient)
-    monkeypatch.setattr("src.services.service_hosting._pid_exists", lambda pid: True)
-    monkeypatch.setattr("src.services.service_hosting._wait_for_pid_exit", lambda pid, timeout: True)
+    monkeypatch.setattr("respeaker_led.services.service_hosting.LocalControllerClient", FakeClient)
+    monkeypatch.setattr("respeaker_led.services.service_hosting._pid_exists", lambda pid: True)
+    monkeypatch.setattr("respeaker_led.services.service_hosting._wait_for_pid_exit", lambda pid, timeout: True)
 
     taken_over = take_over_existing_instance(runtime_file)
 

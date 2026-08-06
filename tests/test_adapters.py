@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.integrations.adapters import ConsolePreviewAdapter, MemoryFrameAdapter, ReSpeakerAdapter
-from src.core.models import Frame, LED_COUNT
+from respeaker_led.integrations.adapters import ConsolePreviewAdapter, MemoryFrameAdapter, ReSpeakerAdapter
+from respeaker_led.core.models import Frame, LED_COUNT
 
 
 def test_console_preview_adapter_formats_frame(capsys):

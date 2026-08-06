@@ -12,7 +12,7 @@ from tools.effect_building.effect_set_sources import (
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = PROJECT_ROOT / "src"
+SRC_ROOT = PROJECT_ROOT / "src" / "respeaker_led"
 
 
 def test_core_source_has_no_legacy_widget_or_quick_action_imports():
@@ -32,7 +32,7 @@ def test_core_source_has_no_legacy_widget_or_quick_action_imports():
         "standard_effect_library",
         "MAIN_LAYER",
         "effect_command_registry",
-        "src.engine.normalization",
+        "respeaker_led.engine.normalization",
         "/api/v1/commands/apply_effect",
         "/api/v1/commands/clear_layer",
     ]

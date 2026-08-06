@@ -14,7 +14,7 @@ for candidate in (PROJECT_ROOT, SRC_ROOT):
     if candidate_str not in sys.path:
         sys.path.insert(0, candidate_str)
 
-from src.engine.effect_package_builder import (
+from respeaker_led.engine.effect_package_builder import (
     build_effect_package,
     build_effect_set,
     init_effect_batch,
@@ -23,7 +23,7 @@ from src.engine.effect_package_builder import (
     validate_effect_set_source,
     validate_effect_source,
 )
-from src.engine.effect_package_loader import inspect_effect_source, verify_effect_source
+from respeaker_led.engine.effect_package_loader import inspect_effect_source, verify_effect_source
 
 
 def build_parser() -> argparse.ArgumentParser:

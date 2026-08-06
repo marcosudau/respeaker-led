@@ -50,7 +50,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from src.core.value_normalization import format_color as format_schema_color
+    from respeaker_led.core.value_normalization import format_color as format_schema_color
 except ImportError:
     format_schema_color = None
 

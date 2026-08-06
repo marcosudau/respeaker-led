@@ -11,7 +11,7 @@ if __package__ in {None, ""}:
     _PROJECT_ROOT_STR = str(_PROJECT_ROOT)
     if _PROJECT_ROOT_STR not in sys.path:
         sys.path.insert(0, _PROJECT_ROOT_STR)
-    __package__ = "src.interfaces"
+    __package__ = "respeaker_led.interfaces"
 
 from uvicorn.config import Config as UvicornConfig
 from uvicorn.server import Server as UvicornServer

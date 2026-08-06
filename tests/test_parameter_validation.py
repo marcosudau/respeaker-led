@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.core.effect_schema import (
+from respeaker_led.core.effect_schema import (
     DefinitionType,
     EffectDefinition,
     EffectParamDefinition,
@@ -11,7 +11,7 @@ from src.core.effect_schema import (
     OverlayMode,
     PlaybackMode,
 )
-from src.core.parameter_validation import (
+from respeaker_led.core.parameter_validation import (
     ParameterValidationError,
     normalize_runtime_inputs,
     resolve_configuration,

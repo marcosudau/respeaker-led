@@ -4,7 +4,7 @@ from urllib import error
 
 import pytest
 
-from src.interfaces.client import ClientCallResult, LocalControllerClient
+from respeaker_led.interfaces.client import ClientCallResult, LocalControllerClient
 
 
 def test_client_is_best_effort_when_service_is_unavailable(monkeypatch):

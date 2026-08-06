@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.core.models import LED_COUNT, LayerVisual, Scene, Visual
-from src.engine.renderer import SceneRenderer, render_visual_to_pixels
+from respeaker_led.core.models import LED_COUNT, LayerVisual, Scene, Visual
+from respeaker_led.engine.renderer import SceneRenderer, render_visual_to_pixels
 
 
 def _dynamic_visual(colors, *, exclusive: bool = False) -> Visual:

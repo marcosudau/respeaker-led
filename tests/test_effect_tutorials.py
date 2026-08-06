@@ -5,15 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from src.core.effect_schema import EffectInvocation, LayerId, PlaybackMode, RenderContext
-from src.core.parameter_validation import ParameterValidationError, normalize_runtime_inputs
-from src.engine.effect_package_builder import (
+from respeaker_led.core.effect_schema import EffectInvocation, LayerId, PlaybackMode, RenderContext
+from respeaker_led.core.parameter_validation import ParameterValidationError, normalize_runtime_inputs
+from respeaker_led.engine.effect_package_builder import (
     build_effect_package,
     build_effect_set,
     validate_effect_source,
     validate_effect_set_source,
 )
-from src.engine.effect_package_loader import load_effect_package, load_effect_set
+from respeaker_led.engine.effect_package_loader import load_effect_package, load_effect_set
 from tools.effect_building.effect_set_sources import (
     discover_effect_sets,
     discover_effect_sources,
