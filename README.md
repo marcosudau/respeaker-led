@@ -124,9 +124,11 @@ uv build
 ## Dokumentation
 
 - 📖 [Integration Guide (Python-Einbettung & Effekt-Katalog)](docs/integration_guide.md)
+- 🚀 [Release- & Update-Anleitung (GitHub & PyPI)](docs/release_guide.md)
 - 🛠️ [CLI Guide](docs/cli_guide.md)
 - 🔌 [API Guide](docs/api_guide.md)
 - 🏗️ [Architektur-Dokumentation](docs/dev/architecture.md)
+
 
 ---
 
