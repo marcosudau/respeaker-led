@@ -32,4 +32,6 @@ jobs:
         run: uv build
 
       - name: Publish package to PyPI
+        if: github.repository == 'marcosudau/respeaker-led'
         uses: pypa/gh-action-pypi-publish@release/v1
+
