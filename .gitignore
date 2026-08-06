@@ -25,5 +25,7 @@ tools/PySide6TestApp/.cache/
 tools/effect_building/build/.cache/
 release/**/led_controller_service.exe
 release/**/*.zip
+examples/
+
 
 
