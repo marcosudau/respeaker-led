@@ -59,7 +59,7 @@ with ControllerService(use_device=True) as service:
 ```
 
 👉 **Vollständiges Anwender-Handbuch & Effekt-Tabellen:**  
-Siehe [docs/integration_guide.md](docs/integration_guide.md)
+Siehe [Integration Guide](https://github.com/marcosudau/respeaker-led/blob/main/docs/integration_guide.md)
 
 ---
 
@@ -92,7 +92,7 @@ respeaker-led serve
 
 ## Nutzung 3: PySide6 Demo-Anwendung
 
-Das Repository enthält eine einsatzbereite PySide6 GUI-Anwendung mit einem virtuellen 12-LED-Ring in Echtzeit:
+Im [Entwicklungs-Repository](https://github.com/marcosudau/led_controller_respeaker) liegt eine einsatzbereite PySide6 GUI-Anwendung mit einem virtuellen 12-LED-Ring in Echtzeit:
 
 ```bash
 # Virtueller Modus (ohne Hardware):
@@ -104,34 +104,33 @@ python examples/pyside6_demo.py --device
 
 ---
 
-## Entwicklung & Tests
+## Dokumentation
 
-Für die lokale Entwicklung mit `uv`:
-
-```bash
-# Abhängigkeiten synchronisieren
-uv sync --all-groups
-
-# Test-Suite ausführen (192 Tests)
-uv run pytest -q
-
-# Paket lokal bauen
-uv build
-```
+- 📖 [Integration Guide (Python-Einbettung & Effekt-Katalog)](https://github.com/marcosudau/respeaker-led/blob/main/docs/integration_guide.md)
+- 🚀 [Erste Schritte](https://github.com/marcosudau/respeaker-led/blob/main/docs/getting_started.md)
+- 🛠️ [CLI Guide](https://github.com/marcosudau/respeaker-led/blob/main/docs/cli_guide.md)
+- 🔌 [API Guide](https://github.com/marcosudau/respeaker-led/blob/main/docs/api_guide.md)
+- 💡 [Effekt-Katalog](https://github.com/marcosudau/respeaker-led/blob/main/docs/effects.md)
+- 🩺 [Troubleshooting](https://github.com/marcosudau/respeaker-led/blob/main/docs/troubleshooting.md)
 
 ---
 
-## Dokumentation
+## Entwicklung
 
-- 📖 [Integration Guide (Python-Einbettung & Effekt-Katalog)](docs/integration_guide.md)
-- 🚀 [Release- & Update-Anleitung (GitHub & PyPI)](docs/release_guide.md)
-- 🛠️ [CLI Guide](docs/cli_guide.md)
-- 🔌 [API Guide](docs/api_guide.md)
-- 🏗️ [Architektur-Dokumentation](docs/dev/architecture.md)
+Dieses Paket wird in [`marcosudau/led_controller_respeaker`](https://github.com/marcosudau/led_controller_respeaker) entwickelt. Dort liegen die Testsuite, die Effekt-Build-Werkzeuge, die PySide6-Demo und die PyInstaller-Strecke für die eigenständige Service-Exe. Dieses Repository (`marcosudau/respeaker-led`) enthält den schlanken Bibliotheksstand und wird bei jedem Release automatisch aus dem Entwicklungs-Repository gespiegelt — Änderungen bitte dort einreichen.
 
+```bash
+# Im Entwicklungs-Repository:
+uv sync --all-groups --all-extras
+uv run pytest -q
+uv build
+```
+
+- 🏗️ [Architektur-Dokumentation](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/dev/architecture.md)
+- 🚀 [Release- & Update-Anleitung](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/release_guide.md)
 
 ---
 
 ## Lizenz
 
-MIT License © [Marco Sudau](https://github.com/marcosudau)
+MIT License © [Marco Sudau](https://github.com/marcosudau) — siehe [LICENSE](https://github.com/marcosudau/respeaker-led/blob/main/LICENSE).

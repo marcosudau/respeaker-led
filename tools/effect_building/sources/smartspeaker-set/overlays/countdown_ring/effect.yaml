@@ -1,5 +1,0 @@
-package_id: smartspeaker-set.countdown_ring
-source_id: smartspeaker-set
-entry_file: effect.py
-entry_class: CountdownRingOverlay
-min_service_version: 1.0.0

@@ -1,16 +1,26 @@
+# CI for the release repository marcosudau/respeaker-led.
+#
+# This file is not used in the development repository. sync_release_tree.py
+# installs it as .github/workflows/ci.yml in the release repo.
+#
+# There is no pytest job here on purpose: the test suite is bound to
+# tools/effect_building through an autouse fixture in tests/conftest.py, and
+# neither tools/ nor tests/ exist in the release repo. Everything is tested in
+# marcosudau/led_controller_respeaker before the sync runs. What remains — and
+# what matters here — is that the published artifact is actually usable.
+
 name: CI
 
 on:
   push:
     branches:
       - main
-      - codex/**
   pull_request:
   workflow_dispatch:
 
 
 jobs:
-  test:
+  wheel-smoke:
     runs-on: windows-latest
 
     steps:
@@ -23,40 +33,41 @@ jobs:
       - name: Install uv
         run: python -m pip install --upgrade uv
 
-      - name: Sync dependencies
-        run: uv sync --all-groups --all-extras
+      - name: Build distributions
+        run: uv build
 
-      - name: Run tests
-        run: uv run pytest -q --basetemp=.pytest_tmp
+      - name: Install the wheel into a clean virtual environment
+        shell: bash
+        run: |
+          python -m venv .smoke
+          .smoke/Scripts/python -m pip install --upgrade pip
+          .smoke/Scripts/pip install dist/*.whl
 
-  build:
-    runs-on: windows-latest
-    needs: test
+      - name: Resources resolve outside the repository
+        shell: bash
+        run: |
+          .smoke/Scripts/python -c "
+          from respeaker_led.infrastructure.paths import PACKAGED_DEFAULT_EFFECT_SET_PATH, XVF_HOST_PATH
+          assert XVF_HOST_PATH.is_file(), f'missing driver: {XVF_HOST_PATH}'
+          assert PACKAGED_DEFAULT_EFFECT_SET_PATH.is_file(), f'missing effects: {PACKAGED_DEFAULT_EFFECT_SET_PATH}'
+          print('resources ok')
+          "
 
-    steps:
-      - uses: actions/checkout@v4
+      - name: Embedded service loads the packaged effect set
+        shell: bash
+        run: |
+          .smoke/Scripts/python -c "
+          from respeaker_led import ControllerService
+          service = ControllerService(use_device=False)
+          try:
+              sources = service.list_effect_sources()
+              assert any(s['source_id'] == 'default-effects' for s in sources), sources
+              assert service.list_effects(), 'no effects registered'
+              print(f'loaded {len(service.list_effects())} effects')
+          finally:
+              service.stop()
+          "
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version-file: .python-version
-
-      - name: Install uv
-        run: python -m pip install --upgrade uv
-
-      - name: Sync dependencies
-        run: uv sync --all-groups --all-extras
-
-      - name: Run build pipeline
-        run: uv run python build-tools/build.py
-
-      - name: Upload release binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: led_controller_service_windows_x64
-          path: dist/*.exe
-
-      - name: Upload release bundle artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: led_controller_service_release_bundle
-          path: dist/release_bundle/*.zip
+      - name: Console script runs
+        shell: bash
+        run: .smoke/Scripts/respeaker-led --help

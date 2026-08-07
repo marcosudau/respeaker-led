@@ -27,6 +27,7 @@ from ..infrastructure.paths import (
     BUILD_CONFIG_PATH,
     DEFAULT_EFFECT_SOURCE_ID,
     DEFAULT_EFFECT_SET_FILENAME,
+    PACKAGED_DEFAULT_EFFECT_SET_PATH,
     PROJECT_ROOT,
 )
 from .effect_package_loader import (
@@ -49,6 +50,8 @@ def _default_effect_artifact_candidates() -> list[Path]:
     if override:
         candidates.append(Path(override).expanduser())
     candidates.append(APP_DEFAULT_EFFECT_SET_PATH)
+    # Shipped inside the wheel, where APP_EFFECTS_ROOT does not exist.
+    candidates.append(PACKAGED_DEFAULT_EFFECT_SET_PATH)
     candidates.extend(
         path for path in _configured_builtin_effect_paths() if path.name == DEFAULT_EFFECT_SET_FILENAME
     )

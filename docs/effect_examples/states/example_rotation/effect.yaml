@@ -1,8 +1,0 @@
-# Primary metadata for this effect source.
-# Title hint: Example Rotation State
-# Definition type: state
-# Overlay mode: not-applicable
-package_id: tutorial-effects.example_rotation_state
-source_id: tutorial-effects
-entry_class: ExampleRotationState
-min_service_version: 1.0.0

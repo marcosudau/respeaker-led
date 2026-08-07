@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
+import time
 
 if __package__ in {None, ""}:
     from pathlib import Path
@@ -19,7 +21,7 @@ from uvicorn.server import Server as UvicornServer
 from .api import create_app
 from .client import LocalControllerClient
 from ..infrastructure.logging_utils import get_logger, setup_logging
-from ..infrastructure.paths import ACTIVE_SERVICE_FILE
+from ..infrastructure.paths import ACTIVE_SERVICE_FILE, RUNTIME_STATE_ROOT
 from ..services.service_hosting import (
     clear_active_service_info,
     create_active_service_info,
@@ -281,52 +283,83 @@ def _normalize_argv(argv: list[str]) -> list[str]:
     return normalized
 
 
+DAEMON_MODULE = "respeaker_led"
+DAEMON_SPAWN_LOG = RUNTIME_STATE_ROOT / "daemon_spawn.log"
+
+
+def daemon_spawn_command(host: str, port: int) -> list[str]:
+    return [sys.executable, "-m", DAEMON_MODULE, "serve", "--host", host, "--port", str(port)]
+
+
+def _spawn_detached(cmd: list[str], output_handle) -> None:
+    kwargs: dict[str, object] = {
+        "stdout": output_handle,
+        "stderr": subprocess.STDOUT,
+        "stdin": subprocess.DEVNULL,
+    }
+    if sys.platform.startswith("win"):
+        kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        kwargs["start_new_session"] = True
+    subprocess.Popen(cmd, **kwargs)
+
+
+def _spawn_log_tail(limit: int = 5) -> str:
+    try:
+        lines = DAEMON_SPAWN_LOG.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return ""
+    return " | ".join(line.strip() for line in lines[-limit:] if line.strip())
+
+
 def ensure_daemon_running(
     host: str = "127.0.0.1",
     port: int = 8765,
     timeout: float = 0.5,
     startup_wait: float = 5.0,
-) -> bool:
-    """Check if the daemon is running; start it in the background if not."""
-    client = LocalControllerClient(host=host, port=port, timeout=timeout)
-    result = client.ping()
-    if result.ok:
-        return True
+) -> tuple[bool, str | None]:
+    """Check if the daemon is running; start it in the background if not.
 
-    import subprocess
-    cmd = [sys.executable, "-m", "src", "serve", "--host", host, "--port", str(port)]
+    Returns ``(ok, detail)`` where ``detail`` carries the tail of the spawned
+    process output when the daemon could not be reached. Swallowing that output
+    is what kept a broken spawn command invisible in the past, so it is captured
+    to DAEMON_SPAWN_LOG instead of DEVNULL.
+    """
+    client = LocalControllerClient(host=host, port=port, timeout=timeout)
+    if client.ping().ok:
+        return True, None
+
+    cmd = daemon_spawn_command(host, port)
     try:
-        if sys.platform.startswith("win"):
-            creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-            subprocess.Popen(
-                cmd,
-                creationflags=creationflags,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-            )
-        else:
-            subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-                start_new_session=True,
-            )
+        DAEMON_SPAWN_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with DAEMON_SPAWN_LOG.open("w", encoding="utf-8") as handle:
+            _spawn_detached(cmd, handle)
     except OSError as exc:
         logger.warning("failed to spawn daemon: %s", exc)
-        return False
+        return False, f"failed to spawn daemon: {exc}"
 
-    import time as _time
-    attempts = int(startup_wait / 0.5)
-    for _ in range(attempts):
-        _time.sleep(0.5)
+    deadline = time.monotonic() + startup_wait
+    while time.monotonic() < deadline:
+        time.sleep(0.5)
         if client.ping().ok:
-            return True
-    return False
+            return True, None
+
+    detail = _spawn_log_tail()
+    logger.warning("daemon did not become reachable: %s", detail or "<no output>")
+    return False, detail or "daemon did not become reachable"
 
 
 def main() -> int:
+    try:
+        return _run()
+    except RuntimeError as exc:
+        # An unreachable daemon surfaces here. Report it the same way every
+        # other CLI failure is reported instead of dumping a traceback.
+        print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=True))
+        return 1
+
+
+def _run() -> int:
     parser = build_parser()
     args = parser.parse_args(_normalize_argv(sys.argv[1:]))
     use_device = use_real_device(args)
@@ -412,13 +445,18 @@ def main() -> int:
     }:
         setup_logging(console=False)
 
-        # Auto-spawn daemon for non-serve commands
-        if args.command_kind != "serve":
-            if not ensure_daemon_running(
+        # Auto-spawn the daemon only when this invocation targets real hardware.
+        # With --no-device the caller talks to whatever daemon is already there.
+        if use_real_device(args):
+            started, detail = ensure_daemon_running(
                 host=getattr(args, "host", "127.0.0.1"),
                 port=getattr(args, "port", 8765),
-            ):
-                print(json.dumps({"ok": False, "error": "Could not start or connect to the LED controller daemon"}, ensure_ascii=True))
+            )
+            if not started:
+                error = "Could not start or connect to the LED controller daemon"
+                if detail:
+                    error = f"{error}: {detail}"
+                print(json.dumps({"ok": False, "error": error}, ensure_ascii=True))
                 return 1
 
         client = make_client(args, best_effort=False)

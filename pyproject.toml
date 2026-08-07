@@ -7,6 +7,8 @@ name = "respeaker-led"
 dynamic = ["version"]
 description = "Local service controller for the reSpeaker XVF3800 LED ring"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.135.3,<0.136",
@@ -19,10 +21,11 @@ dependencies = [
 ]
 
 keywords = ["respeaker", "led", "controller", "xvf3800", "fastapi", "cli"]
+# No "License ::" classifier here: PEP 639 forbids combining one with the
+# `license` SPDX expression above, and build backends reject the combination.
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Topic :: System :: Hardware :: Hardware Drivers",
@@ -50,21 +53,24 @@ dev = [
 ]
 
 [tool.hatch.version]
-path = "build-tools/version.py"
+path = "src/respeaker_led/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/respeaker_led"]
 
+# The effect sets live at the repository root for the build pipeline, but an
+# installed wheel has no repository around it — mirror them into the package.
+[tool.hatch.build.targets.wheel.force-include]
+"effects" = "respeaker_led/effects"
 
-
-
+# The sdist ships the library, not the development environment. Keeping the dev
+# toolchain out makes the published artifact correct regardless of which of the
+# two repositories built it.
 [tool.hatch.build.targets.sdist]
 include = [
+    "/LICENSE",
     "/README.md",
-    "/build-tools",
     "/docs",
-    "/main.py",
+    "/effects",
     "/src",
-    "/tests",
-    "/tools",
 ]

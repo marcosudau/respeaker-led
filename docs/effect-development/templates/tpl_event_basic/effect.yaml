@@ -1,8 +1,0 @@
-# Primary metadata for this effect source.
-# Title hint: Template Event
-# Definition type: event
-# Overlay mode: not-applicable
-package_id: tutorial-templates.template_event
-source_id: tutorial-templates
-entry_class: TemplateEventEffect
-min_service_version: 1.0.0

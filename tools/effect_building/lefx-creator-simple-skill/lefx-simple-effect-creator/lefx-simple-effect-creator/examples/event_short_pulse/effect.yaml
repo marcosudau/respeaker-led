@@ -1,5 +1,0 @@
-package_id: skill-examples.example_short_pulse_event
-source_id: skill-examples
-entry_file: effect.py
-entry_class: ExampleShortPulseEvent
-min_service_version: 1.0.0

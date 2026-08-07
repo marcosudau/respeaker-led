@@ -4,9 +4,8 @@ import enum
 import importlib.util
 import threading
 import time
-from typing import Callable, Any, Optional
+from typing import Any, Callable
 
-import usb.core
 import usb.util
 
 from ..infrastructure.logging_utils import get_logger
@@ -117,7 +116,7 @@ class UsbConnectionManager:
                 raise RuntimeError("USB device not connected")
             try:
                 self._device.write(name, data)
-            except (usb.core.USBError, usb.core.USBTimeoutError, Exception) as e:
+            except Exception as e:
                 self._disconnect(f"Write error: {e}")
                 raise
 
@@ -128,7 +127,7 @@ class UsbConnectionManager:
                 raise RuntimeError("USB device not connected")
             try:
                 return self._device.read(name)
-            except (usb.core.USBError, usb.core.USBTimeoutError, Exception) as e:
+            except Exception as e:
                 self._disconnect(f"Read error: {e}")
                 raise
 
@@ -190,11 +189,7 @@ class UsbConnectionManager:
                         self._retry_count = 0
                         self._ring_mode_dirty = True
                     logger.info("Successfully connected to USB device.")
-                    if self.on_connected:
-                        try:
-                            self.on_connected()
-                        except Exception as e:
-                            logger.error(f"Error in on_connected callback: {e}")
+                    self._notify(self.on_connected, "on_connected")
                     return True
         except Exception as e:
             logger.debug(f"Connection attempt failed: {e}")
@@ -233,8 +228,23 @@ class UsbConnectionManager:
                     logger.debug(f"Error disposing USB resources: {e}")
                 self._device = None
 
-        if self.on_disconnected:
+        self._notify(self.on_disconnected, "on_disconnected", reason)
+
+    def _notify(self, callback: Callable[..., None] | None, label: str, *args: Any) -> None:
+        """Run a lifecycle callback off the caller's thread.
+
+        Both _try_connect and the read/write error paths hold _io_lock when a
+        transition happens. Dispatching the callback inline would let a listener
+        that takes its own lock deadlock against a render thread holding that
+        lock and waiting for _io_lock, so callbacks never inherit our locks.
+        """
+        if callback is None:
+            return
+
+        def _run() -> None:
             try:
-                self.on_disconnected(reason)
-            except Exception as e:
-                logger.error(f"Error in on_disconnected callback: {e}")
+                callback(*args)
+            except Exception as exc:
+                logger.error(f"Error in {label} callback: {exc}")
+
+        threading.Thread(target=_run, name=f"UsbConnection-{label}", daemon=True).start()

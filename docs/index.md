@@ -11,22 +11,22 @@ Diese Dokumentation beschreibt den aktiven Service- und LEFX-V2-Pfad.
 
 ## Effektsystem
 
-- [Ueberblick und Navigation](effect-system/README.md)
+- [Ueberblick und Navigation](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/effect-system/README.md)
 - [Effektsystem und Effektentwicklung](effects.md)
-- [Praktische Effektentwicklung](effect-development/README.md)
-- [Validierbare Tutorial-Pakete](effect_examples/README.md)
+- [Praktische Effektentwicklung](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/effect-development/README.md)
+- [Validierbare Tutorial-Pakete](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/effect_examples/README.md)
 
 ## Entwickeln und betreiben
 
-- [Entwicklerdokumentation](dev/index.md)
-- [Aktuelle Architektur](dev/architecture.md)
-- [Build und Release](dev/build.md)
-- [Oeffentliche Einstiegspunkte](dev/public_entry_points.md)
+- [Entwicklerdokumentation](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/dev/index.md)
+- [Aktuelle Architektur](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/dev/architecture.md)
+- [Build und Release](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/dev/build.md)
+- [Oeffentliche Einstiegspunkte](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/dev/public_entry_points.md)
 
 ## Planung und Geschichte
 
-- [Aktive Planung](.planning/index.md)
-- [Historisches Archiv](.archive/README.md)
+- [Aktive Planung](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/.planning/index.md)
+- [Historisches Archiv](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/.archive/README.md)
 
 ## Grundsaetze
 

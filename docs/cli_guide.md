@@ -507,6 +507,6 @@ python .\main.py set-enabled <bool>
 
 - [HTTP-API-Referenz](api_guide.md)
 - [Schnellstart](getting_started.md)
-- [Bedienmodell und Semantik](effect-system/09_control_interface.md)
-- [Parameter und Eingabeformen](effect-system/06_parameters_and_values.md)
+- [Bedienmodell und Semantik](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/effect-system/09_control_interface.md)
+- [Parameter und Eingabeformen](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/effect-system/06_parameters_and_values.md)
 - [Troubleshooting](troubleshooting.md)

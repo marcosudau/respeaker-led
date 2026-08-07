@@ -586,7 +586,26 @@ def _collect_payload_files(source_dir: Path) -> dict[str, bytes]:
                 init_path = "/".join(parent_parts + ["__init__.py"])
                 files.setdefault(init_path, b"")
                 parent_parts.pop()
-    return files
+    # Synthesized __init__.py entries land in discovery order, so sort the whole
+    # mapping to keep the archive layout independent of the traversal.
+    return dict(sorted(files.items()))
+
+
+# Archives are tracked in git, so a rebuild must not change their bytes when the
+# sources did not. writestr() with a plain name stamps every entry with the
+# current time and derives create_system from the build host, which made each
+# build rewrite every .lefx and .lefxset with identical content.
+_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
+_ZIP_FILE_ATTRIBUTES = 0o644 << 16
+_ZIP_CREATE_SYSTEM = 3  # Unix, so archives do not differ between Windows and Linux builds
+
+
+def _write_archive_entry(archive: zipfile.ZipFile, name: str, content: bytes) -> None:
+    info = zipfile.ZipInfo(name, date_time=_ZIP_TIMESTAMP)
+    info.compress_type = zipfile.ZIP_DEFLATED
+    info.external_attr = _ZIP_FILE_ATTRIBUTES
+    info.create_system = _ZIP_CREATE_SYSTEM
+    archive.writestr(info, content)
 
 
 def _build_effect_archive(
@@ -598,7 +617,7 @@ def _build_effect_archive(
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         manifest_bytes = json.dumps(manifest.to_dict(), ensure_ascii=True, indent=2, sort_keys=True).encode("utf-8")
-        archive.writestr("manifest.json", manifest_bytes)
+        _write_archive_entry(archive, "manifest.json", manifest_bytes)
         hashes = {"manifest.json": hashlib.sha256(manifest_bytes).hexdigest()}
 
         if presets:
@@ -608,15 +627,15 @@ def _build_effect_archive(
                 indent=2,
                 sort_keys=True,
             ).encode("utf-8")
-            archive.writestr("effect-presets.json", preset_bytes)
+            _write_archive_entry(archive, "effect-presets.json", preset_bytes)
             hashes["effect-presets.json"] = hashlib.sha256(preset_bytes).hexdigest()
 
-        for name, content in files.items():
-            archive.writestr(name, content)
+        for name, content in sorted(files.items()):
+            _write_archive_entry(archive, name, content)
             hashes[name] = hashlib.sha256(content).hexdigest()
 
         hash_bytes = json.dumps({"algorithm": "sha256", "files": hashes}, ensure_ascii=True, indent=2, sort_keys=True).encode("utf-8")
-        archive.writestr("hashes.json", hash_bytes)
+        _write_archive_entry(archive, "hashes.json", hash_bytes)
     return buffer.getvalue()
 
 
@@ -639,13 +658,15 @@ def _build_effect_set_archive(
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         manifest_bytes = json.dumps(manifest.to_dict(), ensure_ascii=True, indent=2, sort_keys=True).encode("utf-8")
-        archive.writestr("set-manifest.json", manifest_bytes)
+        _write_archive_entry(archive, "set-manifest.json", manifest_bytes)
         hashes = {"set-manifest.json": hashlib.sha256(manifest_bytes).hexdigest()}
+        # Member order follows the source manifest and mirrors effect_entries,
+        # so it is deliberate and must not be re-sorted here.
         for file_name, payload, _ in nested_packages:
-            archive.writestr(file_name, payload)
+            _write_archive_entry(archive, file_name, payload)
             hashes[file_name] = hashlib.sha256(payload).hexdigest()
         hash_bytes = json.dumps({"algorithm": "sha256", "files": hashes}, ensure_ascii=True, indent=2, sort_keys=True).encode("utf-8")
-        archive.writestr("hashes.json", hash_bytes)
+        _write_archive_entry(archive, "hashes.json", hash_bytes)
     return buffer.getvalue()
 
 

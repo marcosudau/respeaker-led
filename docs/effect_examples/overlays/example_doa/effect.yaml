@@ -1,8 +1,0 @@
-# Primary metadata for this effect source.
-# Title hint: Example DoA Overlay
-# Definition type: overlay
-# Overlay mode: controlled
-package_id: tutorial-effects.example_doa_overlay
-source_id: tutorial-effects
-entry_class: ExampleDoaOverlay
-min_service_version: 1.0.0

@@ -25,7 +25,11 @@ tools/PySide6TestApp/.cache/
 tools/effect_building/build/.cache/
 release/**/led_controller_service.exe
 release/**/*.zip
-examples/
 
-
-
+# Credentials and IDE state must never reach a public repository.
+deploy_key*
+*.pem
+id_ed25519*
+id_rsa*
+*.env
+.idea/

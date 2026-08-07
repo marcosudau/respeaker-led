@@ -1,8 +1,0 @@
-# Primary metadata for this effect source.
-# Title hint: Template Push Overlay
-# Definition type: overlay
-# Overlay mode: controlled
-package_id: tutorial-templates.template_overlay_push
-source_id: tutorial-templates
-entry_class: TemplateOverlayPushEffect
-min_service_version: 1.0.0

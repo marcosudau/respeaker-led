@@ -80,4 +80,4 @@ python .\main.py shutdown
 - [HTTP-API-Referenz](api_guide.md)
 - [Effekte und Artefakte](effects.md)
 - [Troubleshooting](troubleshooting.md)
-- [Aktuelle Architektur](dev/architecture.md)
+- [Aktuelle Architektur](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/dev/architecture.md)

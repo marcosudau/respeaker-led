@@ -1,8 +1,0 @@
-# Primary metadata for this effect source.
-# Title hint: Template State
-# Definition type: state
-# Overlay mode: not-applicable
-package_id: tutorial-templates.template_state
-source_id: tutorial-templates
-entry_class: TemplateStateEffect
-min_service_version: 1.0.0

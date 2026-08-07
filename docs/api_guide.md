@@ -219,7 +219,7 @@ Definition-Defaults -> Preset -> config
 ```
 
 Unterstuetzte Eingabeformen und Farbaliasse stehen unter
-[Parameter und Werte](effect-system/06_parameters_and_values.md).
+[Parameter und Werte](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/effect-system/06_parameters_and_values.md).
 
 ### `inputs`
 
@@ -553,7 +553,7 @@ curl.exe -X POST http://127.0.0.1:8765/api/v2/update/overlay `
 ## Weiterfuehrend
 
 - [CLI-Referenz](cli_guide.md)
-- [Bedienmodell und Semantik](effect-system/09_control_interface.md)
-- [Parameter und Eingabeformen](effect-system/06_parameters_and_values.md)
-- [Runtime-Eingaben](effect-system/07_runtime_inputs.md)
-- [Aktuelle Architektur](dev/architecture.md)
+- [Bedienmodell und Semantik](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/effect-system/09_control_interface.md)
+- [Parameter und Eingabeformen](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/effect-system/06_parameters_and_values.md)
+- [Runtime-Eingaben](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/effect-system/07_runtime_inputs.md)
+- [Aktuelle Architektur](https://github.com/marcosudau/led_controller_respeaker/blob/main/docs/dev/architecture.md)

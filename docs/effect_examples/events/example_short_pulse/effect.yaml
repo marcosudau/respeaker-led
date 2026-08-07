@@ -1,8 +1,0 @@
-# Primary metadata for this effect source.
-# Title hint: Example Short Pulse Event
-# Definition type: event
-# Overlay mode: not-applicable
-package_id: tutorial-effects.example_short_pulse_event
-source_id: tutorial-effects
-entry_class: ExampleShortPulseEvent
-min_service_version: 1.0.0

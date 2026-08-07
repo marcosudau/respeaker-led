@@ -62,7 +62,6 @@ class ReSpeakerAdapter:
             self._usb = usb_manager
         else:
             # Legacy path: create a standalone manager for backward compat
-            from .usb_connection import UsbConnectionManager
             self._usb = UsbConnectionManager()
             self._usb.start()
         self._ring_mode = False

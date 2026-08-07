@@ -69,6 +69,8 @@ class ControllerService:
         self._started_at: float | None = None
         self._shutdown_callback: Callable[[], None] | None = None
         self._background_state_signature: str | None = None
+        self._usb_connected_seen: bool | None = None
+        self._state_before_offline: tuple[str, dict[str, Any]] | None = None
 
         self._restore_background_state()
         logger.info(
@@ -149,10 +151,45 @@ class ControllerService:
 
     def _render_once_locked(self, now: float | None = None) -> None:
         resolved_now = time.monotonic() if now is None else now
+        self._sync_usb_connection_state()
         self._refresh_hardware_inputs(resolved_now)
         self.runtime.render_once(resolved_now)
         self._sync_background_state_storage()
         self._render_count += 1
+
+    def _sync_usb_connection_state(self) -> None:
+        """Mirror USB connect/disconnect transitions into the runtime state.
+
+        This runs inside the render loop, which already holds ``self._lock``,
+        rather than on the manager's callbacks — that keeps the transition free
+        of any cross-thread locking at the cost of at most one frame of latency.
+        """
+        manager = self._usb_manager
+        if manager is None:
+            return
+
+        connected = manager.is_connected
+        if connected == self._usb_connected_seen:
+            return
+        self._usb_connected_seen = connected
+
+        base_state = self.runtime.store.base_state
+        if not connected:
+            if base_state.name != "offline":
+                self._state_before_offline = (base_state.name, dict(base_state.payload or {}))
+            logger.warning("usb device disconnected, switching to offline state")
+            self.runtime.set_state("offline", payload={"reason": "device_disconnected"})
+            return
+
+        restored = self._state_before_offline
+        self._state_before_offline = None
+        # Only restore when nothing else claimed the state while we were offline.
+        if restored is not None and base_state.name == "offline":
+            name, payload = restored
+            logger.info("usb device reconnected, restoring state=%s", name)
+            self.runtime.set_state(name, payload=payload)
+        else:
+            logger.info("usb device connected")
 
     def _refresh_hardware_inputs(self, now: float) -> None:
         for provider in self._hardware_input_providers.values():
@@ -219,6 +256,23 @@ class ControllerService:
             self._render_once_locked()
             return self.snapshot()
 
+    @property
+    def current_device_available(self) -> bool:
+        """Whether the device is reachable right now, not just at construction.
+
+        The USB manager reconnects in the background, so the value decided when
+        the adapter was built goes stale as soon as the cable moves.
+        """
+        if self._usb_manager is None:
+            return self.device_available
+        return self._usb_manager.is_connected
+
+    @property
+    def current_fallback_active(self) -> bool:
+        if self._usb_manager is None:
+            return self.fallback_active
+        return not self._usb_manager.is_connected
+
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
             snapshot = self.runtime.get_status()
@@ -231,8 +285,8 @@ class ControllerService:
                 "last_error": self._last_error,
                 "requested_output_mode": self.requested_output_mode,
                 "output_mode": self.output_mode,
-                "device_available": self.device_available,
-                "fallback_active": self.fallback_active,
+                "device_available": self.current_device_available,
+                "fallback_active": self.current_fallback_active,
                 "usb_connection": self._usb_manager.connection_stats if self._usb_manager is not None else None,
                 "hardware_inputs": {
                     provider_id: provider.status(time.monotonic())
