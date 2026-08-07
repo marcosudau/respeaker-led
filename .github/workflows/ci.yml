@@ -53,17 +53,27 @@ jobs:
           print('resources ok')
           "
 
-      - name: Embedded service loads the packaged effect set
+      - name: Embedded service registers every shipped effect set
         shell: bash
         run: |
           .smoke/Scripts/python -c "
+          from pathlib import Path
           from respeaker_led import ControllerService
+          from respeaker_led.infrastructure.paths import PACKAGED_EFFECTS_ROOT
+
+          # Comparing against what the wheel ships, rather than just asserting
+          # default-effects is there: a set shipped but never registered is
+          # exactly the failure this job exists to catch.
+          shipped = {p.stem for p in PACKAGED_EFFECTS_ROOT.glob('*.lefxset')}
+          assert shipped, f'no effect sets shipped in {PACKAGED_EFFECTS_ROOT}'
+
           service = ControllerService(use_device=False)
           try:
-              sources = service.list_effect_sources()
-              assert any(s['source_id'] == 'default-effects' for s in sources), sources
+              registered = {s['source_id'] for s in service.list_effect_sources()}
+              missing = shipped - registered
+              assert not missing, f'shipped but not registered: {missing}'
               assert service.list_effects(), 'no effects registered'
-              print(f'loaded {len(service.list_effects())} effects')
+              print(f'{len(service.list_effects())} effects from {len(registered)} source(s)')
           finally:
               service.stop()
           "

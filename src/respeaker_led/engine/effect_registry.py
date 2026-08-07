@@ -28,6 +28,7 @@ from ..infrastructure.paths import (
     DEFAULT_EFFECT_SOURCE_ID,
     DEFAULT_EFFECT_SET_FILENAME,
     PACKAGED_DEFAULT_EFFECT_SET_PATH,
+    PACKAGED_EFFECTS_ROOT,
     PROJECT_ROOT,
 )
 from .effect_package_loader import (
@@ -64,6 +65,23 @@ def _default_effect_artifact_candidates() -> list[Path]:
         deduplicated.append(candidate)
         seen.add(key)
     return deduplicated
+
+
+def _packaged_effect_artifact_paths() -> list[Path]:
+    """Effect artifacts shipped inside the installed package.
+
+    An installed wheel has no build-tools/build_config.json, so the discovery
+    that registers the non-default sets in a source checkout finds nothing
+    there. Without this, every set except default-effects would ship inside the
+    wheel and never be registered.
+    """
+    if not PACKAGED_EFFECTS_ROOT.is_dir():
+        return []
+    return sorted(
+        path
+        for path in PACKAGED_EFFECTS_ROOT.iterdir()
+        if path.is_file() and path.suffix.lower() in {".lefx", ".lefxset"}
+    )
 
 
 def _configured_builtin_effect_paths() -> list[Path]:
@@ -754,16 +772,26 @@ def build_default_effect_registry() -> EffectRegistry:
         candidates = ", ".join(str(path) for path in _default_effect_artifact_candidates())
         raise FileNotFoundError(f"Default effect set artifact not found. Checked: {candidates}")
 
-    for builtin_path in _configured_builtin_effect_paths():
+    # The same set can be reachable through both discovery routes — a checkout
+    # that also carries a populated package effects directory sees each file
+    # twice. Deduplicating by path alone is not enough: the two routes point at
+    # different copies of the same set, which would collide on their source_id.
+    registered_paths: set[Path] = {default_artifact_path}
+    registered_source_ids: set[str] = {DEFAULT_EFFECT_SOURCE_ID}
+    for builtin_path in [*_configured_builtin_effect_paths(), *_packaged_effect_artifact_paths()]:
         if not builtin_path.is_file():
             continue
-        if builtin_path.resolve() == default_artifact_path:
+        resolved = builtin_path.resolve()
+        if resolved in registered_paths:
             continue
+        registered_paths.add(resolved)
         try:
             metadata = inspect_effect_source(builtin_path)
-            if metadata.get("source_id") == DEFAULT_EFFECT_SOURCE_ID:
+            source_id = str(metadata.get("source_id", ""))
+            if source_id in registered_source_ids:
                 continue
             registry.register_effect_source(builtin_path)
+            registered_source_ids.add(source_id)
         except Exception as exc:
             errors.append(f"{builtin_path}: {exc}")
 
